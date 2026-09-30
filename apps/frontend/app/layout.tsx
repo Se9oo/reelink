@@ -45,6 +45,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
 			data-seed-color-mode="system"
 			data-seed-user-color-scheme="light"
 			className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+			suppressHydrationWarning
 		>
 			<body className="flex min-h-full flex-col">
 				<Script id="seed-theme" strategy="beforeInteractive">
