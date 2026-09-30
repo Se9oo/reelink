@@ -19,7 +19,8 @@
 			}
 		],
 		"paths": {
-			"@/*": ["./src/*"]
+			"@/*": ["./src/*"],
+			"seed-design/*": ["./src/shared/ui/seed-design/*"]
 		}
 	},
 	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts", "**/*.mts"],

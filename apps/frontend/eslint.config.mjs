@@ -34,6 +34,8 @@ const eslintConfig = defineConfig([
 		'out/**',
 		'build/**',
 		'next-env.d.ts',
+		// seed-design CLI가 생성하는 벤더 스니펫 — 직접 수정 대상 아님
+		'src/shared/ui/seed-design/**',
 	]),
 ]);
 

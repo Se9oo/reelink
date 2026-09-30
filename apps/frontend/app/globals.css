@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@seed-design/css/all.css';
 
 :root {
 	--background: #ffffff;
