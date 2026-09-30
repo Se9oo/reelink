@@ -3,9 +3,10 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
 import { DrizzleModule } from './db/drizzle.module.js';
+import { FoldersModule } from './folders/folders.module.js';
 
 @Module({
-	imports: [DrizzleModule, AuthModule],
+	imports: [DrizzleModule, AuthModule, FoldersModule],
 	controllers: [AppController],
 	providers: [AppService],
 })

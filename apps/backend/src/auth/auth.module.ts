@@ -25,6 +25,8 @@ import { KakaoStrategy } from './strategies/kakao.strategy.js';
 	controllers: [AuthController],
 	providers: [AuthService, KakaoStrategy, GoogleStrategy, GithubStrategy, JwtAuthGuard],
 	// JwtAuthGuard를 다른 모듈(폴더/링크 등)에서도 라우트 보호에 쓸 수 있게 내보냅니다.
-	exports: [JwtAuthGuard],
+	// JwtAuthGuard 내부가 JwtService를 필요로 해서, JwtModule도 같이 내보내야 그 모듈들의
+	// DI 컨테이너에서 JwtService를 찾을 수 있음.
+	exports: [JwtAuthGuard, JwtModule],
 })
 export class AuthModule {}
