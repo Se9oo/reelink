@@ -82,4 +82,19 @@ export class AuthService {
 
 		await this.db.delete(refreshTokens).where(eq(refreshTokens.tokenHash, tokenHash));
 	}
+
+	/**
+	 * users.id로 유저 조회
+	 */
+	async findUserById(userId: string): Promise<AuthUser> {
+		const [user] = await this.db.select().from(users).where(eq(users.id, userId));
+
+		if (!user) {
+			throw new UnauthorizedException('Not Exist User');
+		}
+
+		const { id, email, nickname } = user;
+
+		return { id, email, nickname };
+	}
 }

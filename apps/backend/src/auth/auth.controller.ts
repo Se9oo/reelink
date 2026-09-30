@@ -2,7 +2,7 @@ import { Controller, Get, Post, Req, Res, UnauthorizedException, UseGuards } fro
 import { AuthGuard } from '@nestjs/passport';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
-import { type OAuthProfile } from './auth.types.js';
+import { type JwtPayload, type OAuthProfile } from './auth.types.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
@@ -58,7 +58,8 @@ export class AuthController {
 	@Get('me')
 	@UseGuards(JwtAuthGuard)
 	me(@Req() req: Request) {
-		return req.user;
+		const { sub } = req.user as JwtPayload;
+		return this.authService.findUserById(sub);
 	}
 
 	@Post('refresh')
