@@ -78,7 +78,7 @@ export class AuthController {
 		const user = await this.authService.findOrCreateUser(profile);
 		const tokens = await this.authService.issueTokens(user.id);
 		this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-		res.redirect(process.env.FRONTEND_URL ?? 'http://localhost:3001');
+		res.redirect(process.env.FRONTEND_URL ?? 'http://localhost:3000');
 	}
 
 	private setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
