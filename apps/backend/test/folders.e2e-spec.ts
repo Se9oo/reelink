@@ -218,4 +218,214 @@ describe('FoldersController (e2e)', () => {
 			expect(folderList).not.toContainEqual(deletedFolder.body);
 		});
 	});
+
+	describe('Patch /folders', () => {
+		test('본인 폴더 이름을 변경하면 200과 변경된 폴더를 반환한다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: 'Old' })
+				.expect(201);
+
+			const editedFolder = await request(app.getHttpServer())
+				.patch(`/folders/${folder.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: 'New' })
+				.expect(200);
+
+			expect(editedFolder.body.name).toEqual('New');
+		});
+
+		test('존재하지 않는 폴더 id면 404 오류를 반환한다.', async () => {
+			const randomFolderId = crypto.randomUUID();
+			await request(app.getHttpServer())
+				.patch(`/folders/${randomFolderId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: 'test' })
+				.expect(404);
+		});
+
+		test('다른 사용자의 폴더면 404 오류를 반환한다.', async () => {
+			const [otherUser] = await db.insert(users).values({ email: '...', nickname: '...' }).returning();
+			const jwt = app.get(JwtService);
+			const otherUserToken = await jwt.signAsync({ sub: otherUser.id });
+
+			const otherUserFolder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${otherUserToken}`)
+				.send({ name: '다른 유저 폴더' })
+				.expect(201);
+
+			const otherUserFolderId = otherUserFolder.body.id;
+
+			await request(app.getHttpServer())
+				.patch(`/folders/${otherUserFolderId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '이름 변경' })
+				.expect(404);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('시스템 폴더는 이름 변경이 불가능하다.', async () => {
+			const [systemFolder] = await db
+				.insert(folders)
+				.values({ name: '카카오톡 링크 폴더', isSystem: true, userId: testUserId, sortOrder: 0 })
+				.returning();
+
+			await request(app.getHttpServer())
+				.patch(`/folders/${systemFolder.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '시스템 폴더 이름 변경' })
+				.expect(403);
+		});
+
+		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
+			const [folder] = await db.insert(folders).values({ name: '폴더', userId: testUserId, sortOrder: 0 }).returning();
+
+			await request(app.getHttpServer())
+				.patch(`/folders/${folder.id}`)
+				.send({ name: '시스템 폴더 이름 변경' })
+				.expect(401);
+		});
+
+		test('parentFolderId를 보내면 다른 부모 폴더 밑으로 이동한다.', async () => {
+			const folderA = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: 'A' })
+				.expect(201);
+
+			const folderB = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: 'B' })
+				.expect(201);
+
+			const moved = await request(app.getHttpServer())
+				.patch(`/folders/${folderB.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ parentFolderId: folderA.body.id })
+				.expect(200);
+
+			expect(moved.body.parentFolderId).toEqual(folderA.body.id);
+		});
+
+		test('parentFolderId로 null을 보내면 최상위로 이동한다.', async () => {
+			const parent = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '부모' })
+				.expect(201);
+
+			const child = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '자식', parentFolderId: parent.body.id })
+				.expect(201);
+
+			const moved = await request(app.getHttpServer())
+				.patch(`/folders/${child.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ parentFolderId: null })
+				.expect(200);
+
+			expect(moved.body.parentFolderId).toBeNull();
+		});
+
+		test('이동하면 새 부모 기준 sortOrder가 재계산된다.', async () => {
+			const newParent = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '새 부모' })
+				.expect(201);
+
+			const existingChild = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '기존 자식', parentFolderId: newParent.body.id })
+				.expect(201);
+
+			const moving = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '이동할 폴더' })
+				.expect(201);
+
+			const moved = await request(app.getHttpServer())
+				.patch(`/folders/${moving.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ parentFolderId: newParent.body.id })
+				.expect(200);
+
+			expect(moved.body.sortOrder).toEqual(existingChild.body.sortOrder + 1);
+		});
+
+		test('폴더를 자기 자신 밑으로 이동할 수 없다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '자기자신' })
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.patch(`/folders/${folder.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ parentFolderId: folder.body.id })
+				.expect(400);
+		});
+
+		test('폴더를 자기 하위 폴더 밑으로 이동할 수 없다.', async () => {
+			const parent = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '조상' })
+				.expect(201);
+
+			const child = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '자손', parentFolderId: parent.body.id })
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.patch(`/folders/${parent.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ parentFolderId: child.body.id })
+				.expect(400);
+		});
+
+		test('존재하지 않거나 남의 폴더로는 이동할 수 없다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '이동시도' })
+				.expect(201);
+
+			const randomFolderId = crypto.randomUUID();
+			await request(app.getHttpServer())
+				.patch(`/folders/${folder.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ parentFolderId: randomFolderId })
+				.expect(404);
+
+			const [otherUser] = await db.insert(users).values({ email: '...', nickname: '...' }).returning();
+			const jwt = app.get(JwtService);
+			const otherUserToken = await jwt.signAsync({ sub: otherUser.id });
+
+			const otherUserFolder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${otherUserToken}`)
+				.send({ name: '다른 유저 폴더' })
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.patch(`/folders/${folder.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ parentFolderId: otherUserFolder.body.id })
+				.expect(404);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+	});
 });

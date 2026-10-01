@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { FoldersService } from './folders.service.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -25,5 +25,17 @@ export class FoldersController {
 		const { sub: userId } = req.user as JwtPayload;
 
 		return await this.foldersService.getMyFolders({ userId });
+	}
+
+	@Patch(':id')
+	@UseGuards(JwtAuthGuard)
+	async updateFolder(
+		@Req() req: Request,
+		@Param() { id: folderId }: { id: string },
+		@Body() { name, parentFolderId }: { name?: string; parentFolderId?: string | null },
+	) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.foldersService.updateFolder({ userId, name, parentFolderId, folderId });
 	}
 }
