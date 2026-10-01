@@ -14,7 +14,7 @@ export class FoldersService {
 	 * @param name string;
 	 * @returns Folder
 	 */
-	async postFolder({
+	async createFolder({
 		userId,
 		name,
 		parentFolderId,

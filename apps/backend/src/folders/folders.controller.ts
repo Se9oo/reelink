@@ -15,6 +15,6 @@ export class FoldersController {
 		@Body() { name, parentFolderId }: { name: string; parentFolderId?: string | null },
 	) {
 		const { sub: userId } = req.user as JwtPayload;
-		return await this.foldersService.postFolder({ userId, name, parentFolderId });
+		return await this.foldersService.createFolder({ userId, name, parentFolderId });
 	}
 }
