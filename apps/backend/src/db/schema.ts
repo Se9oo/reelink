@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
 
 const id = () =>
@@ -82,17 +82,22 @@ export const kakaoBotLinkCodes = pgTable('kakao_bot_link_codes', {
 	expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 });
 
-export const folders = pgTable('folders', {
-	id: id(),
-	userId: uuid('user_id')
-		.notNull()
-		.references(() => users.id, { onDelete: 'cascade' }),
-	parentFolderId: uuid('parent_folder_id').references((): AnyPgColumn => folders.id, { onDelete: 'cascade' }),
-	name: text('name').notNull(),
-	isSystem: boolean('is_system').notNull().default(false),
-	sortOrder: integer('sort_order').notNull().default(0),
-	deletedAt: timestamp('deleted_at', { withTimezone: true }),
-});
+export const folders = pgTable(
+	'folders',
+	{
+		id: id(),
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		parentFolderId: uuid('parent_folder_id').references((): AnyPgColumn => folders.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		isSystem: boolean('is_system').notNull().default(false),
+		sortOrder: integer('sort_order').notNull().default(0),
+		deletedAt: timestamp('deleted_at', { withTimezone: true }),
+	},
+	// cascade 삭제 시 자식 폴더를 찾는 recursive CTE와 nextSortOrder의 형제 조회가 이 컬럼으로 필터링함
+	(table) => [index('folders_parent_folder_id_idx').on(table.parentFolderId)],
+);
 
 export const links = pgTable('links', {
 	id: id(),

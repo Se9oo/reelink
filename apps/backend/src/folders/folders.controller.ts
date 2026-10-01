@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { FoldersService } from './folders.service.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -37,5 +37,14 @@ export class FoldersController {
 		const { sub: userId } = req.user as JwtPayload;
 
 		return await this.foldersService.updateFolder({ userId, name, parentFolderId, folderId });
+	}
+
+	@Delete(':id')
+	@HttpCode(204)
+	@UseGuards(JwtAuthGuard)
+	async deleteFolder(@Req() req: Request, @Param() { id: folderId }: { id: string }) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		await this.foldersService.deleteFolder({ userId, folderId });
 	}
 }

@@ -1,0 +1,1 @@
+CREATE INDEX "folders_parent_folder_id_idx" ON "folders" USING btree ("parent_folder_id");

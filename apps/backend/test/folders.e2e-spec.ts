@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { DRIZZLE, type DrizzleDb } from './../src/db/drizzle.module.js';
-import { users, folders } from './../src/db/schema.js';
+import { users, folders, links } from './../src/db/schema.js';
 import cookieParser from 'cookie-parser';
 
 describe('FoldersController (e2e)', () => {
@@ -219,7 +219,7 @@ describe('FoldersController (e2e)', () => {
 		});
 	});
 
-	describe('Patch /folders', () => {
+	describe('Patch /folders:id', () => {
 		test('본인 폴더 이름을 변경하면 200과 변경된 폴더를 반환한다.', async () => {
 			const folder = await request(app.getHttpServer())
 				.post('/folders')
@@ -426,6 +426,139 @@ describe('FoldersController (e2e)', () => {
 				.expect(404);
 
 			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+	});
+
+	describe('Delete /folders:id', () => {
+		test('시스템 폴더를 삭제하는 경우 403 오류를 반환한다.', async () => {
+			const randomFolderId = crypto.randomUUID();
+
+			const [systemFolder] = await db
+				.insert(folders)
+				.values({ id: randomFolderId, userId: testUserId, isSystem: true, name: '시스템 폴더' })
+				.returning();
+
+			await request(app.getHttpServer())
+				.delete(`/folders/${systemFolder.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(403);
+		});
+
+		test('폴더를 삭제하면 deletedAt이 채워진다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '개발' })
+				.expect(201);
+
+			const folderId = folder.body.id;
+
+			await request(app.getHttpServer())
+				.delete(`/folders/${folderId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			const [deletedFolder] = await db.select().from(folders).where(eq(folders.id, folderId));
+
+			expect(deletedFolder.deletedAt).not.toBeNull();
+		});
+
+		test('하위 폴더가 있다면 그 하위 폴더도 같이 deleteAt이 채워진다.', async () => {
+			const parent = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '최상위 폴더' })
+				.expect(201);
+
+			const parentId = parent.body.id;
+
+			const childA = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: 'React', parentFolderId: parentId })
+				.expect(201);
+
+			const childA1 = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: 'useMemo', parentFolderId: childA.body.id })
+				.expect(201);
+
+			const childA2 = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: 'useCallback', parentFolderId: childA.body.id })
+				.expect(201);
+
+			const childB = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '레시피', parentFolderId: parentId })
+				.expect(201);
+
+			const childB1 = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '볶음', parentFolderId: childB.body.id })
+				.expect(201);
+
+			const childB2 = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '찌개', parentFolderId: childB.body.id })
+				.expect(201);
+
+			const [createdLinkId] = await db
+				.insert(links)
+				.values({ userId: testUserId, folderId: childB2.body.id, url: 'http://...' })
+				.returning();
+
+			await request(app.getHttpServer())
+				.delete(`/folders/${parentId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			const folderIds = [
+				parentId,
+				childA.body.id,
+				childA1.body.id,
+				childA2.body.id,
+				childB.body.id,
+				childB1.body.id,
+				childB2.body.id,
+			];
+
+			const deletedFolders = await db.select().from(folders).where(inArray(folders.id, folderIds));
+			const [deletedLink] = await db.select().from(links).where(eq(links.id, createdLinkId.id));
+
+			expect(deletedFolders.every((folder) => folder.deletedAt !== null)).toBe(true);
+			expect(deletedLink.deletedAt).not.toBeNull();
+		});
+
+		test('남의 폴더거나 존재하지 않는 폴더면 404 오류를 반환한다.', async () => {
+			const [otherUser] = await db.insert(users).values({ email: '...', nickname: '...' }).returning();
+			const jwt = app.get(JwtService);
+			const otherUserToken = await jwt.signAsync({ sub: otherUser.id });
+
+			const otherUserFolder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${otherUserToken}`)
+				.send({ name: '다른 유저 폴더' })
+				.expect(201);
+
+			const otherUserFolderId = otherUserFolder.body.id;
+
+			await request(app.getHttpServer())
+				.delete(`/folders/${otherUserFolderId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(404);
+
+			const randomFolderId = crypto.randomUUID();
+
+			await request(app.getHttpServer())
+				.delete(`/folders/${randomFolderId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(404);
 		});
 	});
 });

@@ -1,8 +1,8 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { Folder } from './folders.types.js';
-import { folders } from '../db/schema.js';
-import { and, eq, isNull } from 'drizzle-orm';
+import { folders, links } from '../db/schema.js';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 interface CreateFolderParams {
 	userId: string;
@@ -124,6 +124,47 @@ export class FoldersService {
 			.returning();
 
 		return updatedFolder;
+	}
+
+	/**
+	 * 폴더를 소프트 삭제한다. 하위 폴더와 그 안의 링크까지 recursive CTE로 전체 자손 id를 한 번에 구해서 cascade 삭제한다.
+	 * @param userId string
+	 * @param folderId string
+	 * @throws NotFoundException 폴더가 없거나 내 폴더가 아닌 경우
+	 * @throws ForbiddenException 시스템 폴더(isSystem)인 경우
+	 */
+	async deleteFolder({ userId, folderId }: { userId: string; folderId: string }): Promise<void> {
+		const [folder] = await this.db
+			.select()
+			.from(folders)
+			.where(and(eq(folders.id, folderId), eq(folders.userId, userId)));
+
+		if (!folder) {
+			throw new NotFoundException();
+		}
+
+		if (folder.isSystem) {
+			throw new ForbiddenException();
+		}
+
+		await this.db.transaction(async (tx) => {
+			// WITH RECURSIVE: folderId 자신(앵커)에서 시작해, parent_folder_id로 연결된 자손을
+			// 더 이상 안 나올 때까지 반복해서 모음 — DB 안에서 트리 전체를 한 번의 쿼리로 탐색
+			const { rows: descendants } = await tx.execute<{ id: string }>(sql`
+				WITH RECURSIVE descendant_folders AS (
+					SELECT id FROM folders WHERE id = ${folderId}
+					UNION ALL
+					SELECT f.id FROM folders f
+					INNER JOIN descendant_folders d ON f.parent_folder_id = d.id
+				)
+				SELECT id FROM descendant_folders
+			`);
+
+			const descendantIds = descendants.map((row) => row.id);
+
+			await tx.update(folders).set({ deletedAt: new Date() }).where(inArray(folders.id, descendantIds));
+			await tx.update(links).set({ deletedAt: new Date() }).where(inArray(links.folderId, descendantIds));
+		});
 	}
 
 	/**
