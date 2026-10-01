@@ -4,25 +4,23 @@ import { Folder } from './folders.types.js';
 import { folders } from '../db/schema.js';
 import { and, eq, isNull } from 'drizzle-orm';
 
+interface CreateFolderParams {
+	userId: string;
+	name: string;
+	parentFolderId?: string | null;
+}
+
 @Injectable()
 export class FoldersService {
 	constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
 	/**
-	 *
-	 * @param userId string;
-	 * @param name string;
+	 * @param userId string
+	 * @param name string
+	 * @param parentFolderId string | null | undefined
 	 * @returns Folder
 	 */
-	async createFolder({
-		userId,
-		name,
-		parentFolderId,
-	}: {
-		userId: string;
-		name: string;
-		parentFolderId?: string | null;
-	}): Promise<Folder> {
+	async createFolder({ userId, name, parentFolderId }: CreateFolderParams): Promise<Folder> {
 		const siblings = await this.db
 			.select()
 			.from(folders)
@@ -46,5 +44,18 @@ export class FoldersService {
 			.returning();
 
 		return folder;
+	}
+
+	/**
+	 * @param userId string
+	 * @returns Folder[]
+	 */
+	async getMyFolders({ userId }: { userId: string }): Promise<Folder[]> {
+		const myFolders = await this.db
+			.select()
+			.from(folders)
+			.where(and(eq(folders.userId, userId), isNull(folders.deletedAt)));
+
+		return myFolders;
 	}
 }
