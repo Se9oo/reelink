@@ -3,17 +3,17 @@
 ## 커밋 컨벤션
 
 - 한국어로 작성
-- 접두사: `feat:`, `fix:`, `modify:` 등등
-- 접두사 뒤에 관련 도메인 붙이기(도메인 관련 변경사항이라면): `feat: product >`, `fix: auth >`
+- 접두사: `feat(frontend):`, `fix(frontend):`, `modify(frontend):` 등등
+- 접두사 뒤에 관련 도메인 붙이기(도메인 관련 변경사항이라면): `feat(frontend): product >`, `fix(frontend): auth >`
 - Co-Authored-By 라인 포함하지 않음
 
 예시:
 
 ```
-feat: product > 소프트 딜리트 상품 하드 딜리트 cron 추가
-fix: auth > 로그인 후 본인인증 시 불필요한 DI 중복 체크 제거
-modify: batch > 헤더 체크 로직 변경
-chore: eslint 설정
+feat(frontend): product > 소프트 딜리트 상품 하드 딜리트 cron 추가
+fix(frontend): auth > 로그인 후 본인인증 시 불필요한 DI 중복 체크 제거
+modify(frontend): batch > 헤더 체크 로직 변경
+chore(frontend): eslint 설정
 ```
 
 ## 개발 워크플로우 (TDD)
