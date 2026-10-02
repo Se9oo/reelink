@@ -6,11 +6,41 @@
 	--foreground: #171717;
 }
 
+:root,
+:root[data-seed-color-mode='system'][data-seed-user-color-scheme='light'],
+:root[data-seed-color-mode='light-only'],
+:root [data-seed-color-mode='light-only'] {
+	--seed-color-palette-carrot-100: #e0f0ff;
+	--seed-color-palette-carrot-200: #c0e0ff;
+	--seed-color-palette-carrot-300: #80c0ff;
+	--seed-color-palette-carrot-400: #40a0ff;
+	--seed-color-palette-carrot-500: #1a8fff;
+	--seed-color-palette-carrot-600: #007fff;
+	--seed-color-palette-carrot-700: #0066cc;
+	--seed-color-palette-carrot-800: #004c99;
+	--seed-color-palette-carrot-900: #003366;
+	--seed-color-palette-carrot-1000: #001a33;
+}
+
+:root[data-seed-color-mode='system'][data-seed-user-color-scheme='dark'],
+:root[data-seed-color-mode='dark-only'],
+:root [data-seed-color-mode='dark-only'] {
+	--seed-color-palette-carrot-100: #001830;
+	--seed-color-palette-carrot-200: #002040;
+	--seed-color-palette-carrot-300: #003357;
+	--seed-color-palette-carrot-400: #004d80;
+	--seed-color-palette-carrot-500: #0066a6;
+	--seed-color-palette-carrot-600: #0073c2;
+	--seed-color-palette-carrot-700: #007fff;
+	--seed-color-palette-carrot-800: #40a0ff;
+	--seed-color-palette-carrot-900: #c0e0ff;
+	--seed-color-palette-carrot-1000: #e0f0ff;
+}
+
 @theme inline {
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
-	--font-sans: var(--font-geist-sans);
-	--font-mono: var(--font-geist-mono);
+	--font-sans: var(--font-pretendard), var(--seed-font-family);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,7 +53,7 @@
 body {
 	background: var(--background);
 	color: var(--foreground);
-	font-family: Arial, Helvetica, sans-serif;
+	font-family: var(--font-sans);
 }
 
 @keyframes fade-in-up {

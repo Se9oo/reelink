@@ -1,17 +1,14 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import Script from 'next/script';
 
 import './globals.css';
 
-const geistSans = Geist({
-	variable: '--font-geist-sans',
-	subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-	variable: '--font-geist-mono',
-	subsets: ['latin'],
+const pretendard = localFont({
+	src: '../node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2',
+	variable: '--font-pretendard',
+	display: 'swap',
+	weight: '45 920',
 });
 
 export const metadata: Metadata = {
@@ -44,7 +41,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
 			data-seed
 			data-seed-color-mode="system"
 			data-seed-user-color-scheme="light"
-			className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+			className={`${pretendard.variable} h-full antialiased`}
 			suppressHydrationWarning
 		>
 			<body className="flex min-h-full flex-col">
