@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import Script from 'next/script';
 
+import { QueryProvider } from '@/shared/providers/query-provider';
+
 import './globals.css';
 
 const pretendard = localFont({
@@ -48,7 +50,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
 				<Script id="seed-theme" strategy="beforeInteractive">
 					{themeScript}
 				</Script>
-				{children}
+				<QueryProvider>{children}</QueryProvider>
 			</body>
 		</html>
 	);

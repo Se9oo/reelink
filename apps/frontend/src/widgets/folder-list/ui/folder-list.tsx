@@ -1,23 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 import { FolderTreeItem } from '@/widgets/folder-list/ui/folder-tree-item';
 
-import { getFolders } from '@/entities/folder/api/get-folders';
+import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { buildFolderTree } from '@/entities/folder/model/build-folder-tree';
-import { FolderTreeNode } from '@/entities/folder/model/types';
 
 export function FolderList() {
-	const [tree, setTree] = useState<FolderTreeNode[] | null>(null);
+	const { data: folders } = useQuery(foldersQueryOptions());
 
-	useEffect(() => {
-		getFolders().then((folders) => setTree(buildFolderTree(folders)));
-	}, []);
-
-	if (tree === null) {
+	if (!folders) {
 		return null;
 	}
+
+	const tree = buildFolderTree(folders);
 
 	if (tree.length === 0) {
 		return (
