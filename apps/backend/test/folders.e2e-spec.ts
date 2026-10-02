@@ -560,5 +560,31 @@ describe('FoldersController (e2e)', () => {
 				.set('Cookie', `access_token=${accessToken}`)
 				.expect(404);
 		});
+
+		test('이미 소프트 삭제된 하위 폴더는 deletedAt이 다시 갱신되지 않는다.', async () => {
+			const parent = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '부모' })
+				.expect(201);
+
+			const child = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '자식', parentFolderId: parent.body.id })
+				.expect(201);
+
+			const originalDeletedAt = new Date('2020-01-01T00:00:00Z');
+			await db.update(folders).set({ deletedAt: originalDeletedAt }).where(eq(folders.id, child.body.id));
+
+			await request(app.getHttpServer())
+				.delete(`/folders/${parent.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			const [deletedChild] = await db.select().from(folders).where(eq(folders.id, child.body.id));
+
+			expect(deletedChild.deletedAt).toEqual(originalDeletedAt);
+		});
 	});
 });

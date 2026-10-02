@@ -162,8 +162,16 @@ export class FoldersService {
 
 			const descendantIds = descendants.map((row) => row.id);
 
-			await tx.update(folders).set({ deletedAt: new Date() }).where(inArray(folders.id, descendantIds));
-			await tx.update(links).set({ deletedAt: new Date() }).where(inArray(links.folderId, descendantIds));
+			// 이미 소프트 삭제된 폴더/링크는 deletedAt을 다시 덮어쓰지 않음 — 안 그러면 휴지통 30일
+			// 자동 영구삭제 카운트다운이 의도치 않게 지금 시점으로 리셋됨
+			await tx
+				.update(folders)
+				.set({ deletedAt: new Date() })
+				.where(and(inArray(folders.id, descendantIds), isNull(folders.deletedAt)));
+			await tx
+				.update(links)
+				.set({ deletedAt: new Date() })
+				.where(and(inArray(links.folderId, descendantIds), isNull(links.deletedAt)));
 		});
 	}
 
