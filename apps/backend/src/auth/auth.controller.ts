@@ -7,6 +7,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
+const LOGIN_REDIRECT_PATH = '/home';
 
 @Controller('auth')
 export class AuthController {
@@ -79,7 +80,7 @@ export class AuthController {
 		const user = await this.authService.findOrCreateUser(profile);
 		const tokens = await this.authService.issueTokens(user.id);
 		this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-		res.redirect(process.env.FRONTEND_URL ?? 'http://localhost:3000');
+		res.redirect(`${process.env.FRONTEND_URL ?? 'http://localhost:3000'}${LOGIN_REDIRECT_PATH}`);
 	}
 
 	private setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
