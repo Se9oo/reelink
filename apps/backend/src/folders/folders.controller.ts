@@ -27,6 +27,14 @@ export class FoldersController {
 		return await this.foldersService.getMyFolders({ userId });
 	}
 
+	@Patch('reorder')
+	@UseGuards(JwtAuthGuard)
+	async reorderFolders(@Req() req: Request, @Body() folderIds: string[]) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.foldersService.reorderFolders({ userId, folderIds });
+	}
+
 	@Patch(':id')
 	@UseGuards(JwtAuthGuard)
 	async updateFolder(

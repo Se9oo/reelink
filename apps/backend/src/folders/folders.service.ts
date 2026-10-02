@@ -131,7 +131,6 @@ export class FoldersService {
 	 * @param userId string
 	 * @param folderId string
 	 * @throws NotFoundException 폴더가 없거나 내 폴더가 아닌 경우
-	 * @throws ForbiddenException 시스템 폴더(isSystem)인 경우
 	 */
 	async deleteFolder({ userId, folderId }: { userId: string; folderId: string }): Promise<void> {
 		const [folder] = await this.db
@@ -141,10 +140,6 @@ export class FoldersService {
 
 		if (!folder) {
 			throw new NotFoundException();
-		}
-
-		if (folder.isSystem) {
-			throw new ForbiddenException();
 		}
 
 		await this.db.transaction(async (tx) => {
@@ -172,6 +167,57 @@ export class FoldersService {
 				.update(links)
 				.set({ deletedAt: new Date() })
 				.where(and(inArray(links.folderId, descendantIds), isNull(links.deletedAt)));
+		});
+	}
+
+	/**
+	 * 형제 폴더들의 순서를 재배열한다. 배열 순서대로 sortOrder 0, 1, 2, ...를 부여한다.
+	 * @param userId string
+	 * @param folderIds string[] 같은 parentFolderId를 가진 형제 폴더 전체의 id, 새 순서대로
+	 * @returns Folder[] 변경된 폴더 배열 (요청한 순서대로)
+	 * @throws NotFoundException 폴더가 없거나 내 폴더가 아닌 경우
+	 * @throws BadRequestException 서로 다른 부모를 가진 폴더가 섞여 있거나, 형제 폴더 일부만 포함된 경우
+	 */
+	async reorderFolders({ userId, folderIds }: { userId: string; folderIds: string[] }): Promise<Folder[]> {
+		const targetFolders = await this.db
+			.select()
+			.from(folders)
+			.where(and(inArray(folders.id, folderIds), eq(folders.userId, userId)));
+
+		if (targetFolders.length !== folderIds.length) {
+			throw new NotFoundException();
+		}
+
+		const parentFolderId = targetFolders[0].parentFolderId;
+
+		if (targetFolders.some((folder) => folder.parentFolderId !== parentFolderId)) {
+			throw new BadRequestException('형제 폴더만 순서를 바꿀 수 있습니다.');
+		}
+
+		const siblings = await this.db
+			.select()
+			.from(folders)
+			.where(
+				and(
+					eq(folders.userId, userId),
+					parentFolderId ? eq(folders.parentFolderId, parentFolderId) : isNull(folders.parentFolderId),
+				),
+			);
+
+		if (siblings.length !== folderIds.length) {
+			throw new BadRequestException('형제 폴더 전체가 포함되어야 합니다.');
+		}
+
+		return await this.db.transaction(async (tx) => {
+			const updated: Folder[] = [];
+
+			for (const [index, folderId] of folderIds.entries()) {
+				const [folder] = await tx.update(folders).set({ sortOrder: index }).where(eq(folders.id, folderId)).returning();
+
+				updated.push(folder);
+			}
+
+			return updated;
 		});
 	}
 
