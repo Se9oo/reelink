@@ -1,46 +1,26 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { eq, inArray } from 'drizzle-orm';
 import request from 'supertest';
-import { AppModule } from './../src/app.module.js';
-import { DRIZZLE, type DrizzleDb } from './../src/db/drizzle.module.js';
+import { type DrizzleDb } from './../src/db/drizzle.module.js';
 import { users, folders, links } from './../src/db/schema.js';
-import cookieParser from 'cookie-parser';
 import { Folder } from '../src/folders/folders.types.js';
+import { setupE2EApp, teardownE2EApp, type E2ETestContext } from './utils/setup-e2e-app.js';
 
 describe('FoldersController (e2e)', () => {
+	let context: E2ETestContext;
 	let app: INestApplication;
 	let db: DrizzleDb;
 	let accessToken: string;
 	let testUserId: string;
 
 	beforeAll(async () => {
-		const moduleFixture: TestingModule = await Test.createTestingModule({
-			imports: [AppModule],
-		}).compile();
-
-		app = moduleFixture.createNestApplication();
-		app.use(cookieParser());
-		await app.init();
-
-		db = app.get(DRIZZLE);
-		const jwt = app.get(JwtService);
-
-		// JwtAuthGuard가 접근하는 건 DB가 아니라 쿠키 속 JWT라, 실제 OAuth 로그인 없이
-		// 테스트 유저를 직접 insert하고 JwtService로 같은 모양의 토큰만 만들면 인증을 통과함
-		const [testUser] = await db
-			.insert(users)
-			.values({ email: 'folders-e2e@test.com', nickname: '폴더테스트' })
-			.returning();
-		testUserId = testUser.id;
-		accessToken = await jwt.signAsync({ sub: testUserId });
+		context = await setupE2EApp('folders-e2e@test.com', '폴더테스트');
+		({ app, db, accessToken, testUserId } = context);
 	});
 
 	afterAll(async () => {
-		// users를 지우면 folders.userId FK의 onDelete: 'cascade'로 생성된 폴더도 같이 정리됨
-		await db.delete(users).where(eq(users.id, testUserId));
-		await app.close();
+		await teardownE2EApp(context);
 	});
 
 	describe('Post /folders', () => {
