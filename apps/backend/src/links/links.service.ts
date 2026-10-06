@@ -6,6 +6,7 @@ import { isValidHttpUrl } from '../common/is-valid-http-url.js';
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { folders, links } from '../db/schema.js';
 
+import { fetchOgTags } from './fetch-og-tags.js';
 import { Link } from './links.types.js';
 
 interface CreateLinkParams {
@@ -49,6 +50,23 @@ export class LinksService {
 
 		const [link] = await this.db.insert(links).values({ userId, folderId, url, savedReason }).returning();
 
+		void this.applyOgTags(link.id, url);
+
 		return link;
+	}
+
+	/**
+	 * OG 태그를 비동기로 가져와 title/thumbnailUrl을 채운다. 등록 응답을 막지 않도록 await 없이 호출됨.
+	 * @param linkId string
+	 * @param url string
+	 */
+	private async applyOgTags(linkId: string, url: string): Promise<void> {
+		const { title, thumbnailUrl } = await fetchOgTags(url);
+
+		if (title === null && thumbnailUrl === null) {
+			return;
+		}
+
+		await this.db.update(links).set({ title, thumbnailUrl }).where(eq(links.id, linkId));
 	}
 }
