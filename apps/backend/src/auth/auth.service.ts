@@ -1,10 +1,13 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+
+import { createHash, randomBytes } from 'crypto';
 import { and, eq, gt } from 'drizzle-orm';
-import { type AuthUser, type OAuthProfile, type TokenPair } from './auth.types.js';
+
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { accounts, refreshTokens, users } from '../db/schema.js';
-import { createHash, randomBytes } from 'crypto';
+
+import { type AuthUser, type OAuthProfile, type TokenPair } from './auth.types.js';
 
 @Injectable()
 export class AuthService {

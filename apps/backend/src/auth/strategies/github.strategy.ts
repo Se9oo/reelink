@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, type Profile } from 'passport-github2';
+
+import { type Profile, Strategy } from 'passport-github2';
 
 @Injectable()
 export class GithubStrategy extends PassportStrategy(Strategy, 'github') {

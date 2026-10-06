@@ -1,8 +1,11 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+
 import type { Request } from 'express';
-import { FoldersService } from './folders.service.js';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+
 import { JwtPayload } from '../auth/auth.types.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+
+import { FoldersService } from './folders.service.js';
 
 @Controller('folders')
 export class FoldersController {

@@ -1,8 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { eq } from 'drizzle-orm';
+import { Test, TestingModule } from '@nestjs/testing';
+
 import cookieParser from 'cookie-parser';
+import { eq } from 'drizzle-orm';
+
 import { AppModule } from '../../src/app.module.js';
 import { DRIZZLE, type DrizzleDb } from '../../src/db/drizzle.module.js';
 import { users } from '../../src/db/schema.js';

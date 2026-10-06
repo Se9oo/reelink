@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+
 import type { Request, Response } from 'express';
+
 import { AuthService } from './auth.service.js';
 import { type JwtPayload, type OAuthProfile } from './auth.types.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';

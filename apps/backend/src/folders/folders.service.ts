@@ -1,8 +1,11 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
-import { Folder } from './folders.types.js';
-import { folders, links } from '../db/schema.js';
+
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+
+import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
+import { folders, links } from '../db/schema.js';
+
+import { Folder } from './folders.types.js';
 
 interface CreateFolderParams {
 	userId: string;

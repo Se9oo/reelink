@@ -1,8 +1,11 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
-import { isValidHttpUrl } from '../common/is-valid-http-url.js';
-import { folders, links } from '../db/schema.js';
+
 import { and, eq } from 'drizzle-orm';
+
+import { isValidHttpUrl } from '../common/is-valid-http-url.js';
+import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
+import { folders, links } from '../db/schema.js';
+
 import { Link } from './links.types.js';
 
 interface CreateLinkParams {

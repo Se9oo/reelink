@@ -1,6 +1,8 @@
-import { existsSync } from 'node:fs';
 import { NestFactory } from '@nestjs/core';
+
 import cookieParser from 'cookie-parser';
+import { existsSync } from 'node:fs';
+
 import { AppModule } from './app.module.js';
 
 process.loadEnvFile(existsSync('.env.local') ? '.env.local' : '.env');

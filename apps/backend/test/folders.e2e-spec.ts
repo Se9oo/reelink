@@ -1,11 +1,14 @@
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+
 import { eq, inArray } from 'drizzle-orm';
 import request from 'supertest';
-import { type DrizzleDb } from './../src/db/drizzle.module.js';
-import { users, folders, links } from './../src/db/schema.js';
+
 import { Folder } from '../src/folders/folders.types.js';
-import { setupE2EApp, teardownE2EApp, type E2ETestContext } from './utils/setup-e2e-app.js';
+
+import { type DrizzleDb } from './../src/db/drizzle.module.js';
+import { folders, links, users } from './../src/db/schema.js';
+import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
 describe('FoldersController (e2e)', () => {
 	let context: E2ETestContext;

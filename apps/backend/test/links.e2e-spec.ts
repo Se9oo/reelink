@@ -1,9 +1,12 @@
 import { INestApplication } from '@nestjs/common';
-import { DrizzleDb } from '../src/db/drizzle.module.js';
-import { setupE2EApp, teardownE2EApp, type E2ETestContext } from './utils/setup-e2e-app.js';
-import request from 'supertest';
 import { JwtService } from '@nestjs/jwt';
+
+import request from 'supertest';
+
+import { DrizzleDb } from '../src/db/drizzle.module.js';
 import { users } from '../src/db/schema.js';
+
+import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
 describe('LinksController (e2e)', () => {
 	let context: E2ETestContext;

@@ -1,8 +1,11 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+
 import type { Request } from 'express';
-import { LinksService } from './links.service.js';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+
 import { JwtPayload } from '../auth/auth.types.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+
+import { LinksService } from './links.service.js';
 
 @Controller('links')
 export class LinksController {
