@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 
-import { IconChevronRightSmallLine } from '@karrotmarket/react-monochrome-icon';
+import { IconChevronRightSmallLine, IconPlusSmallLine } from '@karrotmarket/react-monochrome-icon';
+
+import { CreateFolderModal } from '@/features/create-folder/ui/create-folder-modal';
 
 import { FolderTreeNode } from '@/entities/folder/model/types';
 
@@ -14,6 +16,7 @@ interface FolderTreeSelectProps {
 
 export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSelectProps) {
 	const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+	const [creating, setCreating] = useState(false);
 
 	const toggle = (id: string) => {
 		setExpandedIds((prev) => {
@@ -74,8 +77,23 @@ export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSele
 	};
 
 	return (
-		<ul className="max-h-48 overflow-y-auto rounded-xl border border-[var(--seed-color-stroke-neutral-subtle)] p-1.5">
-			{nodes.map((node) => renderNode(node, 0))}
-		</ul>
+		<div className="flex flex-col gap-2">
+			<button
+				type="button"
+				onClick={() => setCreating(true)}
+				className="flex items-center gap-1 self-start text-sm font-bold text-[var(--seed-color-fg-brand)]"
+			>
+				<IconPlusSmallLine size={16} />새 폴더
+			</button>
+			<ul className="max-h-48 overflow-y-auto rounded-xl border border-[var(--seed-color-stroke-neutral-subtle)] p-1.5">
+				{nodes.map((node) => renderNode(node, 0))}
+			</ul>
+			<CreateFolderModal
+				open={creating}
+				onOpenChange={setCreating}
+				parentFolderId={null}
+				onCreated={(folder) => onSelect(folder.id)}
+			/>
+		</div>
 	);
 }
