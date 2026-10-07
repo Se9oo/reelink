@@ -17,15 +17,17 @@ export function FolderTreeItem({ node, depth = 0, expandedIds, onToggle, onReque
 	return (
 		<li>
 			<div
-				className="group flex items-center gap-1 border-b border-[var(--seed-color-stroke-neutral-subtle)] py-3 pr-2
-					text-sm text-[var(--seed-color-fg-neutral)]"
-				style={{ paddingLeft: `${8 + depth * 20}px` }}
+				className="group flex items-center rounded-lg text-sm text-[var(--seed-color-fg-neutral)]
+					hover:bg-[var(--seed-color-bg-neutral-muted)]"
+				style={{ paddingLeft: `${depth * 12}px` }}
 			>
 				{hasChildren ? (
 					<button
 						type="button"
 						onClick={() => onToggle(node.id)}
-						className="flex h-8 w-8 shrink-0 items-center justify-center text-[var(--seed-color-fg-neutral-muted)]"
+						aria-label={expanded ? `${node.name} 폴더 접기` : `${node.name} 폴더 펼치기`}
+						className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center
+							text-[var(--seed-color-fg-neutral-muted)]"
 					>
 						<IconChevronRightSmallLine
 							size={14}
@@ -39,10 +41,11 @@ export function FolderTreeItem({ node, depth = 0, expandedIds, onToggle, onReque
 				<button
 					type="button"
 					onClick={() => onRequestCreate(node.id, node.name)}
-					className="flex h-8 w-8 shrink-0 items-center justify-center text-[var(--seed-color-fg-neutral-muted)]
-						opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+					aria-label={`${node.name} 폴더 안에 새 폴더 만들기`}
+					className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center
+						text-[var(--seed-color-fg-neutral-muted)] opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
 				>
-					<IconPlusSmallLine size={16} />
+					<IconPlusSmallLine size={20} />
 				</button>
 			</div>
 			{hasChildren && expanded && (

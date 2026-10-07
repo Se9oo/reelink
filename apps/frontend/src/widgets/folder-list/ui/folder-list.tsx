@@ -7,29 +7,16 @@ import { useQuery } from '@tanstack/react-query';
 
 import { FolderTreeItem } from '@/widgets/folder-list/ui/folder-tree-item';
 
-import { CreateFolderModal } from '@/features/create-folder/ui/create-folder-modal';
-
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { buildFolderTree } from '@/entities/folder/model/build-folder-tree';
+import { CreateFolderModal } from '@/entities/folder/ui/create-folder-modal';
+
+import { useToggleSet } from '@/shared/lib/use-toggle-set';
 
 export function FolderList() {
 	const { data: folders } = useQuery(foldersQueryOptions());
-	const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+	const { ids: expandedIds, toggle, add: expand } = useToggleSet();
 	const [createTarget, setCreateTarget] = useState<{ parentId: string | null; parentName?: string } | null>(null);
-
-	const toggle = (id: string) => {
-		setExpandedIds((prev) => {
-			const next = new Set(prev);
-
-			if (next.has(id)) {
-				next.delete(id);
-			} else {
-				next.add(id);
-			}
-
-			return next;
-		});
-	};
 
 	if (!folders) {
 		return null;
@@ -39,13 +26,19 @@ export function FolderList() {
 
 	return (
 		<div className="flex flex-col gap-1">
-			<button
-				type="button"
-				onClick={() => setCreateTarget({ parentId: null })}
-				className="flex items-center gap-1 self-start px-2 py-1 text-sm font-bold text-[var(--seed-color-fg-brand)]"
-			>
-				<IconPlusSmallLine size={16} />새 폴더
-			</button>
+			<div className="flex items-center justify-between py-1 pl-3">
+				<span className="text-sm text-[var(--seed-color-fg-neutral-muted)]">폴더</span>
+				<button
+					type="button"
+					onClick={() => setCreateTarget({ parentId: null })}
+					aria-label="새 폴더 만들기"
+					className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-[var(--seed-radius-r3)]
+						text-[var(--seed-color-fg-neutral-muted)] transition-colors
+						hover:bg-[var(--seed-color-bg-transparent-pressed)]"
+				>
+					<IconPlusSmallLine size={20} />
+				</button>
+			</div>
 
 			{tree.length === 0 ? (
 				<p className="p-6 text-center text-sm text-[var(--seed-color-fg-neutral-muted)]">아직 만든 폴더가 없어요.</p>
@@ -70,7 +63,7 @@ export function FolderList() {
 				parentFolderName={createTarget?.parentName}
 				onCreated={() => {
 					if (createTarget?.parentId) {
-						setExpandedIds((prev) => new Set(prev).add(createTarget.parentId as string));
+						expand(createTarget.parentId);
 					}
 				}}
 			/>

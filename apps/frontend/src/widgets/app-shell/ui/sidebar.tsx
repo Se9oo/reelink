@@ -22,7 +22,7 @@ export function Sidebar() {
 		<aside
 			className="hidden h-full w-60 shrink-0 flex-col border-r border-[var(--seed-color-stroke-neutral-subtle)] lg:flex"
 		>
-			<nav className="flex flex-col gap-1 p-3">
+			<nav className="flex flex-col gap-1 px-2 py-3">
 				{QUICK_LINKS.map(({ href, label, Icon }) => {
 					const isActive = pathname === href;
 
@@ -42,7 +42,7 @@ export function Sidebar() {
 					);
 				})}
 			</nav>
-			<div className="flex-1 overflow-y-auto border-t border-[var(--seed-color-stroke-neutral-subtle)]">
+			<div className="flex-1 overflow-y-auto border-t border-[var(--seed-color-stroke-neutral-subtle)] px-2">
 				<FolderList />
 			</div>
 		</aside>
