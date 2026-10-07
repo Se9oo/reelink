@@ -33,7 +33,7 @@ export function Sidebar() {
 							className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
 								isActive
 									? 'bg-[var(--seed-color-bg-brand-weak)] text-[var(--seed-color-fg-brand)]'
-									: 'text-[var(--seed-color-fg-neutral)] hover:bg-[var(--seed-color-bg-layer-fill)]'
+									: 'text-[var(--seed-color-fg-neutral)] hover:bg-[var(--seed-color-bg-neutral-muted)]'
 							}`}
 						>
 							<Icon size={18} />
