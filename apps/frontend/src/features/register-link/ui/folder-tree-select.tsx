@@ -4,9 +4,10 @@ import { useState } from 'react';
 
 import { IconChevronRightSmallLine, IconPlusSmallLine } from '@karrotmarket/react-monochrome-icon';
 
-import { CreateFolderModal } from '@/features/create-folder/ui/create-folder-modal';
-
 import { FolderTreeNode } from '@/entities/folder/model/types';
+import { CreateFolderModal } from '@/entities/folder/ui/create-folder-modal';
+
+import { useToggleSet } from '@/shared/lib/use-toggle-set';
 
 interface FolderTreeSelectProps {
 	nodes: FolderTreeNode[];
@@ -15,22 +16,12 @@ interface FolderTreeSelectProps {
 }
 
 export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSelectProps) {
-	const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+	const { ids: expandedIds, toggle } = useToggleSet();
 	const [creating, setCreating] = useState(false);
-
-	const toggle = (id: string) => {
-		setExpandedIds((prev) => {
-			const next = new Set(prev);
-
-			if (next.has(id)) {
-				next.delete(id);
-			} else {
-				next.add(id);
-			}
-
-			return next;
-		});
-	};
+	// CreateFolderModal 자체를 처음 열기 전까지 트리에 안 넣음 — Dialog.Positioner는 닫혀있어도
+	// DOM에 항상 존재해서, 미리 렌더링해두면 바깥(링크 등록) 다이얼로그가 열릴 때 찍는 hideOthers
+	// 스냅샷에 이 빈 Positioner가 걸려 aria-hidden이 영구히 박히는 문제가 있었음
+	const [hasOpenedCreateModal, setHasOpenedCreateModal] = useState(false);
 
 	const renderNode = (node: FolderTreeNode, depth: number) => {
 		const hasChildren = node.children.length > 0;
@@ -41,10 +32,10 @@ export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSele
 			<li key={node.id}>
 				<div
 					onClick={() => onSelect(node.id)}
-					className={`flex cursor-pointer items-center gap-1 rounded-lg py-1 pr-2 ${
+					className={`flex cursor-pointer items-center gap-1 rounded-lg ${
 						selected ? 'bg-[var(--seed-color-bg-brand-weak)]' : ''
 					}`}
-					style={{ paddingLeft: `${8 + depth * 20}px` }}
+					style={{ paddingLeft: `${depth * 12}px` }}
 				>
 					{hasChildren ? (
 						<button
@@ -53,7 +44,9 @@ export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSele
 								event.stopPropagation();
 								toggle(node.id);
 							}}
-							className="flex h-8 w-8 shrink-0 items-center justify-center text-[var(--seed-color-fg-neutral-muted)]"
+							aria-label={expanded ? `${node.name} 폴더 접기` : `${node.name} 폴더 펼치기`}
+							className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center
+								text-[var(--seed-color-fg-neutral-muted)]"
 						>
 							<IconChevronRightSmallLine
 								size={14}
@@ -77,23 +70,31 @@ export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSele
 	};
 
 	return (
-		<div className="flex flex-col gap-2">
-			<button
-				type="button"
-				onClick={() => setCreating(true)}
-				className="flex items-center gap-1 self-start text-sm font-bold text-[var(--seed-color-fg-brand)]"
-			>
-				<IconPlusSmallLine size={16} />새 폴더
-			</button>
+		<div className="flex flex-col gap-1.5">
+			<div className="flex items-center justify-between">
+				<span className="text-base font-medium text-[var(--seed-color-fg-neutral)]">폴더</span>
+				<button
+					type="button"
+					onClick={() => {
+						setHasOpenedCreateModal(true);
+						setCreating(true);
+					}}
+					className="flex cursor-pointer items-center gap-1 text-sm font-bold text-[var(--seed-color-fg-brand)]"
+				>
+					<IconPlusSmallLine size={16} />새 폴더
+				</button>
+			</div>
 			<ul className="max-h-48 overflow-y-auto rounded-xl border border-[var(--seed-color-stroke-neutral-subtle)] p-1.5">
 				{nodes.map((node) => renderNode(node, 0))}
 			</ul>
-			<CreateFolderModal
-				open={creating}
-				onOpenChange={setCreating}
-				parentFolderId={null}
-				onCreated={(folder) => onSelect(folder.id)}
-			/>
+			{hasOpenedCreateModal && (
+				<CreateFolderModal
+					open={creating}
+					onOpenChange={setCreating}
+					parentFolderId={selectedId}
+					onCreated={(folder) => onSelect(folder.id)}
+				/>
+			)}
 		</div>
 	);
 }

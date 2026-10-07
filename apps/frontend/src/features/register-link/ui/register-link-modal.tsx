@@ -54,10 +54,7 @@ export function RegisterLinkModal({ onRegistered }: { onRegistered: () => void }
 							<TextFieldInput value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://" />
 						</TextField>
 
-						<div className="flex flex-col gap-1.5">
-							<span className="text-sm font-medium text-[var(--seed-color-fg-neutral)]">폴더</span>
-							<FolderTreeSelect nodes={tree} selectedId={folderId} onSelect={setFolderId} />
-						</div>
+						<FolderTreeSelect nodes={tree} selectedId={folderId} onSelect={setFolderId} />
 
 						<TextField label="저장 이유" indicator="선택">
 							<TextFieldTextarea

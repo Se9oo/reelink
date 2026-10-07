@@ -3,13 +3,11 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ActionButton } from 'seed-design/ui/action-button';
 import { DialogBody, DialogContent, DialogFooter, DialogRoot } from 'seed-design/ui/dialog';
 import { TextField, TextFieldInput } from 'seed-design/ui/text-field';
 
-import { createFolder } from '@/entities/folder/api/create-folder';
-import { folderKeys } from '@/entities/folder/api/folder-keys';
+import { useCreateFolder } from '@/entities/folder/api/create-folder';
 import { Folder } from '@/entities/folder/model/types';
 
 interface CreateFolderModalProps {
@@ -28,17 +26,7 @@ export function CreateFolderModal({
 	onCreated,
 }: CreateFolderModalProps) {
 	const [name, setName] = useState('');
-	const queryClient = useQueryClient();
-
-	const { mutate, isPending, error } = useMutation({
-		mutationFn: createFolder,
-		onSuccess: (folder) => {
-			queryClient.invalidateQueries({ queryKey: folderKeys.all });
-			setName('');
-			onOpenChange(false);
-			onCreated?.(folder);
-		},
-	});
+	const { mutate: createFolder, isPending, error, reset } = useCreateFolder();
 
 	const handleSubmit = (event: FormEvent) => {
 		event.preventDefault();
@@ -47,7 +35,16 @@ export function CreateFolderModal({
 			return;
 		}
 
-		mutate({ name: name.trim(), parentFolderId });
+		createFolder(
+			{ name: name.trim(), parentFolderId },
+			{
+				onSuccess: (folder) => {
+					setName('');
+					onOpenChange(false);
+					onCreated?.(folder);
+				},
+			},
+		);
 	};
 
 	return (
@@ -58,6 +55,7 @@ export function CreateFolderModal({
 
 				if (!nextOpen) {
 					setName('');
+					reset();
 				}
 			}}
 		>
@@ -74,11 +72,11 @@ export function CreateFolderModal({
 							<p className="text-sm text-[var(--seed-color-fg-critical)]">폴더를 만들지 못했어요. 다시 시도해주세요.</p>
 						)}
 					</DialogBody>
-					<DialogFooter>
-						<ActionButton type="button" variant="neutralWeak" onClick={() => onOpenChange(false)}>
+					<DialogFooter className="gap-2" style={{ flexDirection: 'row' }}>
+						<ActionButton type="button" variant="neutralWeak" flexGrow={1} onClick={() => onOpenChange(false)}>
 							취소
 						</ActionButton>
-						<ActionButton type="submit" variant="neutralSolid" disabled={!name.trim() || isPending}>
+						<ActionButton type="submit" variant="neutralSolid" flexGrow={1} disabled={!name.trim() || isPending}>
 							만들기
 						</ActionButton>
 					</DialogFooter>

@@ -9,7 +9,7 @@ import { forwardRef } from 'react';
 import type * as React from 'react';
 
 import IconXmarkLine from '@karrotmarket/react-monochrome-icon/IconXmarkLine';
-import { Dialog, Icon } from '@seed-design/react';
+import { Dialog, Icon, Portal } from '@seed-design/react';
 
 import { ActionButton, type ActionButtonProps } from './action-button';
 
@@ -59,23 +59,25 @@ export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
 		const shouldRenderHeader = title || description || showCloseButton;
 
 		return (
-			<Dialog.Positioner style={{ '--layer-index': layerIndex } as React.CSSProperties}>
-				<Dialog.Backdrop />
-				<Dialog.Content ref={ref} {...otherProps}>
-					{shouldRenderHeader && (
-						<Dialog.Header>
-							{title && <Dialog.Title>{title}</Dialog.Title>}
-							{description && <Dialog.Description>{description}</Dialog.Description>}
-							{showCloseButton && (
-								<Dialog.CloseButton aria-label="닫기">
-									<Icon svg={<IconXmarkLine />} />
-								</Dialog.CloseButton>
-							)}
-						</Dialog.Header>
-					)}
-					{children}
-				</Dialog.Content>
-			</Dialog.Positioner>
+			<Portal>
+				<Dialog.Positioner style={{ '--layer-index': layerIndex } as React.CSSProperties}>
+					<Dialog.Backdrop />
+					<Dialog.Content ref={ref} {...otherProps}>
+						{shouldRenderHeader && (
+							<Dialog.Header>
+								{title && <Dialog.Title>{title}</Dialog.Title>}
+								{description && <Dialog.Description>{description}</Dialog.Description>}
+								{showCloseButton && (
+									<Dialog.CloseButton aria-label="닫기">
+										<Icon svg={<IconXmarkLine />} />
+									</Dialog.CloseButton>
+								)}
+							</Dialog.Header>
+						)}
+						{children}
+					</Dialog.Content>
+				</Dialog.Positioner>
+			</Portal>
 		);
 	},
 );
