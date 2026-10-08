@@ -61,6 +61,7 @@ export function RegisterLinkModal({ onRegistered }: { onRegistered: () => void }
 								value={savedReason}
 								onChange={(event) => setSavedReason(event.target.value)}
 								placeholder="왜 저장했는지 짧게 적어두세요"
+								className="max-h-40 overflow-y-auto"
 							/>
 						</TextField>
 

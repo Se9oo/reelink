@@ -32,7 +32,7 @@ export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSele
 			<li key={node.id}>
 				<div
 					onClick={() => onSelect(node.id)}
-					className={`flex cursor-pointer items-center gap-1 rounded-lg ${
+					className={`flex h-8 cursor-pointer items-center rounded-lg pr-1 ${
 						selected ? 'bg-[var(--seed-color-bg-brand-weak)]' : ''
 					}`}
 					style={{ paddingLeft: `${depth * 12}px` }}
@@ -45,16 +45,20 @@ export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSele
 								toggle(node.id);
 							}}
 							aria-label={expanded ? `${node.name} 폴더 접기` : `${node.name} 폴더 펼치기`}
-							className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center
-								text-[var(--seed-color-fg-neutral-muted)]"
+							className={`mx-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
+								text-[var(--seed-color-fg-neutral-muted)] ${
+									selected
+										? 'hover:bg-[var(--seed-color-bg-brand-weak-pressed)]'
+										: 'hover:bg-[var(--seed-color-bg-neutral-weak-pressed)]'
+								}`}
 						>
 							<IconChevronRightSmallLine
-								size={14}
+								size={16}
 								style={{ transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 0.15s' }}
 							/>
 						</button>
 					) : (
-						<span className="h-8 w-8 shrink-0" />
+						<span className="h-7 w-7 shrink-0" />
 					)}
 					<span
 						className={`text-sm ${

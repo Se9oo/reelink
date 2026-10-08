@@ -17,7 +17,7 @@ export function FolderTreeItem({ node, depth = 0, expandedIds, onToggle, onReque
 	return (
 		<li>
 			<div
-				className="group flex items-center rounded-lg text-sm text-[var(--seed-color-fg-neutral)]
+				className="group flex h-8 items-center rounded-lg pr-1 text-sm text-[var(--seed-color-fg-neutral)]
 					hover:bg-[var(--seed-color-bg-neutral-muted)]"
 				style={{ paddingLeft: `${depth * 12}px` }}
 			>
@@ -26,24 +26,25 @@ export function FolderTreeItem({ node, depth = 0, expandedIds, onToggle, onReque
 						type="button"
 						onClick={() => onToggle(node.id)}
 						aria-label={expanded ? `${node.name} 폴더 접기` : `${node.name} 폴더 펼치기`}
-						className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center
-							text-[var(--seed-color-fg-neutral-muted)]"
+						className="mx-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
+							text-[var(--seed-color-fg-neutral-muted)] hover:bg-[var(--seed-color-bg-neutral-weak-pressed)]"
 					>
 						<IconChevronRightSmallLine
-							size={14}
+							size={16}
 							style={{ transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 0.15s' }}
 						/>
 					</button>
 				) : (
-					<span className="h-8 w-8 shrink-0" />
+					<span className="h-7 w-7 shrink-0" />
 				)}
 				<span className="flex-1">{node.name}</span>
 				<button
 					type="button"
 					onClick={() => onRequestCreate(node.id, node.name)}
 					aria-label={`${node.name} 폴더 안에 새 폴더 만들기`}
-					className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center
-						text-[var(--seed-color-fg-neutral-muted)] opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+					className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
+						text-(--seed-color-fg-neutral-muted) opacity-100 hover:bg-(--seed-color-bg-neutral-weak-pressed)
+						lg:opacity-0 lg:group-hover:opacity-100"
 				>
 					<IconPlusSmallLine size={20} />
 				</button>

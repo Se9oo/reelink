@@ -26,13 +26,13 @@ export function FolderList() {
 
 	return (
 		<div className="flex flex-col gap-1">
-			<div className="flex items-center justify-between py-1 pl-3">
+			<div className="flex items-center justify-between py-1 pr-0.5 pl-3">
 				<span className="text-sm text-[var(--seed-color-fg-neutral-muted)]">폴더</span>
 				<button
 					type="button"
 					onClick={() => setCreateTarget({ parentId: null })}
 					aria-label="새 폴더 만들기"
-					className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-[var(--seed-radius-r3)]
+					className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg
 						text-[var(--seed-color-fg-neutral-muted)] transition-colors
 						hover:bg-[var(--seed-color-bg-transparent-pressed)]"
 				>
