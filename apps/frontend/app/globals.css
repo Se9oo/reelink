@@ -2,8 +2,8 @@
 @import '@seed-design/css/all.css';
 
 :root {
-	--background: #ffffff;
-	--foreground: #171717;
+	--background: var(--seed-color-bg-layer-default);
+	--foreground: var(--seed-color-fg-neutral);
 }
 
 :root,
@@ -45,13 +45,6 @@
 
 .seed-text-input__root--variant_outline:not(:is([data-readonly])):is(:focus, [data-focus])::after {
 	border-color: var(--seed-color-stroke-brand-solid) !important;
-}
-
-@media (prefers-color-scheme: dark) {
-	:root {
-		--background: #0a0a0a;
-		--foreground: #ededed;
-	}
 }
 
 body {
