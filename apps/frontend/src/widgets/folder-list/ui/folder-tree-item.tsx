@@ -35,7 +35,7 @@ export function FolderTreeItem({ node, depth = 0, expandedIds, onToggle, onReque
 						/>
 					</button>
 				) : (
-					<span className="h-7 w-7 shrink-0" />
+					<span className="mx-1 h-6 w-6 shrink-0" />
 				)}
 				<span className="flex-1">{node.name}</span>
 				<button

@@ -58,7 +58,7 @@ export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSele
 							/>
 						</button>
 					) : (
-						<span className="h-7 w-7 shrink-0" />
+						<span className="mx-1 h-6 w-6 shrink-0" />
 					)}
 					<span
 						className={`text-sm ${
