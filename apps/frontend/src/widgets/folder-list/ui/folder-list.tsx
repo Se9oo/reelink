@@ -11,11 +11,11 @@ import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { buildFolderTree } from '@/entities/folder/model/build-folder-tree';
 import { CreateFolderModal } from '@/entities/folder/ui/create-folder-modal';
 
-import { useToggleSet } from '@/shared/lib/use-toggle-set';
+import { usePersistedToggleSet } from '@/shared/lib/use-toggle-set';
 
 export function FolderList() {
 	const { data: folders } = useQuery(foldersQueryOptions());
-	const { ids: expandedIds, toggle, add: expand } = useToggleSet();
+	const { ids: expandedIds, toggle, add: expand } = usePersistedToggleSet('sidebar-folder-expanded');
 	const [createTarget, setCreateTarget] = useState<{ parentId: string | null; parentName?: string } | null>(null);
 
 	if (!folders) {
