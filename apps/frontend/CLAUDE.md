@@ -26,8 +26,9 @@ Red → Green → Refactor 순서로 진행
 
 ## 아키텍처 (FSD)
 
-- `app/`: Next.js App Router 전용 (라우팅만, 얇게 유지)
-- `src/widgets`, `src/features`, `src/entities`, `src/shared`: FSD 레이어. import는 `@/widgets/...`, `@/features/...` 등 alias 사용
+- `app/`(레포 루트): Next.js App Router 전용 (라우팅만, 얇게 유지). FSD의 `pages` 레이어 역할
+- `src/app`, `src/widgets`, `src/features`, `src/entities`, `src/shared`: FSD 레이어. import는 `@/app/...`, `@/widgets/...`, `@/features/...` 등 alias 사용
+- `src/app`: 전역 프로바이더·세팅(예: `QueryProvider`) — 라우팅용 `app/`과 이름은 같지만 다른 레이어라 혼동 주의
 
 ## 특별 주의사항
 

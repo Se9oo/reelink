@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import Script from 'next/script';
 
-import { QueryProvider } from '@/shared/providers/query-provider';
+import { QueryProvider } from '@/app/providers/query-provider';
 
 import './globals.css';
 
