@@ -31,7 +31,7 @@ export function CreateFolderModal({
 	const handleSubmit = (event: FormEvent) => {
 		event.preventDefault();
 
-		if (!name.trim()) {
+		if (!name.trim() || isPending) {
 			return;
 		}
 
