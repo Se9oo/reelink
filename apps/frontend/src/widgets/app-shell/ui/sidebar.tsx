@@ -7,6 +7,8 @@ import { IconHouseFill, IconPersonFill, IconVertrectangle2HorizontalFill } from 
 
 import { FolderList } from '@/widgets/folder-list/ui/folder-list';
 
+import { ThemeToggle } from '@/features/toggle-theme/ui/theme-toggle';
+
 import { ROUTES } from '@/shared/config/routes';
 
 const QUICK_LINKS = [
@@ -44,6 +46,9 @@ export function Sidebar() {
 			</nav>
 			<div className="flex-1 overflow-y-auto border-t border-[var(--seed-color-stroke-neutral-subtle)] px-2">
 				<FolderList />
+			</div>
+			<div className="flex items-center justify-end border-t border-[var(--seed-color-stroke-neutral-subtle)] px-2 py-2">
+				<ThemeToggle />
 			</div>
 		</aside>
 	);
