@@ -53,6 +53,10 @@ body {
 	font-family: var(--font-sans);
 }
 
+button:not(:disabled) {
+	cursor: pointer;
+}
+
 @keyframes fade-in-up {
 	from {
 		opacity: 0;
