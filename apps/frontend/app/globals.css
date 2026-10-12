@@ -43,6 +43,10 @@
 	--font-sans: var(--font-pretendard), var(--seed-font-family);
 }
 
+.seed-text-input__root--variant_outline:not(:is([data-readonly])):is(:focus, [data-focus])::after {
+	border-color: var(--seed-color-stroke-brand-solid) !important;
+}
+
 @media (prefers-color-scheme: dark) {
 	:root {
 		--background: #0a0a0a;

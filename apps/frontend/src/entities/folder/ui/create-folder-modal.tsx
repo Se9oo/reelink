@@ -76,7 +76,7 @@ export function CreateFolderModal({
 						<ActionButton type="button" variant="neutralWeak" flexGrow={1} onClick={() => onOpenChange(false)}>
 							취소
 						</ActionButton>
-						<ActionButton type="submit" variant="neutralSolid" flexGrow={1} disabled={!name.trim() || isPending}>
+						<ActionButton type="submit" variant="brandSolid" flexGrow={1} disabled={!name.trim() || isPending}>
 							만들기
 						</ActionButton>
 					</DialogFooter>

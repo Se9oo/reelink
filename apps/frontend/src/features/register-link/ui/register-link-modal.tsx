@@ -70,7 +70,7 @@ export function RegisterLinkModal({ onRegistered }: { onRegistered: () => void }
 					</div>
 				</DialogBody>
 				<DialogFooter>
-					<ActionButton type="submit" variant="neutralSolid" disabled={!url || !folderId || isPending} flexGrow={1}>
+					<ActionButton type="submit" variant="brandSolid" disabled={!url || !folderId || isPending} flexGrow={1}>
 						등록하기
 					</ActionButton>
 				</DialogFooter>
