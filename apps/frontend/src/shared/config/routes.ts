@@ -3,5 +3,6 @@ export const ROUTES = {
 	HOME: '/home',
 	FEED: '/feed',
 	FOLDERS: '/folders',
-	MYPAGE: '/mypage',
+	SETTINGS: '/settings',
+	TRASH: '/trash',
 } as const;

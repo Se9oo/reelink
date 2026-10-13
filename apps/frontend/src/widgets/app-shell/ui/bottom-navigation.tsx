@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 
 import {
 	IconDocumentTrayFill,
+	IconGearLine,
 	IconHouseFill,
-	IconPersonFill,
 	IconVertrectangle2HorizontalFill,
 } from '@karrotmarket/react-monochrome-icon';
 
@@ -16,7 +16,7 @@ const TABS = [
 	{ href: ROUTES.HOME, label: '홈', Icon: IconHouseFill },
 	{ href: ROUTES.FEED, label: '피드', Icon: IconVertrectangle2HorizontalFill },
 	{ href: ROUTES.FOLDERS, label: '링크', Icon: IconDocumentTrayFill },
-	{ href: ROUTES.MYPAGE, label: '마이페이지', Icon: IconPersonFill },
+	{ href: ROUTES.SETTINGS, label: '설정', Icon: IconGearLine },
 ] as const;
 
 export function BottomNavigation() {
