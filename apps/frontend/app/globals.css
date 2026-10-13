@@ -57,6 +57,10 @@ button:not(:disabled) {
 	cursor: pointer;
 }
 
+.seed-menu-item__root {
+	cursor: pointer !important;
+}
+
 @keyframes fade-in-up {
 	from {
 		opacity: 0;

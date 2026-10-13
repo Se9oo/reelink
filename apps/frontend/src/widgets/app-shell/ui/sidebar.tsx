@@ -1,29 +1,24 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { IconHouseFill, IconPersonFill, IconVertrectangle2HorizontalFill } from '@karrotmarket/react-monochrome-icon';
-import { useQuery } from '@tanstack/react-query';
+import { IconHouseFill, IconVertrectangle2HorizontalFill } from '@karrotmarket/react-monochrome-icon';
 
+import { AccountMenu } from '@/widgets/app-shell/ui/account-menu';
 import { FolderList } from '@/widgets/folder-list/ui/folder-list';
 
 import { ThemeToggle } from '@/features/toggle-theme/ui/theme-toggle';
-
-import { meQueryOptions } from '@/entities/user/api/get-me';
 
 import { ROUTES } from '@/shared/config/routes';
 
 const QUICK_LINKS = [
 	{ href: ROUTES.HOME, label: '홈', Icon: IconHouseFill },
 	{ href: ROUTES.FEED, label: '피드', Icon: IconVertrectangle2HorizontalFill },
-	{ href: ROUTES.MYPAGE, label: '마이페이지', Icon: IconPersonFill },
 ] as const;
 
 export function Sidebar() {
 	const pathname = usePathname();
-	const { data: me } = useQuery(meQueryOptions());
 
 	return (
 		<aside
@@ -56,29 +51,7 @@ export function Sidebar() {
 				className="flex items-center justify-between border-t border-[var(--seed-color-stroke-neutral-subtle)] px-2
 					py-2"
 			>
-				{me ? (
-					<div className="flex min-w-0 items-center gap-2">
-						{me.avatarUrl ? (
-							<Image
-								src={me.avatarUrl}
-								alt=""
-								width={28}
-								height={28}
-								className="h-7 w-7 shrink-0 rounded-full object-cover"
-							/>
-						) : (
-							<div
-								className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full
-									bg-[var(--seed-color-bg-neutral-muted)] text-[var(--seed-color-fg-neutral-muted)]"
-							>
-								<IconPersonFill size={16} />
-							</div>
-						)}
-						<span className="min-w-0 truncate text-sm text-[var(--seed-color-fg-neutral)]">{me.nickname}</span>
-					</div>
-				) : (
-					<div className="h-7 w-7" />
-				)}
+				<AccountMenu fullWidth />
 				<ThemeToggle />
 			</div>
 		</aside>
