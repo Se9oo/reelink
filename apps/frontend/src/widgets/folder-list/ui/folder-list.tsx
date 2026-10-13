@@ -6,26 +6,29 @@ import {
 	closestCenter,
 	DndContext,
 	type DragMoveEvent,
-	type DragOverEvent,
 	DragOverlay,
 	type DragStartEvent,
 	PointerSensor,
 	useSensor,
 	useSensors,
 } from '@dnd-kit/core';
-import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { arrayMove } from '@dnd-kit/sortable';
 import { IconPlusSmallLine } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
 
 import {
+	computeInsertIndex,
+	type DropZone,
 	type FlattenedFolder,
 	flattenVisibleTree,
+	getDropZone,
 	getProjection,
 	type Projection,
 	removeDescendants,
 	VISUAL_INDENT_WIDTH,
 } from '@/widgets/folder-list/model/flatten-tree';
-import { SortableFolderRow } from '@/widgets/folder-list/ui/sortable-folder-row';
+import { FolderRow } from '@/widgets/folder-list/ui/folder-row';
 
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { useMoveFolder } from '@/entities/folder/api/move-folder';
@@ -41,7 +44,7 @@ export function FolderList() {
 	const [createTarget, setCreateTarget] = useState<{ parentId: string | null; parentName?: string } | null>(null);
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [overId, setOverId] = useState<string | null>(null);
-	const [offsetX, setOffsetX] = useState(0);
+	const [dropZone, setDropZone] = useState<DropZone | null>(null);
 
 	const moveFolder = useMoveFolder();
 	const reorderFolders = useReorderFolders();
@@ -63,27 +66,54 @@ export function FolderList() {
 		activeItem && overId
 			? activeItem.isSystem
 				? { depth: activeItem.depth, parentFolderId: activeItem.parentFolderId }
-				: getProjection(sortableItems, activeItem.id, overId, offsetX)
+				: getProjection(sortableItems, activeItem.id, overId, dropZone ?? 'after')
+			: null;
+	// getProjection이 'inside' 판정일 때만 parentFolderId를 overId로 돌려주므로, 이 둘이 같으면
+	// 지금 타겟 위에서 자식으로 들어가는 중이라는 뜻 — 그 행을 하이라이트하는 데 재사용한다
+	const nestTargetId = projected && overId && projected.parentFolderId === overId ? overId : null;
+	const insertLine =
+		activeItem && !activeItem.isSystem && overId && overId !== activeId && (dropZone === 'before' || dropZone === 'after')
+			? { targetId: overId, position: dropZone === 'before' ? ('top' as const) : ('bottom' as const) }
 			: null;
 
 	function resetDragState() {
 		setActiveId(null);
 		setOverId(null);
-		setOffsetX(0);
+		setDropZone(null);
 	}
 
 	function handleDragStart(event: DragStartEvent) {
 		setActiveId(String(event.active.id));
 		setOverId(String(event.active.id));
-		setOffsetX(0);
+		setDropZone(null);
 	}
 
+	// overId와 dropZone을 onDragOver/onDragMove로 나눠서 각자 업데이트하면, 콜백이 서로 다른
+	// 타이밍에 호출될 때 "새 타겟인데 옛 zone" 같은 한 프레임짜리 불일치가 생길 수 있다 —
+	// 같은 event.over 스냅샷에서 항상 같이 계산해서 그 레이스를 없앤다.
 	function handleDragMove(event: DragMoveEvent) {
-		setOffsetX(event.delta.x);
-	}
+		if (!event.over) {
+			setOverId(null);
+			setDropZone(null);
+			return;
+		}
 
-	function handleDragOver(event: DragOverEvent) {
-		setOverId(event.over ? String(event.over.id) : null);
+		// 드래그 중인 행 전체가 핸들이라, 오버레이 rect 중심을 쓰면 어디를 잡았느냐에 따라 실제
+		// 커서랑 최대 반 행 높이(~14px)까지 어긋난다 — activatorEvent(드래그 시작 시점 포인터) +
+		// 누적 이동량(delta)을 더해서 지금 진짜 커서 Y 좌표를 구한다
+		const activatorEvent = event.activatorEvent;
+		const startY = 'clientY' in activatorEvent ? (activatorEvent as PointerEvent).clientY : null;
+
+		if (startY === null) {
+			setOverId(null);
+			setDropZone(null);
+			return;
+		}
+
+		const pointerY = startY + event.delta.y;
+
+		setOverId(String(event.over.id));
+		setDropZone(getDropZone(event.over.rect, pointerY));
 	}
 
 	function handleDragEnd() {
@@ -95,6 +125,12 @@ export function FolderList() {
 	}
 
 	function applyProjection(draggedItem: FlattenedFolder, dropOverId: string, result: Projection) {
+		// 아직 다른 행으로 안 옮겨간 상태(자기 자신 위) — 아무것도 안 바뀐 거라 바로 종료.
+		// 안 그러면 zone이 'after'로 잡힐 때 computeInsertIndex가 바로 다음 형제랑 자리를 바꿔버림
+		if (draggedItem.id === dropOverId) {
+			return;
+		}
+
 		const activeIndex = sortableItems.findIndex((item) => item.id === draggedItem.id);
 		const overIndex = sortableItems.findIndex((item) => item.id === dropOverId);
 
@@ -102,7 +138,8 @@ export function FolderList() {
 			return;
 		}
 
-		const reordered = arrayMove(sortableItems, activeIndex, overIndex);
+		const insertIndex = computeInsertIndex(activeIndex, overIndex, dropZone ?? 'after');
+		const reordered = arrayMove(sortableItems, activeIndex, insertIndex);
 
 		const visibleSiblingIds = reordered
 			.filter((item) => {
@@ -168,31 +205,32 @@ export function FolderList() {
 				<DndContext
 					sensors={sensors}
 					collisionDetection={closestCenter}
+					modifiers={[restrictToVerticalAxis]}
 					onDragStart={handleDragStart}
 					onDragMove={handleDragMove}
-					onDragOver={handleDragOver}
 					onDragEnd={handleDragEnd}
 					onDragCancel={resetDragState}
 				>
-					<SortableContext items={sortableItems.map((item) => item.id)} strategy={verticalListSortingStrategy}>
-						<ul>
-							{sortableItems.map((item) => (
-								<SortableFolderRow
-									key={item.id}
-									item={item}
-									depth={item.id === activeId && projected ? projected.depth : item.depth}
-									hasChildren={parentIdsWithChildren.has(item.id)}
-									expanded={expandedIds.has(item.id)}
-									onToggle={toggle}
-									onRequestCreate={(parentId, parentName) => setCreateTarget({ parentId, parentName })}
-								/>
-							))}
-						</ul>
-					</SortableContext>
-					<DragOverlay>
+					<ul>
+						{sortableItems.map((item) => (
+							<FolderRow
+								key={item.id}
+								item={item}
+								depth={item.depth}
+								hasChildren={parentIdsWithChildren.has(item.id)}
+								expanded={expandedIds.has(item.id)}
+								isNestTarget={item.id === nestTargetId}
+								insertLinePosition={insertLine?.targetId === item.id ? insertLine.position : null}
+								onToggle={toggle}
+								onRequestCreate={(parentId, parentName) => setCreateTarget({ parentId, parentName })}
+							/>
+						))}
+					</ul>
+					<DragOverlay dropAnimation={null}>
 						{activeItem && (
 							<div
-								className="flex h-8 items-center rounded-lg px-2 text-sm text-[var(--seed-color-fg-neutral)] opacity-50"
+								className="flex h-8 items-center rounded-lg bg-[var(--seed-color-bg-layer-floating)] px-2 text-sm
+									text-[var(--seed-color-fg-neutral)] opacity-20"
 								style={{ paddingLeft: `${(projected?.depth ?? activeItem.depth) * VISUAL_INDENT_WIDTH}px` }}
 							>
 								{activeItem.name}

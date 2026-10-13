@@ -1,41 +1,64 @@
 'use client';
 
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { IconChevronRightSmallLine, IconPlusSmallLine } from '@karrotmarket/react-monochrome-icon';
 
 import { type FlattenedFolder, VISUAL_INDENT_WIDTH } from '@/widgets/folder-list/model/flatten-tree';
 
-interface SortableFolderRowProps {
+interface FolderRowProps {
 	item: FlattenedFolder;
 	depth: number;
 	hasChildren: boolean;
 	expanded: boolean;
+	isNestTarget: boolean;
+	insertLinePosition: 'top' | 'bottom' | null;
 	onToggle: (id: string) => void;
 	onRequestCreate: (parentId: string, parentName: string) => void;
 }
 
-export function SortableFolderRow({
+/**
+ * 노션 사이드바처럼 드래그 중 다른 행은 자리를 안 바꾸고 가만히 있어야 해서, 실시간 swap
+ * 애니메이션을 해주는 @dnd-kit/sortable(useSortable) 대신 더 낮은 레벨인
+ * useDraggable(집기)/useDroppable(드롭 타겟 판정)을 각각 직접 붙인다.
+ */
+export function FolderRow({
 	item,
 	depth,
 	hasChildren,
 	expanded,
+	isNestTarget,
+	insertLinePosition,
 	onToggle,
 	onRequestCreate,
-}: SortableFolderRowProps) {
-	const { setNodeRef, listeners, attributes, transform, transition, isDragging } = useSortable({ id: item.id });
+}: FolderRowProps) {
+	const {
+		setNodeRef: setDraggableRef,
+		listeners,
+		attributes,
+		isDragging,
+	} = useDraggable({ id: item.id, disabled: item.isSystem });
+	const { setNodeRef: setDroppableRef } = useDroppable({ id: item.id });
+
+	function setRefs(node: HTMLDivElement | null) {
+		setDraggableRef(node);
+		setDroppableRef(node);
+	}
 
 	return (
-		<li
-			ref={setNodeRef}
-			style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
-		>
+		<li className="relative" style={{ opacity: isDragging ? 0.4 : 1 }}>
 			<div
+				aria-hidden="true"
+				className="absolute inset-x-0 top-0 z-10 h-0.5 -translate-y-1/2 rounded-full bg-[var(--seed-color-bg-brand-solid)]"
+				style={{ marginLeft: `${depth * VISUAL_INDENT_WIDTH}px`, opacity: insertLinePosition === 'top' ? 1 : 0 }}
+			/>
+			<div
+				ref={setRefs}
 				{...listeners}
 				{...attributes}
 				style={{ paddingLeft: `${depth * VISUAL_INDENT_WIDTH}px` }}
-				className="group flex h-8 items-center rounded-lg pr-1 text-sm text-[var(--seed-color-fg-neutral)]
-					hover:bg-[var(--seed-color-bg-neutral-muted)]"
+				className={`group flex h-8 items-center rounded-lg pr-1 text-sm text-[var(--seed-color-fg-neutral)] ${
+					isNestTarget ? 'bg-[var(--seed-color-bg-brand-weak)]' : 'hover:bg-[var(--seed-color-bg-neutral-muted)]'
+				}`}
 			>
 				{hasChildren ? (
 					<button
@@ -65,6 +88,11 @@ export function SortableFolderRow({
 					<IconPlusSmallLine size={20} />
 				</button>
 			</div>
+			<div
+				aria-hidden="true"
+				className="absolute inset-x-0 bottom-0 z-10 h-0.5 translate-y-1/2 rounded-full bg-[var(--seed-color-bg-brand-solid)]"
+				style={{ marginLeft: `${depth * VISUAL_INDENT_WIDTH}px`, opacity: insertLinePosition === 'bottom' ? 1 : 0 }}
+			/>
 		</li>
 	);
 }

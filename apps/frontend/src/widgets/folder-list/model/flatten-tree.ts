@@ -1,5 +1,3 @@
-import { arrayMove } from '@dnd-kit/sortable';
-
 import { Folder, FolderTreeNode } from '@/entities/folder/model/types';
 
 export interface FlattenedFolder extends Folder {
@@ -46,61 +44,68 @@ export interface Projection {
 	parentFolderId: string | null;
 }
 
-// 화면에 보이는 들여쓰기 폭(행 렌더링용) — 뎁스 계산용 드래그 민감도와는 별개로 둬서,
-// 들여쓰기를 좁혀도 가로로 끌 때 의도치 않게 뎁스가 너무 쉽게 바뀌지 않게 한다
+// 화면에 보이는 들여쓰기 폭(행 렌더링용)
 export const VISUAL_INDENT_WIDTH = 14;
-const DRAG_DEPTH_THRESHOLD = 24;
+
+export type DropZone = 'before' | 'inside' | 'after';
 
 /**
- * dnd-kit 공식 Sortable Tree 패턴: 세로 위치(over가 몇 번째인지)로 순서를, 가로 드래그 거리로
- * 뎁스를 계산한다. 뎁스는 바로 앞/뒤 항목의 뎁스 범위를 벗어날 수 없게 클램프하고, 그 뎁스에 맞는
- * 부모를 앞쪽 항목들을 거슬러 올라가며 찾는다.
+ * 타겟 행의 사각형(top/height)과 드래그 중인 포인터의 세로 좌표를 비교해서, 행의 위쪽 30%/
+ * 가운데 40%/아래쪽 30% 중 어디에 있는지 판정한다 (노션 사이드바 드래그 방식).
+ */
+export function getDropZone(overRect: { top: number; height: number }, pointerY: number): DropZone {
+	const ratio = (pointerY - overRect.top) / overRect.height;
+
+	if (ratio < 0.3) {
+		return 'before';
+	}
+
+	if (ratio > 0.7) {
+		return 'after';
+	}
+
+	return 'inside';
+}
+
+/**
+ * zone이 'inside'면(그리고 타겟이 시스템 폴더가 아니면) 타겟의 자식이 되고,
+ * 'before'/'after'면 타겟과 같은 뎁스·부모를 가진 형제가 된다. 형제들 사이 정확히 어디에
+ * 놓이는지는 computeInsertIndex가 계산한다.
  */
 export function getProjection(
 	items: FlattenedFolder[],
 	activeId: string,
 	overId: string,
-	dragOffsetX: number,
+	zone: DropZone,
 ): Projection {
-	const overItemIndex = items.findIndex((item) => item.id === overId);
-	const activeItemIndex = items.findIndex((item) => item.id === activeId);
-	const activeItem = items[activeItemIndex];
-	const newItems = arrayMove(items, activeItemIndex, overItemIndex);
-	const previousItem = newItems[overItemIndex - 1] as FlattenedFolder | undefined;
-	const nextItem = newItems[overItemIndex + 1] as FlattenedFolder | undefined;
-	const dragDepth = Math.round(dragOffsetX / DRAG_DEPTH_THRESHOLD);
-	const projectedDepth = activeItem.depth + dragDepth;
-	const maxDepth = previousItem ? previousItem.depth + 1 : 0;
-	const minDepth = nextItem ? nextItem.depth : 0;
+	const overItem = items.find((item) => item.id === overId);
 
-	let depth = projectedDepth;
-
-	if (projectedDepth >= maxDepth) {
-		depth = maxDepth;
-	} else if (projectedDepth < minDepth) {
-		depth = minDepth;
+	if (!overItem) {
+		return { depth: 0, parentFolderId: null };
 	}
 
-	return { depth, parentFolderId: getParentFolderId() };
-
-	function getParentFolderId(): string | null {
-		if (depth === 0 || !previousItem) {
-			return null;
-		}
-
-		if (depth === previousItem.depth) {
-			return previousItem.parentFolderId;
-		}
-
-		if (depth > previousItem.depth) {
-			return previousItem.id;
-		}
-
-		const newParent = newItems
-			.slice(0, overItemIndex)
-			.reverse()
-			.find((item) => item.depth === depth);
-
-		return newParent?.parentFolderId ?? null;
+	// 자기 자신 위에서 놓으면(= 아직 다른 항목으로 안 옮겨간 상태) 제자리로 취급 —
+	// 안 그러면 'inside' 판정 시 자기 자신이 자기 부모가 되어버림
+	if (overId === activeId) {
+		return { depth: overItem.depth, parentFolderId: overItem.parentFolderId };
 	}
+
+	if (zone === 'inside' && !overItem.isSystem) {
+		return { depth: overItem.depth + 1, parentFolderId: overItem.id };
+	}
+
+	return { depth: overItem.depth, parentFolderId: overItem.parentFolderId };
+}
+
+/**
+ * dnd-kit의 arrayMove(array, from, to)는 "from을 제거한 뒤 그 결과 배열의 to 자리에 끼워 넣는다"라,
+ * to에 overIndex를 그대로 쓰면(before/after 구분 없이) 드래그 방향에 따라 결과가 달라진다 —
+ * 예를 들어 아래로 끌 때 overIndex를 그대로 쓰면 오히려 타겟 뒤에 꽂힌다. 제거 후 타겟이 실제로
+ * 있게 될 위치를 기준으로, before면 그 자리에 끼워서 타겟을 한 칸 밀어내고, after/inside면 그
+ * 다음 자리에 끼운다.
+ */
+export function computeInsertIndex(activeIndex: number, overIndex: number, zone: DropZone): number {
+	const postRemovalOverIndex = activeIndex < overIndex ? overIndex - 1 : overIndex;
+
+	return zone === 'after' || zone === 'inside' ? postRemovalOverIndex + 1 : postRemovalOverIndex;
 }
