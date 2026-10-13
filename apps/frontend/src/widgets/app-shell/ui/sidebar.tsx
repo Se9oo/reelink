@@ -1,13 +1,17 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { IconHouseFill, IconPersonFill, IconVertrectangle2HorizontalFill } from '@karrotmarket/react-monochrome-icon';
+import { useQuery } from '@tanstack/react-query';
 
 import { FolderList } from '@/widgets/folder-list/ui/folder-list';
 
 import { ThemeToggle } from '@/features/toggle-theme/ui/theme-toggle';
+
+import { meQueryOptions } from '@/entities/user/api/get-me';
 
 import { ROUTES } from '@/shared/config/routes';
 
@@ -19,6 +23,7 @@ const QUICK_LINKS = [
 
 export function Sidebar() {
 	const pathname = usePathname();
+	const { data: me } = useQuery(meQueryOptions());
 
 	return (
 		<aside
@@ -47,7 +52,33 @@ export function Sidebar() {
 			<div className="flex-1 overflow-y-auto border-t border-[var(--seed-color-stroke-neutral-subtle)] px-2">
 				<FolderList />
 			</div>
-			<div className="flex items-center justify-end border-t border-[var(--seed-color-stroke-neutral-subtle)] px-2 py-2">
+			<div
+				className="flex items-center justify-between border-t border-[var(--seed-color-stroke-neutral-subtle)] px-2
+					py-2"
+			>
+				{me ? (
+					<div className="flex min-w-0 items-center gap-2">
+						{me.avatarUrl ? (
+							<Image
+								src={me.avatarUrl}
+								alt=""
+								width={28}
+								height={28}
+								className="h-7 w-7 shrink-0 rounded-full object-cover"
+							/>
+						) : (
+							<div
+								className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full
+									bg-[var(--seed-color-bg-neutral-muted)] text-[var(--seed-color-fg-neutral-muted)]"
+							>
+								<IconPersonFill size={16} />
+							</div>
+						)}
+						<span className="min-w-0 truncate text-sm text-[var(--seed-color-fg-neutral)]">{me.nickname}</span>
+					</div>
+				) : (
+					<div className="h-7 w-7" />
+				)}
 				<ThemeToggle />
 			</div>
 		</aside>
