@@ -10,6 +10,7 @@ export const users = pgTable('users', {
 	id: id(),
 	email: text('email').notNull(),
 	nickname: text('nickname').notNull(),
+	avatarUrl: text('avatar_url'),
 	reminderIntervalDays: integer('reminder_interval_days').notNull().default(7),
 	notificationMethod: text('notification_method').notNull().default('manual'),
 });

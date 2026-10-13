@@ -22,6 +22,13 @@
       "when": 1790859694827,
       "tag": "0002_lumpy_lionheart",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791854098433,
+      "tag": "0003_slimy_grandmaster",
+      "breakpoints": true
     }
   ]
 }

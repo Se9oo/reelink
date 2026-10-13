@@ -17,6 +17,7 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
 		const kakaoAccount = profile._json.kakao_account;
 		const email = kakaoAccount?.email;
 		const nickname = kakaoAccount?.profile?.nickname;
+		const avatarUrl = kakaoAccount?.profile?.profile_image_url;
 
 		if (!email) {
 			throw new UnauthorizedException('Not exist user email');
@@ -27,6 +28,7 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
 			providerAccountId: String(profile.id),
 			email,
 			nickname,
+			avatarUrl,
 		};
 
 		return userInfo;

@@ -20,7 +20,7 @@ export class AuthService {
 		return createHash('sha256').update(rawToken).digest('hex');
 	}
 
-	async findOrCreateUser({ provider, providerAccountId, email, nickname }: OAuthProfile): Promise<AuthUser> {
+	async findOrCreateUser({ provider, providerAccountId, email, nickname, avatarUrl }: OAuthProfile): Promise<AuthUser> {
 		const [account] = await this.db
 			.select()
 			.from(accounts)
@@ -28,11 +28,17 @@ export class AuthService {
 
 		if (account) {
 			const [user] = await this.db.select().from(users).where(eq(users.id, account.userId));
+
+			if (avatarUrl && avatarUrl !== user.avatarUrl) {
+				const [updated] = await this.db.update(users).set({ avatarUrl }).where(eq(users.id, user.id)).returning();
+				return updated;
+			}
+
 			return user;
 		}
 
 		return this.db.transaction(async (tx) => {
-			const [newUser] = await tx.insert(users).values({ email, nickname }).returning();
+			const [newUser] = await tx.insert(users).values({ email, nickname, avatarUrl }).returning();
 			await tx.insert(accounts).values({ userId: newUser.id, provider, providerAccountId });
 			return newUser;
 		});
@@ -96,8 +102,8 @@ export class AuthService {
 			throw new UnauthorizedException('Not Exist User');
 		}
 
-		const { id, email, nickname } = user;
+		const { id, email, nickname, avatarUrl } = user;
 
-		return { id, email, nickname };
+		return { id, email, nickname, avatarUrl };
 	}
 }

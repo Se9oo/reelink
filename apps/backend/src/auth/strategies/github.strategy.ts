@@ -27,6 +27,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
 			email,
 			// displayName(실명)은 GitHub 프로필에 설정 안 했으면 null이라, username(깃허브 아이디)으로 폴백
 			nickname: profile.displayName ?? profile.username,
+			avatarUrl: profile.photos?.[0]?.value,
 		};
 	}
 }

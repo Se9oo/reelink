@@ -3,12 +3,14 @@ export interface OAuthProfile {
 	providerAccountId: string;
 	email: string;
 	nickname: string;
+	avatarUrl?: string;
 }
 
 export interface AuthUser {
 	id: string;
 	email: string;
 	nickname: string;
+	avatarUrl: string | null;
 }
 
 export interface TokenPair {
