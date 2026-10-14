@@ -31,12 +31,7 @@ export function FolderRow({
 	onToggle,
 	onRequestCreate,
 }: FolderRowProps) {
-	const {
-		setNodeRef: setDraggableRef,
-		listeners,
-		attributes,
-		isDragging,
-	} = useDraggable({ id: item.id, disabled: item.isSystem });
+	const { setNodeRef: setDraggableRef, listeners, attributes, isDragging } = useDraggable({ id: item.id });
 	const { setNodeRef: setDroppableRef } = useDroppable({ id: item.id });
 
 	function setRefs(node: HTMLDivElement | null) {
@@ -48,7 +43,8 @@ export function FolderRow({
 		<li className="relative" style={{ opacity: isDragging ? 0.4 : 1 }}>
 			<div
 				aria-hidden="true"
-				className="absolute inset-x-0 top-0 z-10 h-0.5 -translate-y-1/2 rounded-full bg-[var(--seed-color-bg-brand-solid)]"
+				className="absolute inset-x-0 top-0 z-10 h-[3px] -translate-y-1/2 rounded-full
+					bg-[var(--seed-color-bg-brand-solid)]"
 				style={{ marginLeft: `${depth * VISUAL_INDENT_WIDTH}px`, opacity: insertLinePosition === 'top' ? 1 : 0 }}
 			/>
 			<div
@@ -90,7 +86,8 @@ export function FolderRow({
 			</div>
 			<div
 				aria-hidden="true"
-				className="absolute inset-x-0 bottom-0 z-10 h-0.5 translate-y-1/2 rounded-full bg-[var(--seed-color-bg-brand-solid)]"
+				className="absolute inset-x-0 bottom-0 z-10 h-[3px] translate-y-1/2 rounded-full
+					bg-[var(--seed-color-bg-brand-solid)]"
 				style={{ marginLeft: `${depth * VISUAL_INDENT_WIDTH}px`, opacity: insertLinePosition === 'bottom' ? 1 : 0 }}
 			/>
 		</li>

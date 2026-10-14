@@ -49,6 +49,9 @@ export const VISUAL_INDENT_WIDTH = 14;
 
 export type DropZone = 'before' | 'inside' | 'after';
 
+/** 리스트 맨 아래 빈 공간의 드롭 대상 id — 최상위 폴더 맨 뒤로 보내는 용도. */
+export const ROOT_DROP_ZONE_ID = '__root-drop-zone__';
+
 /**
  * 타겟 행의 사각형(top/height)과 드래그 중인 포인터의 세로 좌표를 비교해서, 행의 위쪽 30%/
  * 가운데 40%/아래쪽 30% 중 어디에 있는지 판정한다 (노션 사이드바 드래그 방식).
@@ -72,12 +75,7 @@ export function getDropZone(overRect: { top: number; height: number }, pointerY:
  * 'before'/'after'면 타겟과 같은 뎁스·부모를 가진 형제가 된다. 형제들 사이 정확히 어디에
  * 놓이는지는 computeInsertIndex가 계산한다.
  */
-export function getProjection(
-	items: FlattenedFolder[],
-	activeId: string,
-	overId: string,
-	zone: DropZone,
-): Projection {
+export function getProjection(items: FlattenedFolder[], activeId: string, overId: string, zone: DropZone): Projection {
 	const overItem = items.find((item) => item.id === overId);
 
 	if (!overItem) {

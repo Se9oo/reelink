@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 
-import { closestCenter, DndContext, DragOverlay } from '@dnd-kit/core';
+import { closestCenter, DndContext, DragOverlay, useDroppable } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { IconPlusSmallLine } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
 
-import { VISUAL_INDENT_WIDTH } from '@/widgets/folder-list/model/flatten-tree';
+import { ROOT_DROP_ZONE_ID, VISUAL_INDENT_WIDTH } from '@/widgets/folder-list/model/flatten-tree';
 import { useFolderDrag } from '@/widgets/folder-list/model/use-folder-drag';
 import { FolderRow } from '@/widgets/folder-list/ui/folder-row';
 
@@ -78,6 +78,7 @@ export function FolderList() {
 							/>
 						))}
 					</ul>
+					{activeItem && <RootDropZone />}
 					<DragOverlay dropAnimation={null}>
 						{activeItem && (
 							<div
@@ -104,5 +105,21 @@ export function FolderList() {
 				}}
 			/>
 		</div>
+	);
+}
+
+/** 리스트 맨 아래 빈 공간 — 여기에 드롭하면 최상위 폴더 맨 뒤로 이동한다. */
+function RootDropZone() {
+	const { setNodeRef, isOver } = useDroppable({ id: ROOT_DROP_ZONE_ID });
+
+	return (
+		<div
+			ref={setNodeRef}
+			className={`h-6 rounded-lg border-2 border-dashed transition-colors ${
+				isOver
+					? 'border-[var(--seed-color-stroke-brand-solid)] bg-[var(--seed-color-bg-brand-weak)]'
+					: 'border-transparent'
+				}`}
+		/>
 	);
 }

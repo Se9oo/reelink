@@ -5,11 +5,6 @@ import { useState } from 'react';
 import { type DragMoveEvent, type DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 
-import { useMoveFolder } from '@/entities/folder/api/move-folder';
-import { useReorderFolders } from '@/entities/folder/api/reorder-folders';
-import { buildFolderTree } from '@/entities/folder/model/build-folder-tree';
-import { Folder } from '@/entities/folder/model/types';
-
 import {
 	computeInsertIndex,
 	type DropZone,
@@ -19,7 +14,13 @@ import {
 	getProjection,
 	type Projection,
 	removeDescendants,
+	ROOT_DROP_ZONE_ID,
 } from '@/widgets/folder-list/model/flatten-tree';
+
+import { useMoveFolder } from '@/entities/folder/api/move-folder';
+import { useReorderFolders } from '@/entities/folder/api/reorder-folders';
+import { buildFolderTree } from '@/entities/folder/model/build-folder-tree';
+import { Folder } from '@/entities/folder/model/types';
 
 interface InsertLine {
 	targetId: string;
@@ -62,10 +63,35 @@ export function useFolderDrag({
 	// getProjection이 'inside' 판정일 때만 parentFolderId를 overId로 돌려주므로, 이 둘이 같으면
 	// 지금 타겟 위에서 자식으로 들어가는 중이라는 뜻 — 그 행을 하이라이트하는 데 재사용한다
 	const nestTargetId = projected && overId && projected.parentFolderId === overId ? overId : null;
+	const overItem = overId ? sortableItems.find((item) => item.id === overId) : undefined;
+	// 시스템 폴더는 항상 최상위라 순서 변경은 가능하지만, 다른 최상위 폴더 사이(또는 리스트 맨 아래
+	// 빈 공간)에서만 유효하다 — 중첩된 폴더 앞/뒤에 올려도 실제로는 최상위에 그대로 남으므로 그
+	// 경우엔 삽입선을 보여주지 않는다
+	const canReorderHere =
+		activeItem && (!activeItem.isSystem || overItem?.parentFolderId === null || overId === ROOT_DROP_ZONE_ID);
 	const insertLine: InsertLine | null =
-		activeItem && !activeItem.isSystem && overId && overId !== activeId && (dropZone === 'before' || dropZone === 'after')
+		canReorderHere && overId && overId !== activeId && (dropZone === 'before' || dropZone === 'after')
 			? { targetId: overId, position: dropZone === 'before' ? 'top' : 'bottom' }
 			: null;
+
+	// 펼쳐진 부모 행의 after 존은 그 부모의 첫 자식 행의 before 존과 화면상 같은 경계에 있어서,
+	// 몇 픽셀 차이로 "부모와 같은 레벨" vs "부모의 첫 자식"이 갈리면 어색하다 — 이 둘을 첫 자식의
+	// before로 합쳐서, 부모와 같은 레벨로 두는 건 그 부모의 펼쳐진 자식 구간을 완전히 벗어났을
+	// 때만(= 다음 항목이 그 부모의 자식이 아닐 때만) 되게 한다
+	function resolveOverAndZone(rawOverId: string, rawZone: DropZone): { overId: string; zone: DropZone } {
+		if (rawZone !== 'after') {
+			return { overId: rawOverId, zone: rawZone };
+		}
+
+		const overIndex = sortableItems.findIndex((item) => item.id === rawOverId);
+		const nextItem = sortableItems[overIndex + 1];
+
+		if (nextItem && nextItem.parentFolderId === rawOverId) {
+			return { overId: nextItem.id, zone: 'before' };
+		}
+
+		return { overId: rawOverId, zone: rawZone };
+	}
 
 	function resetDragState() {
 		setActiveId(null);
@@ -89,6 +115,13 @@ export function useFolderDrag({
 			return;
 		}
 
+		// 리스트 맨 아래 빈 공간(최상위 맨 뒤) — 실제 행이 아니라 zone 세분화가 의미 없다
+		if (event.over.id === ROOT_DROP_ZONE_ID) {
+			setOverId(ROOT_DROP_ZONE_ID);
+			setDropZone('after');
+			return;
+		}
+
 		// 드래그 중인 행 전체가 핸들이라, 오버레이 rect 중심을 쓰면 어디를 잡았느냐에 따라 실제
 		// 커서랑 최대 반 행 높이(~14px)까지 어긋난다 — activatorEvent(드래그 시작 시점 포인터) +
 		// 누적 이동량(delta)을 더해서 지금 진짜 커서 Y 좌표를 구한다
@@ -102,9 +135,11 @@ export function useFolderDrag({
 		}
 
 		const pointerY = startY + event.delta.y;
+		const rawZone = getDropZone(event.over.rect, pointerY);
+		const resolved = resolveOverAndZone(String(event.over.id), rawZone);
 
-		setOverId(String(event.over.id));
-		setDropZone(getDropZone(event.over.rect, pointerY));
+		setOverId(resolved.overId);
+		setDropZone(resolved.zone);
 	}
 
 	function handleDragEnd() {
@@ -119,6 +154,13 @@ export function useFolderDrag({
 		// 아직 다른 행으로 안 옮겨간 상태(자기 자신 위) — 아무것도 안 바뀐 거라 바로 종료.
 		// 안 그러면 zone이 'after'로 잡힐 때 computeInsertIndex가 바로 다음 형제랑 자리를 바꿔버림
 		if (draggedItem.id === dropOverId) {
+			return;
+		}
+
+		// 리스트 맨 아래 빈 공간 — 실제 행이 아니라 arrayMove/computeInsertIndex 대상이 아니므로
+		// 최상위 형제 맨 뒤에 붙이는 걸로 바로 처리한다
+		if (dropOverId === ROOT_DROP_ZONE_ID) {
+			applyRootAppend(draggedItem);
 			return;
 		}
 
@@ -166,6 +208,41 @@ export function useFolderDrag({
 		const orderUnchanged =
 			currentSiblingIds.length === newSiblingIds.length &&
 			currentSiblingIds.every((id, index) => id === newSiblingIds[index]);
+
+		if (!orderUnchanged) {
+			reorderFolders.mutate(newSiblingIds);
+		}
+	}
+
+	function applyRootAppend(draggedItem: FlattenedFolder) {
+		const parentChanged = draggedItem.parentFolderId !== null;
+
+		const rootSiblingIds = folders
+			.filter((folder) => folder.parentFolderId === null && folder.id !== draggedItem.id)
+			.sort((a, b) => a.sortOrder - b.sortOrder)
+			.map((folder) => folder.id);
+
+		const newSiblingIds = [...rootSiblingIds, draggedItem.id];
+
+		if (parentChanged) {
+			moveFolder.mutate(
+				{ folderId: draggedItem.id, parentFolderId: null },
+				{ onSuccess: () => reorderFolders.mutate(newSiblingIds) },
+			);
+
+			onFolderMoved(null);
+
+			return;
+		}
+
+		const currentRootIds = folders
+			.filter((folder) => folder.parentFolderId === null)
+			.sort((a, b) => a.sortOrder - b.sortOrder)
+			.map((folder) => folder.id);
+
+		const orderUnchanged =
+			currentRootIds.length === newSiblingIds.length &&
+			currentRootIds.every((id, index) => id === newSiblingIds[index]);
 
 		if (!orderUnchanged) {
 			reorderFolders.mutate(newSiblingIds);
