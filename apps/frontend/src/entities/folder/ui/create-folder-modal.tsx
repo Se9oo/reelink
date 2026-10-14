@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { FormEvent } from 'react';
+import type { SubmitEvent } from 'react';
 
 import { ActionButton } from 'seed-design/ui/action-button';
 import { DialogBody, DialogContent, DialogFooter, DialogRoot } from 'seed-design/ui/dialog';
@@ -28,7 +28,7 @@ export function CreateFolderModal({
 	const [name, setName] = useState('');
 	const { mutate: createFolder, isPending, error, reset } = useCreateFolder();
 
-	const handleSubmit = (event: FormEvent) => {
+	const handleSubmit = (event: SubmitEvent) => {
 		event.preventDefault();
 
 		if (!name.trim() || isPending) {
