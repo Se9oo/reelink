@@ -9,6 +9,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
+const SESSION_HINT_COOKIE = 'has_session';
 const LOGIN_REDIRECT_PATH = '/home';
 
 @Controller('auth')
@@ -55,6 +56,7 @@ export class AuthController {
 		}
 		res.clearCookie(ACCESS_TOKEN_COOKIE);
 		res.clearCookie(REFRESH_TOKEN_COOKIE, { path: '/auth' });
+		res.clearCookie(SESSION_HINT_COOKIE);
 		res.sendStatus(204);
 	}
 
@@ -98,6 +100,12 @@ export class AuthController {
 			sameSite: 'lax',
 			maxAge: 30 * 24 * 60 * 60 * 1000,
 			path: '/auth',
+		});
+		res.cookie(SESSION_HINT_COOKIE, '1', {
+			httpOnly: true,
+			sameSite: 'lax',
+			maxAge: 30 * 24 * 60 * 60 * 1000,
+			path: '/',
 		});
 	}
 }
