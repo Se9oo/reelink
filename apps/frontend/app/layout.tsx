@@ -3,6 +3,7 @@ import localFont from 'next/font/local';
 import Script from 'next/script';
 
 import { QueryProvider } from '@/app/providers/query-provider';
+import { OverlayProvider } from 'overlay-kit';
 
 import './globals.css';
 
@@ -54,7 +55,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
 				<Script id="seed-theme" strategy="beforeInteractive">
 					{themeScript}
 				</Script>
-				<QueryProvider>{children}</QueryProvider>
+				<QueryProvider>
+					<OverlayProvider>{children}</OverlayProvider>
+				</QueryProvider>
 			</body>
 		</html>
 	);

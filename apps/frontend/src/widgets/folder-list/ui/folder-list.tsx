@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-
 import { closestCenter, DndContext, DragOverlay, useDroppable } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { IconPlusSmallLine } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
+import { overlay } from 'overlay-kit';
 
 import { ROOT_DROP_ZONE_ID, VISUAL_INDENT_WIDTH } from '@/widgets/folder-list/model/flatten-tree';
 import { useFolderDrag } from '@/widgets/folder-list/model/use-folder-drag';
@@ -13,13 +12,13 @@ import { FolderRow } from '@/widgets/folder-list/ui/folder-row';
 
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { CreateFolderModal } from '@/entities/folder/ui/create-folder-modal';
+import { DeleteFolderDialog } from '@/entities/folder/ui/delete-folder-dialog';
 
 import { usePersistedToggleSet } from '@/shared/lib/use-toggle-set';
 
 export function FolderList() {
 	const { data } = useQuery(foldersQueryOptions());
 	const { ids: expandedIds, toggle, add: expand } = usePersistedToggleSet('sidebar-folder-expanded');
-	const [createTarget, setCreateTarget] = useState<{ parentId: string | null; parentName?: string } | null>(null);
 	const folders = data ?? [];
 
 	const { sensors, sortableItems, activeItem, projected, nestTargetId, insertLine, ...dragHandlers } = useFolderDrag({
@@ -38,13 +37,35 @@ export function FolderList() {
 
 	const parentIdsWithChildren = new Set(folders.map((folder) => folder.parentFolderId).filter((id) => id !== null));
 
+	function openCreateDialog(parentId: string | null, parentName?: string) {
+		overlay.open(({ isOpen, close }) => (
+			<CreateFolderModal
+				open={isOpen}
+				onOpenChange={(open) => !open && close()}
+				parentFolderId={parentId}
+				parentFolderName={parentName}
+				onCreated={() => {
+					if (parentId) {
+						expand(parentId);
+					}
+				}}
+			/>
+		));
+	}
+
+	function openDeleteDialog(id: string, name: string) {
+		overlay.open(({ isOpen, close }) => (
+			<DeleteFolderDialog open={isOpen} onOpenChange={(open) => !open && close()} folderId={id} folderName={name} />
+		));
+	}
+
 	return (
 		<div className="flex flex-col gap-1">
 			<div className="flex items-center justify-between py-1 pr-0.5 pl-3">
 				<span className="text-sm text-[var(--seed-color-fg-neutral-muted)]">폴더</span>
 				<button
 					type="button"
-					onClick={() => setCreateTarget({ parentId: null })}
+					onClick={() => openCreateDialog(null)}
 					aria-label="새 폴더 만들기"
 					className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg
 						text-[var(--seed-color-fg-neutral-muted)] transition-colors
@@ -74,7 +95,8 @@ export function FolderList() {
 								isNestTarget={item.id === nestTargetId}
 								insertLinePosition={insertLine?.targetId === item.id ? insertLine.position : null}
 								onToggle={toggle}
-								onRequestCreate={(parentId, parentName) => setCreateTarget({ parentId, parentName })}
+								onRequestCreate={openCreateDialog}
+								onRequestDelete={openDeleteDialog}
 							/>
 						))}
 					</ul>
@@ -92,18 +114,6 @@ export function FolderList() {
 					</DragOverlay>
 				</DndContext>
 			)}
-
-			<CreateFolderModal
-				open={createTarget !== null}
-				onOpenChange={(open) => !open && setCreateTarget(null)}
-				parentFolderId={createTarget?.parentId ?? null}
-				parentFolderName={createTarget?.parentName}
-				onCreated={() => {
-					if (createTarget?.parentId) {
-						expand(createTarget.parentId);
-					}
-				}}
-			/>
 		</div>
 	);
 }

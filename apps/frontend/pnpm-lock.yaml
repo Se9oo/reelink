@@ -38,6 +38,9 @@ importers:
       next:
         specifier: 16.3.4
         version: 16.3.4(@babel/core@7.29.7)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      overlay-kit:
+        specifier: ^1.9.0
+        version: 1.9.0(react@19.2.8)
       pretendard:
         specifier: ^1.3.9
         version: 1.3.9
@@ -2669,6 +2672,11 @@ packages:
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
+
+  overlay-kit@1.9.0:
+    resolution: {integrity: sha512-kwzAOhWEDsrmgJzQKuI0v3xCwyWTSaNe3qI0t+7OTTj05ciRpg3j+NWz8FRPVt7rHBFL/jAjKyQf4xGOHcRXfg==}
+    peerDependencies:
+      react: ^16.8 || ^17 || ^18 || ^19
 
   own-keys@1.0.2:
     resolution: {integrity: sha512-19YVAg7T+WTrxggPukVq7DjTv6+PJ867TmhCvBsYwmbFCsZd344rq2Ld1p0wo8f8Qrrhgp82c6FJRqdXWtSEhg==}
@@ -6078,6 +6086,10 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
       word-wrap: 1.2.5
+
+  overlay-kit@1.9.0(react@19.2.8):
+    dependencies:
+      react: 19.2.8
 
   own-keys@1.0.2:
     dependencies:
