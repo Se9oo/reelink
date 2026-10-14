@@ -185,7 +185,7 @@ export class FoldersService {
 		const targetFolders = await this.db
 			.select()
 			.from(folders)
-			.where(and(inArray(folders.id, folderIds), eq(folders.userId, userId)));
+			.where(and(inArray(folders.id, folderIds), eq(folders.userId, userId), isNull(folders.deletedAt)));
 
 		if (targetFolders.length !== folderIds.length) {
 			throw new NotFoundException();
@@ -203,6 +203,7 @@ export class FoldersService {
 			.where(
 				and(
 					eq(folders.userId, userId),
+					isNull(folders.deletedAt),
 					parentFolderId ? eq(folders.parentFolderId, parentFolderId) : isNull(folders.parentFolderId),
 				),
 			);
