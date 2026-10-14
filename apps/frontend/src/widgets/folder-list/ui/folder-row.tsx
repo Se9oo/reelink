@@ -1,7 +1,7 @@
 'use client';
 
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { IconChevronRightSmallLine, IconPlusSmallLine } from '@karrotmarket/react-monochrome-icon';
+import { IconChevronRightSmallLine, IconPlusSmallLine, IconTrashcanLine } from '@karrotmarket/react-monochrome-icon';
 
 import { type FlattenedFolder, VISUAL_INDENT_WIDTH } from '@/widgets/folder-list/model/flatten-tree';
 
@@ -14,6 +14,7 @@ interface FolderRowProps {
 	insertLinePosition: 'top' | 'bottom' | null;
 	onToggle: (id: string) => void;
 	onRequestCreate: (parentId: string, parentName: string) => void;
+	onRequestDelete: (id: string, name: string) => void;
 }
 
 /**
@@ -30,6 +31,7 @@ export function FolderRow({
 	insertLinePosition,
 	onToggle,
 	onRequestCreate,
+	onRequestDelete,
 }: FolderRowProps) {
 	const { setNodeRef: setDraggableRef, listeners, attributes, isDragging } = useDraggable({ id: item.id });
 	const { setNodeRef: setDroppableRef } = useDroppable({ id: item.id });
@@ -82,6 +84,16 @@ export function FolderRow({
 						lg:opacity-0 lg:group-hover:opacity-100"
 				>
 					<IconPlusSmallLine size={20} />
+				</button>
+				<button
+					type="button"
+					onClick={() => onRequestDelete(item.id, item.name)}
+					aria-label={`${item.name} 폴더 삭제`}
+					className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
+						text-(--seed-color-fg-neutral-muted) opacity-100 hover:bg-(--seed-color-bg-critical-weak)
+						hover:text-(--seed-color-fg-critical) lg:opacity-0 lg:group-hover:opacity-100"
+				>
+					<IconTrashcanLine size={18} />
 				</button>
 			</div>
 			<div
