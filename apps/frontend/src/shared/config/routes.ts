@@ -6,3 +6,7 @@ export const ROUTES = {
 	SETTINGS: '/settings',
 	TRASH: '/trash',
 } as const;
+
+export function folderDetailPath(folderId: string) {
+	return `${ROUTES.FOLDERS}/${folderId}`;
+}

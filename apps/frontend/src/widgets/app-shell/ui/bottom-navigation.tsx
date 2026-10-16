@@ -28,7 +28,7 @@ export function BottomNavigation() {
 				bg-[var(--seed-color-bg-layer-default)] lg:hidden"
 		>
 			{TABS.map(({ href, label, Icon }) => {
-				const isActive = pathname === href;
+				const isActive = pathname === href || pathname.startsWith(`${href}/`);
 
 				return (
 					<Link

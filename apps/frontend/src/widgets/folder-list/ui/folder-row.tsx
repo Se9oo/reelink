@@ -1,10 +1,14 @@
 'use client';
 
+import NextLink from 'next/link';
+import { usePathname } from 'next/navigation';
+
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { IconChevronRightSmallLine, IconPlusSmallLine, IconTrashcanLine } from '@karrotmarket/react-monochrome-icon';
 
 import { type FlattenedFolder, VISUAL_INDENT_WIDTH } from '@/widgets/folder-list/model/flatten-tree';
 
+import { folderDetailPath } from '@/shared/config/routes';
 import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
 
 interface FolderRowProps {
@@ -37,6 +41,7 @@ export function FolderRow({
 }: FolderRowProps) {
 	const { setNodeRef: setDraggableRef, listeners, attributes, isDragging } = useDraggable({ id: item.id });
 	const { setNodeRef: setDroppableRef } = useDroppable({ id: item.id });
+	const isActive = usePathname() === folderDetailPath(item.id);
 
 	function setRefs(node: HTMLDivElement | null) {
 		setDraggableRef(node);
@@ -56,9 +61,11 @@ export function FolderRow({
 				{...listeners}
 				{...attributes}
 				style={{ paddingLeft: `${depth * VISUAL_INDENT_WIDTH}px` }}
-				className={`group flex h-8 items-center rounded-lg pr-1 text-sm text-[var(--seed-color-fg-neutral)] ${
-					isNestTarget ? 'bg-[var(--seed-color-bg-brand-weak)]' : 'hover:bg-[var(--seed-color-bg-neutral-muted)]'
-				}`}
+				className={`group flex h-8 items-center rounded-lg pr-1 text-sm ${
+					isNestTarget || isActive
+						? 'bg-[var(--seed-color-bg-brand-weak)]'
+						: 'hover:bg-[var(--seed-color-bg-neutral-muted)]'
+					} ${isActive ? 'font-semibold text-[var(--seed-color-fg-brand)]' : 'text-[var(--seed-color-fg-neutral)]'}`}
 			>
 				{hasChildren ? (
 					<button
@@ -77,7 +84,9 @@ export function FolderRow({
 					<span className="mx-1 h-6 w-6 shrink-0" />
 				)}
 				<IconFolderLine size={16} className="mr-1.5 shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
-				<span className="flex-1">{item.name}</span>
+				<NextLink href={folderDetailPath(item.id)} draggable={false} className="min-w-0 flex-1 truncate">
+					{item.name}
+				</NextLink>
 				<button
 					type="button"
 					onClick={() => onRequestCreate(item.id, item.name)}

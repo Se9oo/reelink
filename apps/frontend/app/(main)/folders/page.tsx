@@ -1,5 +1,5 @@
-import { FolderList } from '@/widgets/folder-list/ui/folder-list';
+import { FoldersHome } from '@/widgets/folders-home/ui/folders-home';
 
 export default function FoldersPage() {
-	return <FolderList />;
+	return <FoldersHome />;
 }
