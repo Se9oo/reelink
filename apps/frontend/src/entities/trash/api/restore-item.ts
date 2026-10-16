@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { folderKeys } from '@/entities/folder/api/folder-keys';
+import { linkKeys } from '@/entities/link/api/link-keys';
 import { trashKeys } from '@/entities/trash/api/trash-keys';
 
 import { apiClient } from '@/shared/api/client';
@@ -22,6 +23,7 @@ export function useRestoreItem() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: trashKeys.all });
 			queryClient.invalidateQueries({ queryKey: folderKeys.all });
+			queryClient.invalidateQueries({ queryKey: linkKeys.all });
 		},
 	});
 }

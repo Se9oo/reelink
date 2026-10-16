@@ -14,6 +14,7 @@ import { folderKeys } from '@/entities/folder/api/folder-keys';
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { buildFolderTree } from '@/entities/folder/model/build-folder-tree';
 import { createLink } from '@/entities/link/api/create-link';
+import { linkKeys } from '@/entities/link/api/link-keys';
 
 interface RegisterLinkModalProps {
 	open: boolean;
@@ -34,6 +35,7 @@ export function RegisterLinkModal({ open, onOpenChange, onRegistered }: Register
 		mutationFn: createLink,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: folderKeys.all });
+			queryClient.invalidateQueries({ queryKey: linkKeys.all });
 			setUrl('');
 			setFolderId(null);
 			setSavedReason('');

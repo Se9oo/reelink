@@ -4,6 +4,7 @@ import Script from 'next/script';
 
 import { QueryProvider } from '@/app/providers/query-provider';
 import { OverlayProvider } from 'overlay-kit';
+import { SnackbarProvider } from 'seed-design/ui/snackbar';
 
 import './globals.css';
 
@@ -56,7 +57,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
 					{themeScript}
 				</Script>
 				<QueryProvider>
-					<OverlayProvider>{children}</OverlayProvider>
+					<OverlayProvider>
+						<SnackbarProvider>{children}</SnackbarProvider>
+					</OverlayProvider>
 				</QueryProvider>
 			</body>
 		</html>
