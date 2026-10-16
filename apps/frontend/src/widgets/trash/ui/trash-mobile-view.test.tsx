@@ -50,7 +50,7 @@ describe('TrashMobileView', () => {
 		render(
 			<TrashMobileView
 				folders={[trashFolder({ id: 'f1', name: '레시피' })]}
-				links={[trashLink({ id: 'l1', title: '링크 제목' })]}
+				links={[trashLink({ id: 'l1', folderId: 'other-folder', title: '링크 제목' })]}
 				onRestoreFolder={() => {}}
 				onRestoreLink={() => {}}
 				onDeleteFolder={() => {}}

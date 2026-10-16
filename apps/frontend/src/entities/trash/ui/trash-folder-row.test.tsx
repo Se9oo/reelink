@@ -111,16 +111,23 @@ describe('TrashFolderRow', () => {
 			/>,
 		);
 
-		expect(screen.queryByText('서브폴더')).not.toBeInTheDocument();
+		const toggle = screen.getByRole('button', { name: '하위 항목 펼치기' });
+		const panel = document.getElementById(toggle.getAttribute('aria-controls') ?? '');
 
-		await user.click(screen.getByRole('button', { name: '하위 항목 펼치기' }));
+		expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		expect(panel).toHaveAttribute('inert');
 
-		expect(screen.getByText('서브폴더')).toBeInTheDocument();
-		expect(screen.getByText('링크 제목')).toBeInTheDocument();
+		await user.click(toggle);
 
-		await user.click(screen.getByRole('button', { name: '하위 항목 펼치기' }));
+		expect(toggle).toHaveAttribute('aria-expanded', 'true');
+		expect(panel).not.toHaveAttribute('inert');
+		expect(panel).toHaveTextContent('서브폴더');
+		expect(panel).toHaveTextContent('링크 제목');
 
-		expect(screen.queryByText('서브폴더')).not.toBeInTheDocument();
+		await user.click(toggle);
+
+		expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		expect(panel).toHaveAttribute('inert');
 	});
 
 	test('복구 버튼을 누르면 onRestore가 호출된다', async () => {
