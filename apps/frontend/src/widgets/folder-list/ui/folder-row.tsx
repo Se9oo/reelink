@@ -5,6 +5,8 @@ import { IconChevronRightSmallLine, IconPlusSmallLine, IconTrashcanLine } from '
 
 import { type FlattenedFolder, VISUAL_INDENT_WIDTH } from '@/widgets/folder-list/model/flatten-tree';
 
+import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
+
 interface FolderRowProps {
 	item: FlattenedFolder;
 	depth: number;
@@ -74,6 +76,7 @@ export function FolderRow({
 				) : (
 					<span className="mx-1 h-6 w-6 shrink-0" />
 				)}
+				<IconFolderLine size={16} className="mr-1.5 shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
 				<span className="flex-1">{item.name}</span>
 				<button
 					type="button"
