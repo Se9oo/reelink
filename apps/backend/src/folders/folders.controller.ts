@@ -1,4 +1,16 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	HttpCode,
+	Param,
+	ParseUUIDPipe,
+	Patch,
+	Post,
+	Req,
+	UseGuards,
+} from '@nestjs/common';
 
 import type { Request } from 'express';
 
@@ -28,6 +40,14 @@ export class FoldersController {
 		const { sub: userId } = req.user as JwtPayload;
 
 		return await this.foldersService.getMyFolders({ userId });
+	}
+
+	@Get(':id/links')
+	@UseGuards(JwtAuthGuard)
+	async getFolderLinks(@Req() req: Request, @Param('id', ParseUUIDPipe) folderId: string) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.foldersService.getFolderLinks({ userId, folderId });
 	}
 
 	@Patch('reorder')

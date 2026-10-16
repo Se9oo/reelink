@@ -1,9 +1,10 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { folders, links } from '../db/schema.js';
+import { Link } from '../links/links.types.js';
 
 import { Folder } from './folders.types.js';
 
@@ -79,6 +80,30 @@ export class FoldersService {
 			.where(and(eq(folders.userId, userId), isNull(folders.deletedAt)));
 
 		return myFolders;
+	}
+
+	/**
+	 * 폴더 안의 링크를 최신 등록순으로 조회한다. 하위 폴더의 링크와 소프트 삭제된 링크는 제외된다.
+	 * @param userId string
+	 * @param folderId string
+	 * @returns Link[]
+	 * @throws NotFoundException 폴더가 없거나 내 폴더가 아니거나 삭제된 경우
+	 */
+	async getFolderLinks({ userId, folderId }: { userId: string; folderId: string }): Promise<Link[]> {
+		const [folder] = await this.db
+			.select()
+			.from(folders)
+			.where(and(eq(folders.id, folderId), eq(folders.userId, userId), isNull(folders.deletedAt)));
+
+		if (!folder) {
+			throw new NotFoundException();
+		}
+
+		return await this.db
+			.select()
+			.from(links)
+			.where(and(eq(links.folderId, folderId), eq(links.userId, userId), isNull(links.deletedAt)))
+			.orderBy(desc(links.createdAt));
 	}
 
 	/**

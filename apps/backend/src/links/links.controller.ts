@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import type { Request } from 'express';
 
@@ -20,6 +20,14 @@ export class LinksController {
 		const { sub: userId } = req.user as JwtPayload;
 
 		return await this.linksService.createLink({ userId, url, folderId, savedReason });
+	}
+
+	@Get('search')
+	@UseGuards(JwtAuthGuard)
+	async searchLinks(@Req() req: Request, @Query('q') q?: unknown) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.linksService.searchLinks({ userId, q: typeof q === 'string' ? q : '' });
 	}
 
 	@Delete(':id')

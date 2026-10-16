@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNull, or } from 'drizzle-orm';
 
 import { isValidHttpUrl } from '../common/is-valid-http-url.js';
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
@@ -53,6 +53,35 @@ export class LinksService {
 		void this.applyOgTags(link.id, url);
 
 		return link;
+	}
+
+	/**
+	 * URL·제목·저장 이유에서 검색어를 대소문자 구분 없이 부분 일치로 찾는다. 내 링크 전체가 대상이고 소프트 삭제된 링크는 제외된다.
+	 * @param userId string
+	 * @param q string 비어 있으면 빈 배열을 반환
+	 * @returns Link[] 최신 등록순, 최대 100개
+	 */
+	async searchLinks({ userId, q }: { userId: string; q: string }): Promise<Link[]> {
+		const keyword = q.trim();
+
+		if (!keyword) {
+			return [];
+		}
+
+		const pattern = `%${keyword.replace(/[\\%_]/g, '\\$&')}%`;
+
+		return await this.db
+			.select()
+			.from(links)
+			.where(
+				and(
+					eq(links.userId, userId),
+					isNull(links.deletedAt),
+					or(ilike(links.url, pattern), ilike(links.title, pattern), ilike(links.savedReason, pattern)),
+				),
+			)
+			.orderBy(desc(links.createdAt))
+			.limit(100);
 	}
 
 	/**

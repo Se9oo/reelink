@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import request from 'supertest';
 
 import { DrizzleDb } from '../src/db/drizzle.module.js';
-import { links, users } from '../src/db/schema.js';
+import { folders, links, users } from '../src/db/schema.js';
 
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
@@ -164,6 +164,113 @@ describe('LinksController (e2e)', () => {
 				.expect(201);
 
 			await request(app.getHttpServer()).delete(`/links/${link.body.id}`).expect(401);
+		});
+	});
+
+	describe('Get /links/search', () => {
+		async function createFolder(name: string) {
+			const res = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name })
+				.expect(201);
+
+			return res.body.id as string;
+		}
+
+		async function search(q: string) {
+			const res = await request(app.getHttpServer())
+				.get('/links/search')
+				.query({ q })
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+
+			return res.body.map((link: { id: string }) => link.id) as string[];
+		}
+
+		test('URL·제목·저장 이유를 대소문자 구분 없이 부분 일치로 찾는다.', async () => {
+			const folderId = await createFolder('검색 폴더');
+			const base = { userId: context.testUserId, folderId };
+
+			const [byUrl] = await db
+				.insert(links)
+				.values({ ...base, url: 'https://zebra-url.com' })
+				.returning();
+			const [byTitle] = await db
+				.insert(links)
+				.values({ ...base, url: 'https://x.com', title: '큰 ZEBRA 이야기' })
+				.returning();
+			const [byReason] = await db
+				.insert(links)
+				.values({ ...base, url: 'https://y.com', savedReason: 'zebra 보려고' })
+				.returning();
+			await db.insert(links).values({ ...base, url: 'https://z.com', title: '관련 없음' });
+
+			const ids = await search('Zebra');
+
+			expect(ids).toHaveLength(3);
+			expect(ids).toEqual(expect.arrayContaining([byUrl.id, byTitle.id, byReason.id]));
+		});
+
+		test('% 와 _ 는 와일드카드가 아니라 글자 그대로 찾는다.', async () => {
+			const folderId = await createFolder('와일드카드 폴더');
+			const base = { userId: context.testUserId, folderId, url: 'https://w.com' };
+
+			const [percent] = await db
+				.insert(links)
+				.values({ ...base, title: '100% 할인 wild' })
+				.returning();
+			await db.insert(links).values({ ...base, title: '1000 할인 wild' });
+			const [underscore] = await db
+				.insert(links)
+				.values({ ...base, title: 'snake_case wild' })
+				.returning();
+			await db.insert(links).values({ ...base, title: 'snakeXcase wild' });
+
+			expect(await search('100%')).toEqual([percent.id]);
+			expect(await search('snake_case')).toEqual([underscore.id]);
+		});
+
+		test('소프트 삭제된 링크와 다른 사용자의 링크는 제외된다.', async () => {
+			const folderId = await createFolder('격리 폴더');
+			await db.insert(links).values({
+				userId: context.testUserId,
+				folderId,
+				url: 'https://q.com',
+				title: 'quokka 삭제됨',
+				deletedAt: new Date(),
+			});
+
+			const [otherUser] = await db
+				.insert(users)
+				.values({ email: '검색다른유저', nickname: '검색다른유저' })
+				.returning();
+			const [otherFolder] = await db.insert(folders).values({ userId: otherUser.id, name: '남의 폴더' }).returning();
+			await db
+				.insert(links)
+				.values({ userId: otherUser.id, folderId: otherFolder.id, url: 'https://q2.com', title: 'quokka 남의 것' });
+
+			expect(await search('quokka')).toEqual([]);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('검색어가 비어 있으면 빈 배열을 반환한다.', async () => {
+			expect(await search('')).toEqual([]);
+			expect(await search('   ')).toEqual([]);
+		});
+
+		test('검색어가 여러 번 전달돼 배열이 되어도 500이 아니라 빈 배열을 반환한다.', async () => {
+			const res = await request(app.getHttpServer())
+				.get('/links/search?q=a&q=b')
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+
+			expect(res.body).toEqual([]);
+		});
+
+		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
+			await request(app.getHttpServer()).get('/links/search').query({ q: 'a' }).expect(401);
 		});
 	});
 });

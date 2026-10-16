@@ -770,4 +770,103 @@ describe('FoldersController (e2e)', () => {
 			expect(changedFolders.body.find((f: Folder) => f.id === systemFolder.id).sortOrder).toEqual(0);
 		});
 	});
+
+	describe('Get /folders/:id/links', () => {
+		async function createFolder(name: string, parentFolderId?: string) {
+			const res = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name, parentFolderId })
+				.expect(201);
+
+			return res.body as Folder;
+		}
+
+		test('그 폴더의 링크를 최신 등록순으로 반환한다.', async () => {
+			const folder = await createFolder('링크 목록 폴더');
+
+			const [older] = await db
+				.insert(links)
+				.values({ userId: testUserId, folderId: folder.id, url: 'https://a.com', createdAt: new Date('2026-01-01') })
+				.returning();
+			const [newer] = await db
+				.insert(links)
+				.values({ userId: testUserId, folderId: folder.id, url: 'https://b.com', createdAt: new Date('2026-02-01') })
+				.returning();
+
+			const res = await request(app.getHttpServer())
+				.get(`/folders/${folder.id}/links`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+
+			expect(res.body.map((link: { id: string }) => link.id)).toEqual([newer.id, older.id]);
+		});
+
+		test('소프트 삭제된 링크와 하위 폴더의 링크는 제외된다.', async () => {
+			const parent = await createFolder('부모');
+			const child = await createFolder('자식', parent.id);
+
+			const [alive] = await db
+				.insert(links)
+				.values({ userId: testUserId, folderId: parent.id, url: 'https://a.com' })
+				.returning();
+			await db
+				.insert(links)
+				.values({ userId: testUserId, folderId: parent.id, url: 'https://b.com', deletedAt: new Date() });
+			await db.insert(links).values({ userId: testUserId, folderId: child.id, url: 'https://c.com' });
+
+			const res = await request(app.getHttpServer())
+				.get(`/folders/${parent.id}/links`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+
+			expect(res.body.map((link: { id: string }) => link.id)).toEqual([alive.id]);
+		});
+
+		test('링크가 없는 폴더는 빈 배열을 반환한다.', async () => {
+			const folder = await createFolder('빈 폴더');
+
+			const res = await request(app.getHttpServer())
+				.get(`/folders/${folder.id}/links`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+
+			expect(res.body).toEqual([]);
+		});
+
+		test('존재하지 않거나 남의 폴더거나 삭제된 폴더면 404 오류를 반환한다.', async () => {
+			const [otherUser] = await db.insert(users).values({ email: '...', nickname: '...' }).returning();
+			const jwt = app.get(JwtService);
+			const otherUserToken = await jwt.signAsync({ sub: otherUser.id });
+
+			const otherFolder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${otherUserToken}`)
+				.send({ name: '남의 폴더' })
+				.expect(201);
+
+			const deletedFolder = await createFolder('삭제될 폴더');
+			await db.update(folders).set({ deletedAt: new Date() }).where(eq(folders.id, deletedFolder.id));
+
+			for (const folderId of [crypto.randomUUID(), otherFolder.body.id, deletedFolder.id]) {
+				await request(app.getHttpServer())
+					.get(`/folders/${folderId}/links`)
+					.set('Cookie', `access_token=${accessToken}`)
+					.expect(404);
+			}
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('uuid 형식이 아닌 id면 500이 아니라 400 오류를 반환한다.', async () => {
+			await request(app.getHttpServer())
+				.get('/folders/not-a-uuid/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(400);
+		});
+
+		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
+			await request(app.getHttpServer()).get(`/folders/${crypto.randomUUID()}/links`).expect(401);
+		});
+	});
 });
