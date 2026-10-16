@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
 
 import type { Request } from 'express';
 
@@ -20,5 +20,14 @@ export class LinksController {
 		const { sub: userId } = req.user as JwtPayload;
 
 		return await this.linksService.createLink({ userId, url, folderId, savedReason });
+	}
+
+	@Delete(':id')
+	@HttpCode(204)
+	@UseGuards(JwtAuthGuard)
+	async deleteLink(@Req() req: Request, @Param() { id: linkId }: { id: string }) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		await this.linksService.deleteLink({ userId, linkId });
 	}
 }

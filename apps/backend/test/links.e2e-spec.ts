@@ -1,10 +1,11 @@
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
+import { eq } from 'drizzle-orm';
 import request from 'supertest';
 
 import { DrizzleDb } from '../src/db/drizzle.module.js';
-import { users } from '../src/db/schema.js';
+import { links, users } from '../src/db/schema.js';
 
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
@@ -89,6 +90,80 @@ describe('LinksController (e2e)', () => {
 				.post('/links')
 				.send({ url: 'https://naver.com', folderId: folder.body.id })
 				.expect(401);
+		});
+	});
+
+	describe('Delete /links/:id', () => {
+		test('정상 삭제시 204를 반환하고 deletedAt이 채워진다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '개발' })
+				.expect(201);
+
+			const link = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://naver.com', folderId: folder.body.id })
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.delete(`/links/${link.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			const [deletedLink] = await db.select().from(links).where(eq(links.id, link.body.id));
+
+			expect(deletedLink.deletedAt).not.toBeNull();
+		});
+
+		test('남의 링크거나 존재하지 않는 링크면 404 오류를 반환한다.', async () => {
+			const [otherUser] = await db.insert(users).values({ email: '다른이메일', nickname: '다른유저' }).returning();
+
+			const jwt = app.get(JwtService);
+			const otherAccessToken = await jwt.signAsync({ sub: otherUser.id });
+
+			const otherFolder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${otherAccessToken}`)
+				.send({ name: '남의 폴더' })
+				.expect(201);
+
+			const otherLink = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${otherAccessToken}`)
+				.send({ url: 'https://naver.com', folderId: otherFolder.body.id })
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.delete(`/links/${otherLink.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(404);
+
+			const randomLinkId = crypto.randomUUID();
+
+			await request(app.getHttpServer())
+				.delete(`/links/${randomLinkId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(404);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '개발' })
+				.expect(201);
+
+			const link = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://naver.com', folderId: folder.body.id })
+				.expect(201);
+
+			await request(app.getHttpServer()).delete(`/links/${link.body.id}`).expect(401);
 		});
 	});
 });

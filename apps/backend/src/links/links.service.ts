@@ -56,6 +56,25 @@ export class LinksService {
 	}
 
 	/**
+	 * 링크를 소프트 삭제한다.
+	 * @param userId string
+	 * @param linkId string
+	 * @throws NotFoundException 링크가 없거나 내 링크가 아닌 경우
+	 */
+	async deleteLink({ userId, linkId }: { userId: string; linkId: string }): Promise<void> {
+		const [link] = await this.db
+			.select()
+			.from(links)
+			.where(and(eq(links.id, linkId), eq(links.userId, userId)));
+
+		if (!link) {
+			throw new NotFoundException();
+		}
+
+		await this.db.update(links).set({ deletedAt: new Date() }).where(eq(links.id, linkId));
+	}
+
+	/**
 	 * OG 태그를 비동기로 가져와 title/thumbnailUrl을 채운다. 등록 응답을 막지 않도록 await 없이 호출됨.
 	 * @param linkId string
 	 * @param url string
