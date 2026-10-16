@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { folderKeys } from '@/entities/folder/api/folder-keys';
+import { trashKeys } from '@/entities/trash/api/trash-keys';
 
 import { apiClient } from '@/shared/api/client';
 
@@ -15,6 +16,7 @@ export function useDeleteFolder() {
 		mutationFn: deleteFolder,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: folderKeys.all });
+			queryClient.invalidateQueries({ queryKey: trashKeys.all });
 		},
 	});
 }
