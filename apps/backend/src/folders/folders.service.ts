@@ -30,7 +30,7 @@ export class FoldersService {
 	 * @param parentFolderId string | null 최상위 폴더면 null
 	 * @returns number
 	 */
-	private async nextSortOrder(userId: string, parentFolderId: string | null): Promise<number> {
+	async nextSortOrder(userId: string, parentFolderId: string | null): Promise<number> {
 		const siblings = await this.db
 			.select()
 			.from(folders)
@@ -79,6 +79,31 @@ export class FoldersService {
 			.where(and(eq(folders.userId, userId), isNull(folders.deletedAt)));
 
 		return myFolders;
+	}
+
+	/**
+	 * "미분류" 시스템 폴더를 반환한다. 없으면 최상위에 지연 생성한다.
+	 * @param userId string
+	 * @returns Folder
+	 */
+	async getOrCreateUncategorizedFolder(userId: string): Promise<Folder> {
+		const [existing] = await this.db
+			.select()
+			.from(folders)
+			.where(and(eq(folders.userId, userId), eq(folders.isSystem, true), eq(folders.name, '미분류')));
+
+		if (existing) {
+			return existing;
+		}
+
+		const sortOrder = await this.nextSortOrder(userId, null);
+
+		const [created] = await this.db
+			.insert(folders)
+			.values({ userId, name: '미분류', isSystem: true, sortOrder })
+			.returning();
+
+		return created;
 	}
 
 	/**

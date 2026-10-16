@@ -9,5 +9,6 @@ import { FoldersService } from './folders.service.js';
 	imports: [AuthModule],
 	controllers: [FoldersController],
 	providers: [FoldersService],
+	exports: [FoldersService],
 })
 export class FoldersModule {}
