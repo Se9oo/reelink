@@ -6,7 +6,7 @@ import { LinkSearch } from '@/features/search-links/ui/link-search';
 
 export function FoldersHome() {
 	return (
-		<div className="flex flex-col pt-2 lg:px-10 lg:pt-7">
+		<div className="flex min-h-full flex-col pt-2 md:bg-[var(--app-bg-canvas)] lg:px-10 lg:pt-7">
 			<h1 className="hidden pb-4 text-2xl font-bold text-[var(--seed-color-fg-neutral)] lg:block">링크</h1>
 			<LinkSearch>
 				<div className="lg:hidden">

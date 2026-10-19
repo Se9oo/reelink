@@ -6,6 +6,7 @@ import NextLink from 'next/link';
 
 import { IconChevronLeftLine, IconChevronRightSmallLine } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
+import { ActionButton } from 'seed-design/ui/action-button';
 
 import { useLinkActions } from '@/features/link-actions/model/use-link-actions';
 import { LinkSearch } from '@/features/search-links/ui/link-search';
@@ -35,11 +36,11 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 
 	if (!folder) {
 		return (
-			<div className="flex flex-col items-center gap-3 p-10 text-center">
-				<p className="text-sm text-[var(--seed-color-fg-neutral-muted)]">폴더를 찾을 수 없어요</p>
-				<NextLink href={ROUTES.FOLDERS} className="text-sm font-semibold text-[var(--seed-color-fg-brand)]">
-					폴더 목록으로
-				</NextLink>
+			<div className="flex min-h-full flex-col items-center justify-center gap-4 p-10 text-center">
+				<p className="text-[15px] text-[var(--seed-color-fg-neutral-muted)]">폴더를 찾을 수 없어요</p>
+				<ActionButton asChild variant="brandSolid" size="medium">
+					<NextLink href={ROUTES.FOLDERS}>폴더 목록으로</NextLink>
+				</ActionButton>
 			</div>
 		);
 	}
