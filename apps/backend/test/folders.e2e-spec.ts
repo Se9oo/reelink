@@ -95,6 +95,36 @@ describe('FoldersController (e2e)', () => {
 		});
 	});
 
+	describe('Post /folders 이름 검증', () => {
+		function create(body: object) {
+			return request(app.getHttpServer()).post('/folders').set('Cookie', `access_token=${accessToken}`).send(body);
+		}
+
+		test('이름 앞뒤 공백은 지우고 저장한다.', async () => {
+			const res = await create({ name: '  공백 폴더  ' }).expect(201);
+
+			expect(res.body.name).toBe('공백 폴더');
+		});
+
+		test('이름이 없거나 비었거나 공백뿐이거나 문자열이 아니면 400 오류를 반환한다.', async () => {
+			await create({}).expect(400);
+			await create({ name: '' }).expect(400);
+			await create({ name: '   ' }).expect(400);
+			await create({ name: 123 }).expect(400);
+		});
+
+		test('이름이 50자를 넘으면 400 오류를 반환한다.', async () => {
+			await create({ name: 'a'.repeat(51) }).expect(400);
+			await create({ name: 'a'.repeat(50) }).expect(201);
+		});
+
+		test('이모지처럼 여러 코드 단위로 된 글자도 한 글자로 센다.', async () => {
+			await create({ name: '📁'.repeat(50) }).expect(201);
+			await create({ name: '👨‍👩‍👧'.repeat(50) }).expect(201);
+			await create({ name: '📁'.repeat(51) }).expect(400);
+		});
+	});
+
 	describe('Get /folders', () => {
 		test('폴더가 하나도 없으면 빈 배열을 반환한다.', async () => {
 			const [emptyUser] = await db.insert(users).values({ email: '...', nickname: '...' }).returning();
@@ -410,6 +440,42 @@ describe('FoldersController (e2e)', () => {
 				.expect(404);
 
 			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+	});
+
+	describe('Patch /folders:id 이름 검증', () => {
+		async function createFolder() {
+			const res = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '원래 이름' })
+				.expect(201);
+
+			return res.body as { id: string };
+		}
+
+		function rename(id: string, name: unknown) {
+			return request(app.getHttpServer())
+				.patch(`/folders/${id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name });
+		}
+
+		test('이름 앞뒤 공백은 지우고 저장한다.', async () => {
+			const folder = await createFolder();
+
+			const res = await rename(folder.id, '  새 이름  ').expect(200);
+
+			expect(res.body.name).toBe('새 이름');
+		});
+
+		test('이름이 비었거나 공백뿐이거나 문자열이 아니거나 50자를 넘으면 400 오류를 반환한다.', async () => {
+			const folder = await createFolder();
+
+			await rename(folder.id, '').expect(400);
+			await rename(folder.id, '   ').expect(400);
+			await rename(folder.id, 123).expect(400);
+			await rename(folder.id, 'a'.repeat(51)).expect(400);
 		});
 	});
 

@@ -101,6 +101,49 @@ describe('LinksController (e2e)', () => {
 		});
 	});
 
+	describe('Post /links 저장 이유 검증', () => {
+		async function createFolder() {
+			const res = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '저장 이유 검증 폴더' })
+				.expect(201);
+
+			return res.body as { id: string };
+		}
+
+		function create(body: object) {
+			return request(app.getHttpServer()).post('/links').set('Cookie', `access_token=${accessToken}`).send(body);
+		}
+
+		test('저장 이유 앞뒤 공백은 지우고, 공백뿐이면 null로 저장한다.', async () => {
+			const folder = await createFolder();
+
+			const trimmed = await create({ url: 'https://naver.com', folderId: folder.id, savedReason: '  이유  ' }).expect(
+				201,
+			);
+			const blank = await create({ url: 'https://naver.com', folderId: folder.id, savedReason: '   ' }).expect(201);
+
+			expect(trimmed.body.savedReason).toBe('이유');
+			expect(blank.body.savedReason).toBeNull();
+		});
+
+		test('저장 이유가 문자열이 아니거나 500자를 넘으면 400 오류를 반환한다.', async () => {
+			const folder = await createFolder();
+
+			await create({ url: 'https://naver.com', folderId: folder.id, savedReason: 123 }).expect(400);
+			await create({ url: 'https://naver.com', folderId: folder.id, savedReason: 'a'.repeat(501) }).expect(400);
+			await create({ url: 'https://naver.com', folderId: folder.id, savedReason: 'a'.repeat(500) }).expect(201);
+		});
+
+		test('저장 이유의 이모지도 한 글자로 센다.', async () => {
+			const folder = await createFolder();
+
+			await create({ url: 'https://naver.com', folderId: folder.id, savedReason: '👍'.repeat(500) }).expect(201);
+			await create({ url: 'https://naver.com', folderId: folder.id, savedReason: '👍'.repeat(501) }).expect(400);
+		});
+	});
+
 	describe('Delete /links/:id', () => {
 		test('정상 삭제시 204를 반환하고 deletedAt이 채워진다.', async () => {
 			const folder = await request(app.getHttpServer())

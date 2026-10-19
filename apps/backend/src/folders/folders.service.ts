@@ -2,11 +2,34 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
+import { countGraphemes } from '../common/count-graphemes.js';
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { folders, links } from '../db/schema.js';
 import { Link } from '../links/links.types.js';
 
 import { Folder } from './folders.types.js';
+
+const MAX_FOLDER_NAME_LENGTH = 50;
+
+/**
+ * 폴더 이름을 검증하고 앞뒤 공백을 지운다.
+ * @param name unknown
+ * @returns string
+ * @throws BadRequestException 문자열이 아니거나, 공백을 지우면 비거나, 50자를 넘는 경우
+ */
+function normalizeFolderName(name: unknown): string {
+	if (typeof name !== 'string' || !name.trim()) {
+		throw new BadRequestException('폴더 이름을 입력해주세요.');
+	}
+
+	const trimmed = name.trim();
+
+	if (countGraphemes(trimmed) > MAX_FOLDER_NAME_LENGTH) {
+		throw new BadRequestException(`폴더 이름은 ${MAX_FOLDER_NAME_LENGTH}자 이하여야 합니다.`);
+	}
+
+	return trimmed;
+}
 
 interface CreateFolderParams {
 	userId: string;
@@ -48,18 +71,20 @@ export class FoldersService {
 	/**
 	 * 새 폴더를 생성한다. 같은 parentFolderId를 가진 형제 폴더 중 가장 뒤(sortOrder 최댓값+1)에 추가된다.
 	 * @param userId string
-	 * @param name string
+	 * @param name string 앞뒤 공백을 지우고 저장
 	 * @param parentFolderId string | null | undefined 생략하거나 null이면 최상위 폴더로 생성
 	 * @returns Folder
+	 * @throws BadRequestException 이름이 없거나 공백뿐이거나 50자를 넘는 경우
 	 */
 	async createFolder({ userId, name, parentFolderId }: CreateFolderParams): Promise<Folder> {
+		const normalizedName = normalizeFolderName(name);
 		const sortOrder = await this.nextSortOrder(userId, parentFolderId ?? null);
 
 		const [folder] = await this.db
 			.insert(folders)
 			.values({
 				userId,
-				name,
+				name: normalizedName,
 				parentFolderId,
 				sortOrder,
 			})
@@ -140,7 +165,7 @@ export class FoldersService {
 	 * @returns Folder
 	 * @throws NotFoundException 폴더가 없거나 내 폴더가 아닌 경우, 새 부모가 없거나 내 폴더가 아닌 경우
 	 * @throws ForbiddenException 시스템 폴더(isSystem)인 경우
-	 * @throws BadRequestException 새 부모가 자기 자신이거나 자기 하위 폴더인 경우(순환 방지)
+	 * @throws BadRequestException 새 부모가 자기 자신이거나 자기 하위 폴더인 경우(순환 방지), 이름이 공백뿐이거나 50자를 넘는 경우
 	 */
 	async updateFolder({ userId, folderId, name, parentFolderId }: UpdateFolderParams): Promise<Folder> {
 		const [folder] = await this.db
@@ -159,7 +184,7 @@ export class FoldersService {
 		const updates: { name?: string; parentFolderId?: string | null; sortOrder?: number } = {};
 
 		if (name !== undefined) {
-			updates.name = name;
+			updates.name = normalizeFolderName(name);
 		}
 
 		if (parentFolderId !== undefined) {

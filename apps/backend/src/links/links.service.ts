@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 
 import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 
+import { countGraphemes } from '../common/count-graphemes.js';
 import { isValidHttpUrl } from '../common/is-valid-http-url.js';
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { folders, links } from '../db/schema.js';
@@ -15,7 +16,32 @@ interface CreateLinkParams {
 	userId: string;
 	url: string;
 	folderId: string;
-	savedReason?: string;
+	savedReason?: unknown;
+}
+
+/**
+ * 선택 입력 텍스트를 검증하고 정리한다. 앞뒤 공백을 지운 뒤 비어 있으면 null로 바꾼다.
+ * @param key string 오류 메시지에 쓸 필드 이름
+ * @param value unknown 생략(undefined)이면 그대로 undefined를 돌려줌
+ * @returns string | null | undefined
+ * @throws BadRequestException 문자열/null이 아니거나 500자를 넘는 경우
+ */
+function normalizeOptionalText(key: string, value: unknown): string | null | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	if (value !== null && typeof value !== 'string') {
+		throw new BadRequestException(`${key}는 문자열이어야 합니다.`);
+	}
+
+	const trimmed = value?.trim() || null;
+
+	if (trimmed && countGraphemes(trimmed) > MAX_TEXT_LENGTH) {
+		throw new BadRequestException(`${key}는 ${MAX_TEXT_LENGTH}자 이하여야 합니다.`);
+	}
+
+	return trimmed;
 }
 
 @Injectable()
@@ -27,9 +53,9 @@ export class LinksService {
 	 * @param userId string
 	 * @param url string http/https 형식이어야 함
 	 * @param folderId string 등록할 폴더, 내 폴더여야 함
-	 * @param savedReason string 생략 가능
+	 * @param savedReason unknown 생략 가능, 앞뒤 공백을 지우고 비어 있으면 null로 저장
 	 * @returns Link
-	 * @throws BadRequestException folderId가 없거나 url이 http/https 형식이 아닌 경우
+	 * @throws BadRequestException folderId가 없거나 url이 http/https 형식이 아닌 경우, 저장 이유가 문자열이 아니거나 500자를 넘는 경우
 	 * @throws NotFoundException folderId가 내 폴더가 아니거나 존재하지 않는 경우
 	 */
 	async createLink({ userId, url, folderId, savedReason }: CreateLinkParams): Promise<Link> {
@@ -41,6 +67,8 @@ export class LinksService {
 			throw new BadRequestException('http/https 형식의 URL만 등록할 수 있습니다.');
 		}
 
+		const normalizedSavedReason = normalizeOptionalText('savedReason', savedReason);
+
 		const [folder] = await this.db
 			.select()
 			.from(folders)
@@ -50,7 +78,10 @@ export class LinksService {
 			throw new NotFoundException();
 		}
 
-		const [link] = await this.db.insert(links).values({ userId, folderId, url, savedReason }).returning();
+		const [link] = await this.db
+			.insert(links)
+			.values({ userId, folderId, url, savedReason: normalizedSavedReason })
+			.returning();
 
 		void this.applyOgTags(link.id, url);
 
@@ -108,26 +139,15 @@ export class LinksService {
 		savedReason?: unknown;
 	}): Promise<Link> {
 		const values: { title?: string | null; savedReason?: string | null } = {};
+		const normalizedTitle = normalizeOptionalText('title', title);
+		const normalizedSavedReason = normalizeOptionalText('savedReason', savedReason);
 
-		for (const [key, value] of [
-			['title', title],
-			['savedReason', savedReason],
-		] as const) {
-			if (value === undefined) {
-				continue;
-			}
+		if (normalizedTitle !== undefined) {
+			values.title = normalizedTitle;
+		}
 
-			if (value !== null && typeof value !== 'string') {
-				throw new BadRequestException(`${key}는 문자열이어야 합니다.`);
-			}
-
-			const trimmed = value?.trim() || null;
-
-			if (trimmed && trimmed.length > MAX_TEXT_LENGTH) {
-				throw new BadRequestException(`${key}는 ${MAX_TEXT_LENGTH}자 이하여야 합니다.`);
-			}
-
-			values[key] = trimmed;
+		if (normalizedSavedReason !== undefined) {
+			values.savedReason = normalizedSavedReason;
 		}
 
 		if (Object.keys(values).length === 0) {
