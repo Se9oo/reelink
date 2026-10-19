@@ -65,8 +65,14 @@ export function CreateFolderModal({
 			>
 				<form onSubmit={handleSubmit}>
 					<DialogBody>
-						<TextField label="폴더 이름" required>
-							<TextFieldInput value={name} onChange={(event) => setName(event.target.value)} autoFocus />
+						<TextField
+							label="폴더 이름"
+							required
+							value={name}
+							onValueChange={({ slicedValue }) => setName(slicedValue)}
+							maxGraphemeCount={50}
+						>
+							<TextFieldInput autoFocus />
 						</TextField>
 						{error && (
 							<p className="text-sm text-[var(--seed-color-fg-critical)]">폴더를 만들지 못했어요. 다시 시도해주세요.</p>

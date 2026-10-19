@@ -47,16 +47,24 @@ export function EditLinkDialog({ open, onOpenChange, link, onSave }: EditLinkDia
 
 	const fields = (
 		<div className="flex flex-col gap-4">
-			<TextField label="제목" indicator="선택">
-				<TextFieldInput value={title} onChange={(event) => setTitle(event.target.value)} placeholder={host} />
+			<TextField
+				label="제목"
+				indicator="선택"
+				value={title}
+				onValueChange={({ slicedValue }) => setTitle(slicedValue)}
+				maxGraphemeCount={500}
+				hideCharacterCount
+			>
+				<TextFieldInput placeholder={host} />
 			</TextField>
-			<TextField label="저장 이유" indicator="선택">
-				<TextFieldTextarea
-					value={savedReason}
-					onChange={(event) => setSavedReason(event.target.value)}
-					placeholder="왜 저장했는지 짧게 적어두세요"
-					className="max-h-40 overflow-y-auto"
-				/>
+			<TextField
+				label="저장 이유"
+				indicator="선택"
+				value={savedReason}
+				onValueChange={({ slicedValue }) => setSavedReason(slicedValue)}
+				maxGraphemeCount={500}
+			>
+				<TextFieldTextarea placeholder="왜 저장했는지 짧게 적어두세요" className="max-h-40 overflow-y-auto" />
 			</TextField>
 		</div>
 	);
