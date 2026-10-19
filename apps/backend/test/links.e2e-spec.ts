@@ -9,6 +9,14 @@ import { folders, links, users } from '../src/db/schema.js';
 
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
+vi.mock('../src/links/fetch-og-tags.js', () => ({
+	fetchOgTags: vi.fn(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 150));
+
+		return { title: 'OG 제목', thumbnailUrl: 'https://img.example.com/og.png' };
+	}),
+}));
+
 describe('LinksController (e2e)', () => {
 	let context: E2ETestContext;
 	let app: INestApplication;
@@ -397,6 +405,138 @@ describe('LinksController (e2e)', () => {
 				.patch(`/links/${crypto.randomUUID()}/folder`)
 				.send({ folderId: crypto.randomUUID() })
 				.expect(401);
+		});
+	});
+
+	describe('Patch /links/:id', () => {
+		async function createLinkInNewFolder() {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '수정 테스트 폴더' })
+				.expect(201);
+
+			const link = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://naver.com', folderId: folder.body.id, savedReason: '원래 이유' })
+				.expect(201);
+
+			await db.update(links).set({ title: '원래 제목' }).where(eq(links.id, link.body.id));
+
+			return link.body as { id: string };
+		}
+
+		function update(linkId: string, body: object, token = accessToken) {
+			return request(app.getHttpServer()).patch(`/links/${linkId}`).set('Cookie', `access_token=${token}`).send(body);
+		}
+
+		test('제목과 저장 이유를 함께 수정하면 200과 수정된 링크가 반환된다.', async () => {
+			const link = await createLinkInNewFolder();
+
+			const res = await update(link.id, { title: '새 제목', savedReason: '새 이유' }).expect(200);
+
+			expect(res.body).toMatchObject({ id: link.id, title: '새 제목', savedReason: '새 이유' });
+
+			const [saved] = await db.select().from(links).where(eq(links.id, link.id));
+
+			expect(saved).toMatchObject({ title: '새 제목', savedReason: '새 이유' });
+		});
+
+		test('보낸 필드만 바꾸고 나머지는 그대로 둔다.', async () => {
+			const link = await createLinkInNewFolder();
+
+			const res = await update(link.id, { savedReason: '이유만 수정' }).expect(200);
+
+			expect(res.body).toMatchObject({ title: '원래 제목', savedReason: '이유만 수정' });
+		});
+
+		test('앞뒤 공백은 제거하고 빈 문자열이나 null은 null로 저장한다.', async () => {
+			const link = await createLinkInNewFolder();
+
+			const trimmed = await update(link.id, { title: '  공백 제목  ' }).expect(200);
+
+			expect(trimmed.body.title).toBe('공백 제목');
+
+			const cleared = await update(link.id, { title: '   ', savedReason: null }).expect(200);
+
+			expect(cleared.body).toMatchObject({ title: null, savedReason: null });
+		});
+
+		test('OG 추출이 늦게 끝나도 그 사이 사용자가 고친 제목은 덮어쓰지 않고 썸네일만 채운다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: 'OG 경합 폴더' })
+				.expect(201);
+			const created = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://naver.com', folderId: folder.body.id })
+				.expect(201);
+
+			await update(created.body.id, { title: '내가 고친 제목' }).expect(200);
+			await new Promise((resolve) => setTimeout(resolve, 400));
+
+			const [saved] = await db.select().from(links).where(eq(links.id, created.body.id));
+
+			expect(saved.title).toBe('내가 고친 제목');
+			expect(saved.thumbnailUrl).toBe('https://img.example.com/og.png');
+		});
+
+		test('제목이나 저장 이유가 500자를 넘으면 400 오류를 반환한다.', async () => {
+			const link = await createLinkInNewFolder();
+
+			await update(link.id, { title: 'a'.repeat(501) }).expect(400);
+			await update(link.id, { savedReason: 'a'.repeat(501) }).expect(400);
+			await update(link.id, { title: 'a'.repeat(500) }).expect(200);
+		});
+
+		test('수정할 필드가 없거나 문자열이 아니면 400 오류를 반환한다.', async () => {
+			const link = await createLinkInNewFolder();
+
+			await update(link.id, {}).expect(400);
+			await update(link.id, { title: 123 }).expect(400);
+			await update(link.id, { savedReason: ['a'] }).expect(400);
+		});
+
+		test('uuid 형식이 아닌 링크 id면 400 오류를 반환한다.', async () => {
+			await update('not-a-uuid', { title: '제목' }).expect(400);
+		});
+
+		test('남의 링크거나 존재하지 않거나 삭제된 링크면 404 오류를 반환한다.', async () => {
+			const [otherUser] = await db.insert(users).values({ email: '수정-다른이메일', nickname: '다른유저' }).returning();
+			const otherToken = await app.get(JwtService).signAsync({ sub: otherUser.id });
+			const otherFolder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${otherToken}`)
+				.send({ name: '남의 폴더' })
+				.expect(201);
+			const otherLink = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${otherToken}`)
+				.send({ url: 'https://naver.com', folderId: otherFolder.body.id })
+				.expect(201);
+			const deleted = await createLinkInNewFolder();
+
+			await request(app.getHttpServer())
+				.delete(`/links/${deleted.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await update(otherLink.body.id, { title: '탈취' }).expect(404);
+			await update(crypto.randomUUID(), { title: '제목' }).expect(404);
+			await update(deleted.id, { title: '제목' }).expect(404);
+
+			const [untouched] = await db.select().from(links).where(eq(links.id, otherLink.body.id));
+
+			expect(untouched.title).not.toBe('탈취');
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
+			await request(app.getHttpServer()).patch(`/links/${crypto.randomUUID()}`).send({ title: '제목' }).expect(401);
 		});
 	});
 });

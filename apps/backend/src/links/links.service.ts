@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import { and, desc, eq, ilike, isNull, or } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 
 import { isValidHttpUrl } from '../common/is-valid-http-url.js';
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
@@ -8,6 +8,8 @@ import { folders, links } from '../db/schema.js';
 
 import { fetchOgTags } from './fetch-og-tags.js';
 import { Link } from './links.types.js';
+
+const MAX_TEXT_LENGTH = 500;
 
 interface CreateLinkParams {
 	userId: string;
@@ -85,6 +87,67 @@ export class LinksService {
 	}
 
 	/**
+	 * 링크의 제목과 저장 이유를 수정한다. 보낸 필드만 바꾸고, 앞뒤 공백을 지운 뒤 비어 있으면 null로 저장한다.
+	 * @param userId string
+	 * @param linkId string
+	 * @param title unknown 문자열 또는 null, 생략하면 그대로 둠
+	 * @param savedReason unknown 문자열 또는 null, 생략하면 그대로 둠
+	 * @returns Link
+	 * @throws BadRequestException 수정할 필드가 없거나 문자열/null이 아닌 값, 500자를 넘는 값이 들어온 경우
+	 * @throws NotFoundException 링크가 없거나 삭제됐거나 내 링크가 아닌 경우
+	 */
+	async updateLink({
+		userId,
+		linkId,
+		title,
+		savedReason,
+	}: {
+		userId: string;
+		linkId: string;
+		title?: unknown;
+		savedReason?: unknown;
+	}): Promise<Link> {
+		const values: { title?: string | null; savedReason?: string | null } = {};
+
+		for (const [key, value] of [
+			['title', title],
+			['savedReason', savedReason],
+		] as const) {
+			if (value === undefined) {
+				continue;
+			}
+
+			if (value !== null && typeof value !== 'string') {
+				throw new BadRequestException(`${key}는 문자열이어야 합니다.`);
+			}
+
+			const trimmed = value?.trim() || null;
+
+			if (trimmed && trimmed.length > MAX_TEXT_LENGTH) {
+				throw new BadRequestException(`${key}는 ${MAX_TEXT_LENGTH}자 이하여야 합니다.`);
+			}
+
+			values[key] = trimmed;
+		}
+
+		if (Object.keys(values).length === 0) {
+			throw new BadRequestException('수정할 값이 없습니다.');
+		}
+
+		const [link] = await this.db
+			.update(links)
+			.set(values)
+			.where(and(eq(links.id, linkId), eq(links.userId, userId), isNull(links.deletedAt)))
+			.returning();
+
+		if (!link) {
+			throw new NotFoundException();
+		}
+
+		return link;
+	}
+
+	/**
 	 * 링크를 다른 폴더로 옮긴다.
 	 * @param userId string
 	 * @param linkId string
@@ -141,6 +204,7 @@ export class LinksService {
 
 	/**
 	 * OG 태그를 비동기로 가져와 title/thumbnailUrl을 채운다. 등록 응답을 막지 않도록 await 없이 호출됨.
+	 * 그 사이 사용자가 제목을 직접 고쳤을 수 있어서 title은 아직 비어 있을 때만 채운다.
 	 * @param linkId string
 	 * @param url string
 	 */
@@ -151,6 +215,9 @@ export class LinksService {
 			return;
 		}
 
-		await this.db.update(links).set({ title, thumbnailUrl }).where(eq(links.id, linkId));
+		await this.db
+			.update(links)
+			.set({ title: sql`coalesce(${links.title}, ${title})`, thumbnailUrl })
+			.where(eq(links.id, linkId));
 	}
 }

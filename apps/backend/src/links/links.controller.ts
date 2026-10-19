@@ -43,6 +43,18 @@ export class LinksController {
 		return await this.linksService.searchLinks({ userId, q: typeof q === 'string' ? q : '' });
 	}
 
+	@Patch(':id')
+	@UseGuards(JwtAuthGuard)
+	async updateLink(
+		@Req() req: Request,
+		@Param('id', ParseUUIDPipe) linkId: string,
+		@Body() { title, savedReason }: { title?: unknown; savedReason?: unknown },
+	) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.linksService.updateLink({ userId, linkId, title, savedReason });
+	}
+
 	@Patch(':id/folder')
 	@UseGuards(JwtAuthGuard)
 	async moveLink(
