@@ -14,3 +14,6 @@ class ResizeObserverStub {
 	disconnect() {}
 }
 global.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+
+Element.prototype.setPointerCapture = () => {};
+Element.prototype.releasePointerCapture = () => {};

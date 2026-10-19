@@ -96,3 +96,9 @@ button:not(:disabled) {
 		backdrop-filter: none;
 	}
 }
+
+@media (max-width: 1023px) {
+	body:has(.bottom-navigation) .seed-bottom-sheet__positioner {
+		bottom: 4rem;
+	}
+}

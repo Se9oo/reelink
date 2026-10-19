@@ -13,9 +13,10 @@ interface FolderTreeSelectProps {
 	nodes: FolderTreeNode[];
 	selectedId: string | null;
 	onSelect: (id: string) => void;
+	disabledId?: string;
 }
 
-export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSelectProps) {
+export function FolderTreeSelect({ nodes, selectedId, onSelect, disabledId }: FolderTreeSelectProps) {
 	const { ids: expandedIds, toggle } = useToggleSet();
 	const [creating, setCreating] = useState(false);
 	// CreateFolderModal 자체를 처음 열기 전까지 트리에 안 넣음 — Dialog.Positioner는 닫혀있어도
@@ -27,12 +28,14 @@ export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSele
 		const hasChildren = node.children.length > 0;
 		const expanded = expandedIds.has(node.id);
 		const selected = selectedId === node.id;
+		const disabled = disabledId === node.id;
 
 		return (
 			<li key={node.id}>
 				<div
-					onClick={() => onSelect(node.id)}
-					className={`flex h-8 cursor-pointer items-center rounded-lg pr-1 ${
+					onClick={disabled ? undefined : () => onSelect(node.id)}
+					aria-disabled={disabled || undefined}
+					className={`flex h-8 items-center rounded-lg pr-1 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} ${
 						selected ? 'bg-[var(--seed-color-bg-brand-weak)]' : ''
 					}`}
 					style={{ paddingLeft: `${depth * 12}px` }}
@@ -62,11 +65,16 @@ export function FolderTreeSelect({ nodes, selectedId, onSelect }: FolderTreeSele
 					)}
 					<span
 						className={`text-sm ${
-							selected ? 'font-bold text-[var(--seed-color-fg-brand)]' : 'text-[var(--seed-color-fg-neutral)]'
-						}`}
+							selected
+								? 'font-bold text-[var(--seed-color-fg-brand)]'
+								: disabled
+									? 'text-[var(--seed-color-fg-neutral-muted)]'
+									: 'text-[var(--seed-color-fg-neutral)]'
+							}`}
 					>
 						{node.name}
 					</span>
+					{disabled && <span className="ml-2 text-xs text-[var(--seed-color-fg-neutral-muted)]">현재 폴더</span>}
 				</div>
 				{hasChildren && expanded && <ul>{node.children.map((child) => renderNode(child, depth + 1))}</ul>}
 			</li>

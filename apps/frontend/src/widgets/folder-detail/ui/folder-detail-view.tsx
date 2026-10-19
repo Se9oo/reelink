@@ -23,7 +23,7 @@ interface FolderDetailViewProps {
 export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 	const { data: folders } = useQuery(foldersQueryOptions());
 	const { data: links } = useQuery(folderLinksQueryOptions(folderId));
-	const { onDelete } = useLinkActions();
+	const { onDelete, onMove } = useLinkActions();
 
 	if (!folders) {
 		return null;
@@ -108,7 +108,7 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 							lg:border-[var(--seed-color-stroke-neutral-subtle)]"
 					>
 						{links.map((link) => (
-							<LinkRow key={link.id} link={link} onDelete={() => onDelete(link)} />
+							<LinkRow key={link.id} link={link} onMove={() => onMove(link)} onDelete={() => onDelete(link)} />
 						))}
 					</div>
 				)}
