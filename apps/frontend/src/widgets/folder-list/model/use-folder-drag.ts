@@ -2,7 +2,14 @@
 
 import { useState } from 'react';
 
-import { type DragMoveEvent, type DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import {
+	type DragMoveEvent,
+	type DragStartEvent,
+	MouseSensor,
+	TouchSensor,
+	useSensor,
+	useSensors,
+} from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 
 import {
@@ -16,6 +23,7 @@ import {
 	removeDescendants,
 	ROOT_DROP_ZONE_ID,
 } from '@/widgets/folder-list/model/flatten-tree';
+import { getActivatorClientY } from '@/widgets/folder-list/model/get-activator-client-y';
 
 import { useMoveFolder } from '@/entities/folder/api/move-folder';
 import { useReorderFolders } from '@/entities/folder/api/reorder-folders';
@@ -47,7 +55,10 @@ export function useFolderDrag({
 	const moveFolder = useMoveFolder();
 	const reorderFolders = useReorderFolders();
 
-	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+	const sensors = useSensors(
+		useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+		useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+	);
 
 	const tree = buildFolderTree(folders);
 	const flattenedItems = flattenVisibleTree(tree, expandedIds);
@@ -125,8 +136,7 @@ export function useFolderDrag({
 		// 드래그 중인 행 전체가 핸들이라, 오버레이 rect 중심을 쓰면 어디를 잡았느냐에 따라 실제
 		// 커서랑 최대 반 행 높이(~14px)까지 어긋난다 — activatorEvent(드래그 시작 시점 포인터) +
 		// 누적 이동량(delta)을 더해서 지금 진짜 커서 Y 좌표를 구한다
-		const activatorEvent = event.activatorEvent;
-		const startY = 'clientY' in activatorEvent ? (activatorEvent as PointerEvent).clientY : null;
+		const startY = getActivatorClientY(event.activatorEvent);
 
 		if (startY === null) {
 			setOverId(null);
