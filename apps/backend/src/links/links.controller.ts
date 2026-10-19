@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	HttpCode,
+	Param,
+	ParseUUIDPipe,
+	Patch,
+	Post,
+	Query,
+	Req,
+	UseGuards,
+} from '@nestjs/common';
 
 import type { Request } from 'express';
 
@@ -28,6 +41,18 @@ export class LinksController {
 		const { sub: userId } = req.user as JwtPayload;
 
 		return await this.linksService.searchLinks({ userId, q: typeof q === 'string' ? q : '' });
+	}
+
+	@Patch(':id/folder')
+	@UseGuards(JwtAuthGuard)
+	async moveLink(
+		@Req() req: Request,
+		@Param('id', ParseUUIDPipe) linkId: string,
+		@Body('folderId', ParseUUIDPipe) folderId: string,
+	) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.linksService.moveLink({ userId, linkId, folderId });
 	}
 
 	@Delete(':id')

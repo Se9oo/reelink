@@ -85,6 +85,42 @@ export class LinksService {
 	}
 
 	/**
+	 * 링크를 다른 폴더로 옮긴다.
+	 * @param userId string
+	 * @param linkId string
+	 * @param folderId string 옮겨갈 폴더, 내 폴더이고 삭제되지 않아야 함
+	 * @returns Link
+	 * @throws BadRequestException folderId가 없는 경우
+	 * @throws NotFoundException 링크가 없거나 삭제됐거나 내 링크가 아닌 경우, 폴더가 없거나 삭제됐거나 내 폴더가 아닌 경우
+	 */
+	async moveLink({ userId, linkId, folderId }: { userId: string; linkId: string; folderId: string }): Promise<Link> {
+		if (!folderId) {
+			throw new BadRequestException('folderId는 필수입니다.');
+		}
+
+		const [folder] = await this.db
+			.select()
+			.from(folders)
+			.where(and(eq(folders.id, folderId), eq(folders.userId, userId), isNull(folders.deletedAt)));
+
+		if (!folder) {
+			throw new NotFoundException();
+		}
+
+		const [link] = await this.db
+			.update(links)
+			.set({ folderId })
+			.where(and(eq(links.id, linkId), eq(links.userId, userId), isNull(links.deletedAt)))
+			.returning();
+
+		if (!link) {
+			throw new NotFoundException();
+		}
+
+		return link;
+	}
+
+	/**
 	 * 링크를 소프트 삭제한다.
 	 * @param userId string
 	 * @param linkId string

@@ -273,4 +273,130 @@ describe('LinksController (e2e)', () => {
 			await request(app.getHttpServer()).get('/links/search').query({ q: 'a' }).expect(401);
 		});
 	});
+
+	describe('Patch /links/:id/folder', () => {
+		async function createFolder(name: string, token = accessToken) {
+			const res = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${token}`)
+				.send({ name })
+				.expect(201);
+
+			return res.body as { id: string };
+		}
+
+		async function createLink(folderId: string) {
+			const res = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://naver.com', folderId })
+				.expect(201);
+
+			return res.body as { id: string };
+		}
+
+		function move(linkId: string, folderId: string, token = accessToken) {
+			return request(app.getHttpServer())
+				.patch(`/links/${linkId}/folder`)
+				.set('Cookie', `access_token=${token}`)
+				.send({ folderId });
+		}
+
+		test('정상 이동시 200과 바뀐 folderId가 반환된다.', async () => {
+			const from = await createFolder('이동 전');
+			const to = await createFolder('이동 후');
+			const link = await createLink(from.id);
+
+			const res = await move(link.id, to.id).expect(200);
+
+			expect(res.body.folderId).toBe(to.id);
+
+			const [saved] = await db.select().from(links).where(eq(links.id, link.id));
+
+			expect(saved.folderId).toBe(to.id);
+		});
+
+		test('남의 링크거나 존재하지 않는 링크면 404 오류를 반환한다.', async () => {
+			const [otherUser] = await db.insert(users).values({ email: '이동-다른이메일', nickname: '다른유저' }).returning();
+			const otherToken = await app.get(JwtService).signAsync({ sub: otherUser.id });
+			const otherFolder = await createFolder('남의 폴더', otherToken);
+			const otherLink = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${otherToken}`)
+				.send({ url: 'https://naver.com', folderId: otherFolder.id })
+				.expect(201);
+			const mine = await createFolder('내 폴더');
+
+			await move(otherLink.body.id, mine.id).expect(404);
+			await move(crypto.randomUUID(), mine.id).expect(404);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('대상 폴더가 남의 폴더이거나 삭제됐거나 없으면 404 오류를 반환하고 링크는 그대로다.', async () => {
+			const [otherUser] = await db
+				.insert(users)
+				.values({ email: '이동2-다른이메일', nickname: '다른유저' })
+				.returning();
+			const otherToken = await app.get(JwtService).signAsync({ sub: otherUser.id });
+			const otherFolder = await createFolder('남의 폴더', otherToken);
+			const from = await createFolder('원래 폴더');
+			const deleted = await createFolder('삭제될 폴더');
+			const link = await createLink(from.id);
+
+			await request(app.getHttpServer())
+				.delete(`/folders/${deleted.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await move(link.id, otherFolder.id).expect(404);
+			await move(link.id, deleted.id).expect(404);
+			await move(link.id, crypto.randomUUID()).expect(404);
+
+			const [saved] = await db.select().from(links).where(eq(links.id, link.id));
+
+			expect(saved.folderId).toBe(from.id);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('삭제된 링크는 이동할 수 없다.', async () => {
+			const from = await createFolder('삭제 링크 폴더');
+			const to = await createFolder('삭제 링크 대상');
+			const link = await createLink(from.id);
+
+			await request(app.getHttpServer())
+				.delete(`/links/${link.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await move(link.id, to.id).expect(404);
+		});
+
+		test('folderId가 없으면 400 오류를 반환한다.', async () => {
+			const from = await createFolder('빈 바디 폴더');
+			const link = await createLink(from.id);
+
+			await request(app.getHttpServer())
+				.patch(`/links/${link.id}/folder`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({})
+				.expect(400);
+		});
+
+		test('uuid 형식이 아닌 링크 id나 folderId면 400 오류를 반환한다.', async () => {
+			const from = await createFolder('uuid 검증 폴더');
+			const link = await createLink(from.id);
+
+			await move('not-a-uuid', from.id).expect(400);
+			await move(link.id, 'not-a-uuid').expect(400);
+		});
+
+		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
+			await request(app.getHttpServer())
+				.patch(`/links/${crypto.randomUUID()}/folder`)
+				.send({ folderId: crypto.randomUUID() })
+				.expect(401);
+		});
+	});
 });
