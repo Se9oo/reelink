@@ -38,6 +38,16 @@ describe('LinkRow', () => {
 		expect(screen.getByText('n.news.naver.com')).toBeInTheDocument();
 	});
 
+	test('호스트명 옆에 저장 시점을 보여준다', () => {
+		const threeDaysAgo = new Date(Date.now() - 3.5 * 24 * 60 * 60 * 1000).toISOString();
+
+		render(
+			<LinkRow link={link({ createdAt: threeDaysAgo })} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />,
+		);
+
+		expect(screen.getByText('3일 전 저장')).toBeInTheDocument();
+	});
+
 	test('제목이 없으면 호스트명을 제목으로 보여준다', () => {
 		render(<LinkRow link={link({ title: null })} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />);
 

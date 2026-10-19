@@ -34,7 +34,7 @@ export function TrashPage() {
 	};
 
 	return (
-		<div className="min-h-full bg-[var(--seed-color-bg-layer-basement)]">
+		<div className="min-h-full bg-[var(--app-bg-canvas)]">
 			<TrashMobileView folders={data.folders} links={data.links} {...handlers} />
 			<TrashDesktopView folders={data.folders} links={data.links} {...handlers} />
 		</div>

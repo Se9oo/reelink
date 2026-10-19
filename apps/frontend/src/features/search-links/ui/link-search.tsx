@@ -35,7 +35,8 @@ export function LinkSearch({ children }: LinkSearchProps) {
 			<div className="px-4 pt-2 pb-2 lg:px-0">
 				<div
 					className="flex h-10 items-center gap-2 rounded-lg bg-[var(--seed-color-bg-neutral-weak)] pr-2 pl-3
-						lg:h-[38px]"
+						md:max-w-[360px] md:border md:border-[var(--seed-color-stroke-neutral-subtle)]
+						md:bg-[var(--seed-color-bg-layer-default)] lg:h-[38px]"
 				>
 					<IconMagnifyingglassLine size={16} className="shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
 					<input
@@ -64,9 +65,9 @@ export function LinkSearch({ children }: LinkSearchProps) {
 			{!searching ? (
 				children
 			) : (
-				<div className="flex flex-col">
+				<div className="flex flex-col md:grid md:grid-cols-2 md:gap-2 md:px-4 lg:px-0 2xl:grid-cols-3">
 					{results && resultsAreCurrent && (
-						<div className="px-4 pb-2 text-[12.5px] text-[var(--seed-color-fg-neutral-muted)] lg:px-0">
+						<div className="px-4 pb-2 text-[12.5px] text-[var(--seed-color-fg-neutral-muted)] md:col-span-full md:px-0">
 							{results.length === 0 ? '검색 결과가 없어요' : `전체 링크에서 검색 · 결과 ${results.length}개`}
 						</div>
 					)}
