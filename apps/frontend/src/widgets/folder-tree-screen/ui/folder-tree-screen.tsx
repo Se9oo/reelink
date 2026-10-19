@@ -78,7 +78,7 @@ export function FolderTreeScreen() {
 					modifiers={[restrictToVerticalAxis]}
 					{...dragHandlers}
 				>
-					<ul>
+					<ul className="isolate">
 						{sortableItems.map((item) => (
 							<MobileFolderRow
 								key={item.id}

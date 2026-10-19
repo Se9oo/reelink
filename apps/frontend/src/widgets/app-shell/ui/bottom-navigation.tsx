@@ -24,7 +24,7 @@ export function BottomNavigation() {
 
 	return (
 		<nav
-			className="bottom-navigation fixed inset-x-0 bottom-0 z-40 flex h-16 border-t
+			className="bottom-navigation fixed inset-x-0 bottom-0 z-[1] flex h-16 border-t
 				border-[var(--seed-color-stroke-neutral-subtle)] bg-[var(--seed-color-bg-layer-default)] lg:hidden"
 		>
 			{TABS.map(({ href, label, Icon }) => {

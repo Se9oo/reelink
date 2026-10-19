@@ -14,7 +14,7 @@ export function FloatingLinkButton() {
 	}
 
 	return (
-		<div className="fixed right-5 bottom-[84px] z-40 lg:bottom-5">
+		<div className="fixed right-5 bottom-[84px] z-[1] lg:bottom-5">
 			<FloatingActionButton icon={<IconPlusFill />} label="링크 등록" onClick={openRegisterLinkModal} />
 		</div>
 	);
