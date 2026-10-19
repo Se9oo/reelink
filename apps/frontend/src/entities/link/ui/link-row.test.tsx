@@ -26,7 +26,7 @@ function link(overrides: Partial<Link> = {}): Link {
 
 describe('LinkRow', () => {
 	test('제목·저장 이유·호스트명을 보여주고 새 탭으로 여는 링크를 건다', () => {
-		render(<LinkRow link={link()} onMove={() => {}} onDelete={() => {}} />);
+		render(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />);
 
 		const anchor = screen.getByRole('link');
 
@@ -39,32 +39,48 @@ describe('LinkRow', () => {
 	});
 
 	test('제목이 없으면 호스트명을 제목으로 보여준다', () => {
-		render(<LinkRow link={link({ title: null })} onMove={() => {}} onDelete={() => {}} />);
+		render(<LinkRow link={link({ title: null })} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />);
 
 		expect(screen.getAllByText('n.news.naver.com')).toHaveLength(2);
 	});
 
-	test('저장 이유가 없으면 안내 문구를 보여준다', () => {
-		render(<LinkRow link={link({ savedReason: null })} onMove={() => {}} onDelete={() => {}} />);
+	test('저장 이유가 없으면 저장 이유 남기기 버튼을 누를 때 onEdit이 호출된다', async () => {
+		const user = userEvent.setup();
+		const onEdit = vi.fn();
 
-		expect(screen.getByText('저장 이유 없음')).toBeInTheDocument();
+		render(<LinkRow link={link({ savedReason: null })} onMove={() => {}} onDelete={() => {}} onEdit={onEdit} />);
+
+		await user.click(screen.getByRole('button', { name: '저장 이유 남기기' }));
+
+		expect(onEdit).toHaveBeenCalledTimes(1);
+	});
+
+	test('저장 이유가 있으면 저장 이유 남기기 버튼이 없다', () => {
+		render(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+
+		expect(screen.queryByRole('button', { name: '저장 이유 남기기' })).not.toBeInTheDocument();
 	});
 
 	test('folderPath가 있을 때만 폴더 경로 캡션을 보여준다', () => {
 		const { rerender } = render(
-			<LinkRow link={link()} folderPath="개발 > React" onMove={() => {}} onDelete={() => {}} />,
+			<LinkRow link={link()} folderPath="개발 > React" onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />,
 		);
 
 		expect(screen.getByText('개발 > React 안에 있음')).toBeInTheDocument();
 
-		rerender(<LinkRow link={link()} onMove={() => {}} onDelete={() => {}} />);
+		rerender(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />);
 
 		expect(screen.queryByText('안에 있음', { exact: false })).not.toBeInTheDocument();
 	});
 
 	test('썸네일이 있으면 이미지를 보여준다', () => {
 		const { container } = render(
-			<LinkRow link={link({ thumbnailUrl: 'https://img.example.com/a.png' })} onMove={() => {}} onDelete={() => {}} />,
+			<LinkRow
+				link={link({ thumbnailUrl: 'https://img.example.com/a.png' })}
+				onMove={() => {}}
+				onEdit={() => {}}
+				onDelete={() => {}}
+			/>,
 		);
 
 		expect(container.querySelector('img')).toHaveAttribute('src', 'https://img.example.com/a.png');
@@ -74,7 +90,7 @@ describe('LinkRow', () => {
 		const user = userEvent.setup();
 		const onMove = vi.fn();
 
-		render(<LinkRow link={link()} onMove={onMove} onDelete={() => {}} />);
+		render(<LinkRow link={link()} onMove={onMove} onEdit={() => {}} onDelete={() => {}} />);
 
 		await user.click(screen.getByRole('button', { name: '더보기' }));
 		await user.click(await screen.findByRole('menuitem', { name: '폴더 이동' }));
@@ -86,7 +102,7 @@ describe('LinkRow', () => {
 		const user = userEvent.setup();
 		const onDelete = vi.fn();
 
-		render(<LinkRow link={link()} onMove={() => {}} onDelete={onDelete} />);
+		render(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onDelete={onDelete} />);
 
 		await user.click(screen.getByRole('button', { name: '더보기' }));
 		await user.click(await screen.findByRole('menuitem', { name: '삭제' }));
@@ -94,10 +110,22 @@ describe('LinkRow', () => {
 		expect(onDelete).toHaveBeenCalledTimes(1);
 	});
 
+	test('더보기 메뉴에서 수정을 누르면 onEdit이 호출된다', async () => {
+		const user = userEvent.setup();
+		const onEdit = vi.fn();
+
+		render(<LinkRow link={link()} onMove={() => {}} onDelete={() => {}} onEdit={onEdit} />);
+
+		await user.click(screen.getByRole('button', { name: '더보기' }));
+		await user.click(await screen.findByRole('menuitem', { name: '수정' }));
+
+		expect(onEdit).toHaveBeenCalledTimes(1);
+	});
+
 	test('onMove를 넘기지 않으면 메뉴에 폴더 이동이 없다', async () => {
 		const user = userEvent.setup();
 
-		render(<LinkRow link={link()} onDelete={() => {}} />);
+		render(<LinkRow link={link()} onEdit={() => {}} onDelete={() => {}} />);
 
 		await user.click(screen.getByRole('button', { name: '더보기' }));
 

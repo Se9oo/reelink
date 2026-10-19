@@ -28,7 +28,7 @@ export function LinkSearch({ children }: LinkSearchProps) {
 
 	const { data: results } = useQuery(searchLinksQueryOptions(query));
 	const { data: folders = [] } = useQuery(foldersQueryOptions());
-	const { onDelete, onMove } = useLinkActions();
+	const { onDelete, onMove, onEdit } = useLinkActions();
 
 	return (
 		<>
@@ -77,6 +77,7 @@ export function LinkSearch({ children }: LinkSearchProps) {
 								link={link}
 								folderPath={buildFolderPath(folders, link.folderId)}
 								onMove={() => onMove(link)}
+								onEdit={() => onEdit(link)}
 								onDelete={() => onDelete(link)}
 							/>
 						))}

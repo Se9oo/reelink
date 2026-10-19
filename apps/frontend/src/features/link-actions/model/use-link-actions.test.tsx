@@ -37,7 +37,7 @@ const folders = [
 ];
 
 function Harness() {
-	const { onDelete, onMove } = useLinkActions();
+	const { onDelete, onMove, onEdit } = useLinkActions();
 
 	return (
 		<>
@@ -46,6 +46,9 @@ function Harness() {
 			</button>
 			<button type="button" onClick={() => onMove(link)}>
 				이동하기
+			</button>
+			<button type="button" onClick={() => onEdit(link)}>
+				수정하기
 			</button>
 		</>
 	);
@@ -202,6 +205,64 @@ describe('useLinkActions', () => {
 
 			expect(await screen.findByText('링크를 옮기지 못했어요')).toBeInTheDocument();
 			expect(screen.queryByText('링크를 옮겼어요')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('링크 수정', () => {
+		async function openEditDialog(user: ReturnType<typeof userEvent.setup>) {
+			await user.click(screen.getByRole('button', { name: '수정하기' }));
+			await screen.findByText('링크 수정');
+		}
+
+		test('수정 창에는 현재 제목과 저장 이유가 채워져 있고 바꾸기 전에는 저장 버튼이 비활성이다', async () => {
+			const user = userEvent.setup();
+			renderHarness();
+
+			await openEditDialog(user);
+
+			expect(screen.getByRole('textbox', { name: /제목/ })).toHaveValue('예시');
+			expect(screen.getByRole('textbox', { name: /저장 이유/ })).toHaveValue('');
+			expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+		});
+
+		test('바뀐 필드만 보내서 수정 API를 호출하고 성공 스낵바를 띄운다', async () => {
+			const user = userEvent.setup();
+			renderHarness();
+
+			await openEditDialog(user);
+			await user.type(screen.getByRole('textbox', { name: /저장 이유/ }), '  나중에 읽기  ');
+			await user.click(screen.getByRole('button', { name: '저장' }));
+
+			await waitFor(() =>
+				expect(apiClient.patch).toHaveBeenCalledWith('links/l1', { json: { savedReason: '나중에 읽기' } }),
+			);
+			expect(await screen.findByText('링크를 수정했어요')).toBeInTheDocument();
+		});
+
+		test('제목을 모두 지우면 null로 보내 호스트명으로 돌아가게 한다', async () => {
+			const user = userEvent.setup();
+			renderHarness();
+
+			await openEditDialog(user);
+			await user.clear(screen.getByRole('textbox', { name: /제목/ }));
+			await user.click(screen.getByRole('button', { name: '저장' }));
+
+			await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/l1', { json: { title: null } }));
+		});
+
+		test('수정에 실패하면 실패 스낵바를 띄운다', async () => {
+			const user = userEvent.setup();
+			vi.mocked(apiClient.patch).mockImplementation((() => ({
+				json: async () => Promise.reject(new Error('fail')),
+			})) as never);
+			renderHarness();
+
+			await openEditDialog(user);
+			await user.type(screen.getByRole('textbox', { name: /저장 이유/ }), '이유');
+			await user.click(screen.getByRole('button', { name: '저장' }));
+
+			expect(await screen.findByText('링크를 수정하지 못했어요')).toBeInTheDocument();
+			expect(screen.queryByText('링크를 수정했어요')).not.toBeInTheDocument();
 		});
 	});
 });
