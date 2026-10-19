@@ -62,7 +62,7 @@ export function FolderRow({
 				{...listeners}
 				{...attributes}
 				style={{ paddingLeft: `${depth * VISUAL_INDENT_WIDTH}px` }}
-				className={`group flex h-8 items-center rounded-lg pr-1 text-sm ${
+				className={`group relative isolate flex h-8 items-center rounded-lg pr-1 text-sm ${
 					isNestTarget || isActive
 						? 'bg-[var(--seed-color-bg-brand-weak)] hover:bg-[var(--seed-color-bg-brand-weak-pressed)]'
 						: 'hover:bg-[var(--seed-color-bg-neutral-weak)]'
@@ -73,7 +73,7 @@ export function FolderRow({
 						type="button"
 						onClick={() => onToggle(item.id)}
 						aria-label={expanded ? `${item.name} 폴더 접기` : `${item.name} 폴더 펼치기`}
-						className="mx-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
+						className="relative z-10 mx-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
 							text-[var(--seed-color-fg-neutral-muted)] hover:bg-[var(--seed-color-bg-neutral-weak-pressed)]"
 					>
 						<IconChevronRightSmallLine
@@ -89,14 +89,18 @@ export function FolderRow({
 				) : (
 					<IconFolderLine size={16} className="mr-1.5 shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
 				)}
-				<NextLink href={folderDetailPath(item.id)} draggable={false} className="min-w-0 flex-1 truncate">
+				<NextLink
+					href={folderDetailPath(item.id)}
+					draggable={false}
+					className="min-w-0 flex-1 truncate after:absolute after:inset-0 after:rounded-lg"
+				>
 					{item.name}
 				</NextLink>
 				<button
 					type="button"
 					onClick={() => onRequestCreate(item.id, item.name)}
 					aria-label={`${item.name} 폴더 안에 새 폴더 만들기`}
-					className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
+					className="relative z-10 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
 						text-(--seed-color-fg-neutral-muted) opacity-100 hover:bg-(--seed-color-bg-neutral-weak-pressed)
 						lg:opacity-0 lg:group-hover:opacity-100"
 				>
@@ -106,7 +110,7 @@ export function FolderRow({
 					type="button"
 					onClick={() => onRequestDelete(item.id, item.name)}
 					aria-label={`${item.name} 폴더 삭제`}
-					className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
+					className="relative z-10 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
 						text-(--seed-color-fg-neutral-muted) opacity-100 hover:bg-(--seed-color-bg-critical-weak)
 						hover:text-(--seed-color-fg-critical) lg:opacity-0 lg:group-hover:opacity-100"
 				>

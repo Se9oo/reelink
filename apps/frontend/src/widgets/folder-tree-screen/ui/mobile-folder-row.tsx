@@ -54,7 +54,7 @@ export function MobileFolderRow({
 				{...listeners}
 				{...attributes}
 				onContextMenu={(event) => event.preventDefault()}
-				className={`flex h-11 items-center rounded-lg pr-1 select-none [-webkit-touch-callout:none] ${
+				className={`relative isolate flex h-11 items-center rounded-lg pr-1 select-none [-webkit-touch-callout:none] ${
 					isNestTarget ? 'bg-[var(--seed-color-bg-brand-weak)]' : ''
 				}`}
 				style={{ paddingLeft: `${item.depth * MOBILE_INDENT_WIDTH}px` }}
@@ -64,7 +64,7 @@ export function MobileFolderRow({
 						type="button"
 						onClick={() => onToggle(item.id)}
 						aria-label={expanded ? `${item.name} 폴더 접기` : `${item.name} 폴더 펼치기`}
-						className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg
+						className="relative z-10 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg
 							text-[var(--seed-color-fg-neutral-muted)]"
 					>
 						<IconChevronRightSmallLine
@@ -78,7 +78,7 @@ export function MobileFolderRow({
 				<NextLink
 					href={folderDetailPath(item.id)}
 					draggable={false}
-					className="flex h-11 min-w-0 flex-1 items-center gap-2"
+					className="flex h-11 min-w-0 flex-1 items-center gap-2 after:absolute after:inset-0 after:rounded-lg"
 				>
 					<IconFolderLine size={18} className="shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
 					<span className="truncate text-[15px] text-[var(--seed-color-fg-neutral)]">{item.name}</span>
@@ -92,7 +92,7 @@ export function MobileFolderRow({
 					type="button"
 					onClick={() => onRequestCreate(item.id, item.name)}
 					aria-label={`${item.name} 폴더 안에 새 폴더 만들기`}
-					className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg
+					className="relative z-10 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg
 						text-[var(--seed-color-fg-neutral-muted)]"
 				>
 					<IconPlusSmallLine size={20} />
