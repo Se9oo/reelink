@@ -26,8 +26,8 @@
 :root[data-seed-color-mode='system'][data-seed-user-color-scheme='dark'],
 :root[data-seed-color-mode='dark-only'],
 :root [data-seed-color-mode='dark-only'] {
-	--seed-color-palette-carrot-100: #001830;
-	--seed-color-palette-carrot-200: #002040;
+	--seed-color-palette-carrot-100: #0b2a4a;
+	--seed-color-palette-carrot-200: #12395f;
 	--seed-color-palette-carrot-300: #003357;
 	--seed-color-palette-carrot-400: #004d80;
 	--seed-color-palette-carrot-500: #0066a6;

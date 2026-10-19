@@ -56,7 +56,7 @@ export function AccountMenu({ showLabel = true, showHoverBackground = true, full
 					type="button"
 					aria-label={showLabel ? undefined : '계정 메뉴'}
 					className={`flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 ${fullWidth ? 'flex-1' : ''} ${
-						showHoverBackground ? 'hover:bg-[var(--seed-color-bg-neutral-muted)]' : ''
+						showHoverBackground ? 'hover:bg-[var(--seed-color-bg-neutral-weak)]' : ''
 					}`}
 				>
 					<Avatar size="24" src={me.avatarUrl ?? undefined} fallback={<IdentityPlaceholder identity="person" />} />

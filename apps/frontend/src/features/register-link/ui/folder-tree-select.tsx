@@ -8,6 +8,8 @@ import { FolderTreeNode } from '@/entities/folder/model/types';
 import { CreateFolderModal } from '@/entities/folder/ui/create-folder-modal';
 
 import { useToggleSet } from '@/shared/lib/use-toggle-set';
+import { IconFolderFill } from '@/shared/ui/icons/icon-folder-fill';
+import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
 
 interface FolderTreeSelectProps {
 	nodes: FolderTreeNode[];
@@ -62,6 +64,11 @@ export function FolderTreeSelect({ nodes, selectedId, onSelect, disabledId }: Fo
 						</button>
 					) : (
 						<span className="mx-1 h-6 w-6 shrink-0" />
+					)}
+					{selected ? (
+						<IconFolderFill size={16} className="mr-1.5 shrink-0 text-[var(--seed-color-fg-brand)]" />
+					) : (
+						<IconFolderLine size={16} className="mr-1.5 shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
 					)}
 					<span
 						className={`text-sm ${

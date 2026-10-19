@@ -64,8 +64,8 @@ export function FolderRow({
 				style={{ paddingLeft: `${depth * VISUAL_INDENT_WIDTH}px` }}
 				className={`group flex h-8 items-center rounded-lg pr-1 text-sm ${
 					isNestTarget || isActive
-						? 'bg-[var(--seed-color-bg-brand-weak)]'
-						: 'hover:bg-[var(--seed-color-bg-neutral-muted)]'
+						? 'bg-[var(--seed-color-bg-brand-weak)] hover:bg-[var(--seed-color-bg-brand-weak-pressed)]'
+						: 'hover:bg-[var(--seed-color-bg-neutral-weak)]'
 					} ${isActive ? 'font-semibold text-[var(--seed-color-fg-brand)]' : 'text-[var(--seed-color-fg-neutral)]'}`}
 			>
 				{hasChildren ? (
