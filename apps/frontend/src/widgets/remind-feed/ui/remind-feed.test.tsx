@@ -50,11 +50,21 @@ const feed = [
 	link({ id: 'l2', title: '좋은 글쓰기', url: 'https://brunch.co.kr/a' }),
 ];
 
-function mockApi(feedLinks: Link[]) {
+function mockApi(unviewed: Link[], revisit: Link[] = []) {
 	vi.mocked(apiClient.get).mockImplementation(((url: string) => ({
-		json: async () => (url === 'folders' ? folders : feedLinks),
+		json: async () => (url === 'folders' ? folders : { unviewed, revisit }),
 	})) as never);
 }
+
+const revisitLinks = [
+	link({
+		id: 'r1',
+		title: '예전에 본 글',
+		savedReason: '다시 읽고 싶었던 글',
+		status: 'viewed',
+		url: 'https://old.com',
+	}),
+];
 
 function renderFeed() {
 	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -110,12 +120,12 @@ describe('RemindFeed', () => {
 		expect(screen.queryByText('저장 이유 없음')).not.toBeInTheDocument();
 	});
 
-	test('안 본 링크가 없으면 정리 끝 안내를 보여준다', async () => {
+	test('보여줄 링크가 없으면 다시 볼 링크가 없다는 안내를 보여준다', async () => {
 		mockApi([]);
 		renderFeed();
 
-		expect(await screen.findByText('정리 끝!')).toBeInTheDocument();
-		expect(screen.getByText('새 링크가 오면 다시 보여드릴게요')).toBeInTheDocument();
+		expect(await screen.findByText('지금은 다시 볼 링크가 없어요')).toBeInTheDocument();
+		expect(screen.getByText('나중에 볼 링크를 저장하면, 잊기 전에 여기서 다시 보여드릴게요')).toBeInTheDocument();
 	});
 
 	test('카드를 눌러 열면 새 탭으로 열고 열람 처리하며, 카드는 봤어요 표시와 함께 남는다', async () => {
@@ -191,5 +201,48 @@ describe('RemindFeed', () => {
 		await chooseMoreMenuItem(user, '폴더로 가기');
 
 		expect(mockPush).toHaveBeenCalledWith('/folders/f1');
+	});
+
+	test('안 본 링크 다음에 구분 카드와 다시 보기 링크를 이어서 보여준다', async () => {
+		mockApi(feed, revisitLinks);
+		renderFeed();
+
+		expect(await screen.findByText('안 본 링크를 다 봤어요!')).toBeInTheDocument();
+		expect(screen.getByText('다시 읽고 싶었던 글')).toBeInTheDocument();
+		expect(screen.getByText('다시 보기')).toBeInTheDocument();
+		expect(screen.getByText('2 / 2')).toBeInTheDocument();
+	});
+
+	test('안 본 링크가 없어도 다시 볼 링크가 있으면 빈 안내 대신 다시 보기를 보여준다', async () => {
+		mockApi([], revisitLinks);
+		renderFeed();
+
+		expect(await screen.findByText('다시 읽고 싶었던 글')).toBeInTheDocument();
+		expect(screen.queryByText('지금은 다시 볼 링크가 없어요')).not.toBeInTheDocument();
+	});
+
+	test('다시 보기 링크를 열면 새 탭으로 열고 열람 처리 API는 다시 부르지 않는다', async () => {
+		const user = userEvent.setup();
+		mockApi([], revisitLinks);
+		renderFeed();
+
+		await user.click(await screen.findByRole('link', { name: /예전에 본 글/ }));
+
+		expect(apiClient.patch).not.toHaveBeenCalled();
+	});
+
+	test('보여줄 링크가 하나도 없으면 링크 등록 버튼을 함께 보여준다', async () => {
+		mockApi([]);
+		renderFeed();
+
+		expect(await screen.findByRole('button', { name: '링크 등록하기' })).toBeInTheDocument();
+	});
+
+	test('목록 맨 끝에 오늘은 여기까지 카드를 붙인다', async () => {
+		mockApi(feed, revisitLinks);
+		renderFeed();
+
+		expect(await screen.findByText('오늘은 여기까지!')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: '링크 등록하기' })).toBeInTheDocument();
 	});
 });

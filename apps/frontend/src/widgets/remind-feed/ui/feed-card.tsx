@@ -14,14 +14,15 @@ function fallbackColor(host: string) {
 
 interface FeedCardProps {
 	link: Link;
-	position: number;
-	total: number;
+	position?: number;
+	total?: number;
 	folderPath: string;
 	viewed: boolean;
+	revisit: boolean;
 	onOpen: () => void;
 }
 
-export function FeedCard({ link, position, total, folderPath, viewed, onOpen }: FeedCardProps) {
+export function FeedCard({ link, position, total, folderPath, viewed, revisit, onOpen }: FeedCardProps) {
 	const host = new URL(link.url).hostname;
 
 	return (
@@ -64,10 +65,16 @@ export function FeedCard({ link, position, total, folderPath, viewed, onOpen }: 
 			<div className="absolute inset-0 bg-gradient-to-b from-transparent from-35% to-[rgb(10_14_20/0.82)] to-80%" />
 
 			<div className="absolute inset-x-3.5 top-3.5 flex items-center justify-between text-xs font-semibold">
-				<span className="rounded-full bg-[rgb(0_0_0/0.35)] px-2.5 py-1 backdrop-blur-sm">
-					{position} / {total}
-				</span>
-				{viewed ? (
+				{position !== undefined ? (
+					<span className="rounded-full bg-[rgb(0_0_0/0.35)] px-2.5 py-1 backdrop-blur-sm">
+						{position} / {total}
+					</span>
+				) : (
+					<span />
+				)}
+				{revisit ? (
+					<span className="rounded-full bg-[rgb(0_0_0/0.35)] px-2.5 py-1 backdrop-blur-sm">다시 보기</span>
+				) : viewed ? (
 					<span className="rounded-full bg-[var(--seed-color-bg-brand-solid)] px-2.5 py-1">봤어요</span>
 				) : (
 					<span className="rounded-full bg-[rgb(0_0_0/0.35)] px-2.5 py-1 backdrop-blur-sm">

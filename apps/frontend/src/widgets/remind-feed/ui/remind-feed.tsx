@@ -1,87 +1,139 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { IconCheckmarkLine, IconChevronDownLine, IconChevronUpLine } from '@karrotmarket/react-monochrome-icon';
-import { useQuery } from '@tanstack/react-query';
+import {
+	IconArrowClockwiseCircularLine,
+	IconCheckmarkLine,
+	IconChevronDownLine,
+	IconChevronUpLine,
+} from '@karrotmarket/react-monochrome-icon';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { overlay } from 'overlay-kit';
+import { ActionButton } from 'seed-design/ui/action-button';
 
+import { mergeFeed } from '@/widgets/remind-feed/model/merge-feed';
 import { FeedActions } from '@/widgets/remind-feed/ui/feed-actions';
 import { FeedCard } from '@/widgets/remind-feed/ui/feed-card';
 
 import { useLinkActions } from '@/features/link-actions/model/use-link-actions';
+import { RegisterLinkModal } from '@/features/register-link/ui/register-link-modal';
 
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { buildFolderPath } from '@/entities/folder/model/build-folder-path';
-import { feedQueryOptions } from '@/entities/link/api/get-feed';
+import { type Feed, feedKeys, feedQueryOptions } from '@/entities/link/api/get-feed';
 import { useViewLink } from '@/entities/link/api/view-link';
 import { Link } from '@/entities/link/model/types';
 
 import { folderDetailPath } from '@/shared/config/routes';
 
+type Section = 'unviewed' | 'revisit';
+type Entry = { type: 'link'; link: Link; section: Section } | { type: 'divider' } | { type: 'end' };
+
 export function RemindFeed() {
 	const { data } = useQuery(feedQueryOptions());
 	const { data: folders = [] } = useQuery(foldersQueryOptions());
+	const queryClient = useQueryClient();
 	const viewLink = useViewLink();
 	const { onDelete, onCopy, onEdit, onMove } = useLinkActions();
 	const router = useRouter();
 	const listRef = useRef<HTMLDivElement>(null);
 
-	const [items, setItems] = useState<Link[] | null>(null);
+	const [source, setSource] = useState<Feed | null>(null);
+	const [lists, setLists] = useState<Record<Section, Link[]>>({ unviewed: [], revisit: [] });
 	const [viewedIds, setViewedIds] = useState<Set<string>>(new Set());
 
-	if (items === null && data) {
-		setItems(data);
+	if (data && data !== source) {
+		setLists(source ? mergeFeed(lists, data) : data);
+		setSource(data);
 	}
 
-	if (!items) {
+	if (!source) {
 		return null;
 	}
 
-	if (items.length === 0) {
+	const entries: Entry[] = [
+		...lists.unviewed.map((link) => ({ type: 'link' as const, link, section: 'unviewed' as const })),
+		...(lists.revisit.length > 0 ? [{ type: 'divider' as const }] : []),
+		...lists.revisit.map((link) => ({ type: 'link' as const, link, section: 'revisit' as const })),
+	];
+
+	if (entries.length > 0) {
+		entries.push({ type: 'end' });
+	}
+
+	function openRegisterModal() {
+		overlay.open(({ isOpen, close }) => (
+			<RegisterLinkModal
+				open={isOpen}
+				onOpenChange={(open) => !open && close()}
+				onRegistered={() => {
+					close();
+					queryClient.invalidateQueries({ queryKey: feedKeys.all });
+				}}
+			/>
+		));
+	}
+
+	const registerButton = (
+		<ActionButton variant="brandSolid" size="medium" onClick={openRegisterModal} className="mt-3">
+			링크 등록하기
+		</ActionButton>
+	);
+
+	if (entries.length === 0) {
 		return (
-			<div className="flex h-full flex-col items-center justify-center gap-2.5 p-6 text-center">
-				<div
-					className="mb-1 flex h-20 w-20 items-center justify-center rounded-[26px] bg-[var(--seed-color-bg-brand-weak)]
-						text-[var(--seed-color-fg-brand)]"
-				>
-					<IconCheckmarkLine size={36} />
-				</div>
-				<p className="text-[17px] font-bold text-[var(--seed-color-fg-neutral)]">정리 끝!</p>
-				<p className="text-sm text-[var(--seed-color-fg-neutral-muted)]">새 링크가 오면 다시 보여드릴게요</p>
-			</div>
+			<FeedMessage
+				icon={<IconArrowClockwiseCircularLine size={36} />}
+				title="지금은 다시 볼 링크가 없어요"
+				description="나중에 볼 링크를 저장하면, 잊기 전에 여기서 다시 보여드릴게요"
+				className="h-full"
+			>
+				{registerButton}
+			</FeedMessage>
 		);
 	}
 
-	function open(link: Link) {
+	function open(link: Link, section: Section) {
+		if (section === 'revisit') {
+			return;
+		}
+
 		setViewedIds((prev) => new Set(prev).add(link.id));
 		viewLink.mutate(link.id);
 	}
 
-	function restoreAt(link: Link, index: number) {
-		setItems((prev) => {
-			if (!prev || prev.some((item) => item.id === link.id)) {
+	function restoreAt(link: Link, section: Section, index: number) {
+		setLists((prev) => {
+			if (prev[section].some((item) => item.id === link.id)) {
 				return prev;
 			}
 
-			const next = [...prev];
+			const next = [...prev[section]];
 			next.splice(Math.min(index, next.length), 0, link);
 
-			return next;
+			return { ...prev, [section]: next };
 		});
 	}
 
 	function replace(updated: Link) {
-		setItems((prev) => prev?.map((item) => (item.id === updated.id ? updated : item)) ?? prev);
+		setLists((prev) => ({
+			unviewed: prev.unviewed.map((item) => (item.id === updated.id ? updated : item)),
+			revisit: prev.revisit.map((item) => (item.id === updated.id ? updated : item)),
+		}));
 	}
 
-	function remove(link: Link) {
-		const index = items?.findIndex((item) => item.id === link.id) ?? -1;
+	function remove(link: Link, section: Section) {
+		const index = lists[section].findIndex((item) => item.id === link.id);
 
-		setItems((prev) => prev?.filter((item) => item.id !== link.id) ?? prev);
-		onDelete(link, { onFailed: () => restoreAt(link, index), onRestored: () => restoreAt(link, index) });
+		setLists((prev) => ({ ...prev, [section]: prev[section].filter((item) => item.id !== link.id) }));
+		onDelete(link, {
+			onFailed: () => restoreAt(link, section, index),
+			onRestored: () => restoreAt(link, section, index),
+		});
 	}
 
 	function currentIndex() {
@@ -97,13 +149,15 @@ export function RemindFeed() {
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
-		if (event.key === 'Delete' || event.key === 'Backspace') {
-			const current = items?.[currentIndex()];
+		if (event.key !== 'Delete' && event.key !== 'Backspace') {
+			return;
+		}
 
-			if (current) {
-				event.preventDefault();
-				remove(current);
-			}
+		const current = entries[currentIndex()];
+
+		if (current?.type === 'link') {
+			event.preventDefault();
+			remove(current.link, current.section);
 		}
 	}
 
@@ -117,32 +171,53 @@ export function RemindFeed() {
 				className="h-full snap-y snap-mandatory [scrollbar-width:none] overflow-y-auto overscroll-contain outline-none
 					[&::-webkit-scrollbar]:hidden"
 			>
-				{items.map((link, index) => (
-					<section
-						key={link.id}
-						className="relative flex h-full snap-start snap-always items-center justify-center gap-3.5 p-2.5 lg:p-4"
-					>
-						<div className="relative h-full w-full max-w-[420px] lg:w-[520px] lg:max-w-none">
-							<FeedCard
-								link={link}
-								position={index + 1}
-								total={items.length}
-								folderPath={buildFolderPath(folders, link.folderId)}
-								viewed={viewedIds.has(link.id)}
-								onOpen={() => open(link)}
-							/>
-							<FeedActions
-								url={link.url}
-								onOpen={() => open(link)}
-								onCopy={() => onCopy(link)}
-								onDelete={() => remove(link)}
-								onEdit={() => onEdit(link, { onUpdated: replace })}
-								onMove={() => onMove(link, { onUpdated: replace })}
-								onGoToFolder={() => router.push(folderDetailPath(link.folderId))}
-							/>
-						</div>
-					</section>
-				))}
+				{entries.map((entry, index) =>
+					entry.type === 'divider' ? (
+						<FeedMessage
+							key="divider"
+							icon={<IconArrowClockwiseCircularLine size={36} />}
+							title="안 본 링크를 다 봤어요!"
+							description="이제 예전에 본 링크를 다시 꺼내볼게요"
+							className="h-full snap-start snap-always"
+						/>
+					) : entry.type === 'end' ? (
+						<FeedMessage
+							key="end"
+							icon={<IconCheckmarkLine size={36} />}
+							title="오늘은 여기까지!"
+							description="새 링크가 오면 다시 보여드릴게요"
+							className="h-full snap-start snap-always"
+						>
+							{registerButton}
+						</FeedMessage>
+					) : (
+						<section
+							key={entry.link.id}
+							className="relative flex h-full snap-start snap-always items-center justify-center gap-3.5 p-2.5 lg:p-4"
+						>
+							<div className="relative h-full w-full max-w-[420px] lg:w-[520px] lg:max-w-none">
+								<FeedCard
+									link={entry.link}
+									position={entry.section === 'unviewed' ? index + 1 : undefined}
+									total={lists.unviewed.length}
+									folderPath={buildFolderPath(folders, entry.link.folderId)}
+									viewed={viewedIds.has(entry.link.id)}
+									revisit={entry.section === 'revisit'}
+									onOpen={() => open(entry.link, entry.section)}
+								/>
+								<FeedActions
+									url={entry.link.url}
+									onOpen={() => open(entry.link, entry.section)}
+									onCopy={() => onCopy(entry.link)}
+									onDelete={() => remove(entry.link, entry.section)}
+									onEdit={() => onEdit(entry.link, { onUpdated: replace })}
+									onMove={() => onMove(entry.link, { onUpdated: replace })}
+									onGoToFolder={() => router.push(folderDetailPath(entry.link.folderId))}
+								/>
+							</div>
+						</section>
+					),
+				)}
 			</div>
 
 			<div className="absolute top-1/2 right-6 hidden -translate-y-1/2 flex-col gap-2.5 xl:flex">
@@ -168,5 +243,29 @@ export function RemindFeed() {
 				</button>
 			</div>
 		</div>
+	);
+}
+
+interface FeedMessageProps {
+	icon: ReactNode;
+	title: string;
+	description: string;
+	className?: string;
+	children?: ReactNode;
+}
+
+function FeedMessage({ icon, title, description, className = '', children }: FeedMessageProps) {
+	return (
+		<section className={`flex flex-col items-center justify-center gap-2.5 p-6 text-center ${className}`}>
+			<div
+				className="mb-1 flex h-20 w-20 items-center justify-center rounded-[26px] bg-[var(--seed-color-bg-brand-weak)]
+					text-[var(--seed-color-fg-brand)]"
+			>
+				{icon}
+			</div>
+			<p className="text-[17px] font-bold text-[var(--seed-color-fg-neutral)]">{title}</p>
+			<p className="text-sm text-[var(--seed-color-fg-neutral-muted)]">{description}</p>
+			{children}
+		</section>
 	);
 }
