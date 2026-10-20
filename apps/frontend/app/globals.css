@@ -106,3 +106,9 @@ button:not(:disabled) {
 		bottom: 4rem;
 	}
 }
+
+@media (min-width: 1024px) {
+	body:has(.app-sidebar) .seed-snackbar-region {
+		left: calc(15rem + env(safe-area-inset-left, 0px));
+	}
+}

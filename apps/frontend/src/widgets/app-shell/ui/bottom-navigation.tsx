@@ -9,6 +9,7 @@ import {
 	IconHouseFill,
 	IconVertrectangle2HorizontalFill,
 } from '@karrotmarket/react-monochrome-icon';
+import { SnackbarAvoidOverlap } from 'seed-design/ui/snackbar';
 
 import { ROUTES } from '@/shared/config/routes';
 
@@ -23,26 +24,28 @@ export function BottomNavigation() {
 	const pathname = usePathname();
 
 	return (
-		<nav
-			className="bottom-navigation fixed inset-x-0 bottom-0 z-[1] flex h-16 border-t
-				border-[var(--seed-color-stroke-neutral-subtle)] bg-[var(--seed-color-bg-layer-default)] lg:hidden"
-		>
-			{TABS.map(({ href, label, Icon }) => {
-				const isActive = pathname === href || pathname.startsWith(`${href}/`);
+		<SnackbarAvoidOverlap>
+			<nav
+				className="bottom-navigation fixed inset-x-0 bottom-0 z-[1] flex h-16 border-t
+					border-[var(--seed-color-stroke-neutral-subtle)] bg-[var(--seed-color-bg-layer-default)] lg:hidden"
+			>
+				{TABS.map(({ href, label, Icon }) => {
+					const isActive = pathname === href || pathname.startsWith(`${href}/`);
 
-				return (
-					<Link
-						key={href}
-						href={href}
-						className={`flex flex-1 flex-col items-center justify-center gap-1 text-xs ${
-							isActive ? 'text-[var(--seed-color-fg-brand)]' : 'text-[var(--seed-color-fg-neutral-muted)]'
-						}`}
-					>
-						<Icon size={24} />
-						{label}
-					</Link>
-				);
-			})}
-		</nav>
+					return (
+						<Link
+							key={href}
+							href={href}
+							className={`flex flex-1 flex-col items-center justify-center gap-1 text-xs ${
+								isActive ? 'text-[var(--seed-color-fg-brand)]' : 'text-[var(--seed-color-fg-neutral-muted)]'
+							}`}
+						>
+							<Icon size={24} />
+							{label}
+						</Link>
+					);
+				})}
+			</nav>
+		</SnackbarAvoidOverlap>
 	);
 }

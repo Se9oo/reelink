@@ -1,16 +1,26 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
+
 import { IconPlusFill } from '@karrotmarket/react-monochrome-icon';
 import { overlay } from 'overlay-kit';
 import { FloatingActionButton } from 'seed-design/ui/floating-action-button';
 
 import { RegisterLinkModal } from '@/features/register-link/ui/register-link-modal';
 
+import { ROUTES } from '@/shared/config/routes';
+
 export function FloatingLinkButton() {
+	const pathname = usePathname();
+
 	function openRegisterLinkModal() {
 		overlay.open(({ isOpen, close }) => (
 			<RegisterLinkModal open={isOpen} onOpenChange={(open) => !open && close()} onRegistered={() => close()} />
 		));
+	}
+
+	if (pathname === ROUTES.FEED) {
+		return null;
 	}
 
 	return (

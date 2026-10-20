@@ -13,6 +13,10 @@ import { useUpdateLink } from '@/entities/link/api/update-link';
 import { Link } from '@/entities/link/model/types';
 import { useRestoreItem } from '@/entities/trash/api/restore-item';
 
+interface UpdatedCallback {
+	onUpdated?: (link: Link) => void;
+}
+
 export function useLinkActions() {
 	const deleteLink = useDeleteLink();
 	const moveLink = useMoveLink();
@@ -50,11 +54,12 @@ export function useLinkActions() {
 		});
 	}
 
-	function moveTo(link: Link, folderId: string) {
+	function moveTo(link: Link, folderId: string, { onUpdated }: UpdatedCallback) {
 		moveLink.mutate(
 			{ linkId: link.id, folderId },
 			{
-				onSuccess: () => {
+				onSuccess: (moved) => {
+					onUpdated?.(moved);
 					snackbar.create({
 						render: () => (
 							<Snackbar
@@ -63,7 +68,7 @@ export function useLinkActions() {
 								onAction={() =>
 									moveLink.mutate(
 										{ linkId: link.id, folderId: link.folderId },
-										{ onError: () => showFailure('되돌리지 못했어요') },
+										{ onSuccess: onUpdated, onError: () => showFailure('되돌리지 못했어요') },
 									)
 								}
 							/>
@@ -75,18 +80,18 @@ export function useLinkActions() {
 		);
 	}
 
-	function onMove(link: Link) {
+	function onMove(link: Link, callbacks: UpdatedCallback = {}) {
 		overlay.open(({ isOpen, close }) => (
 			<MoveLinkDialog
 				open={isOpen}
 				onOpenChange={(open) => !open && close()}
 				currentFolderId={link.folderId}
-				onConfirm={(folderId) => moveTo(link, folderId)}
+				onConfirm={(folderId) => moveTo(link, folderId, callbacks)}
 			/>
 		));
 	}
 
-	function onEdit(link: Link) {
+	function onEdit(link: Link, { onUpdated }: UpdatedCallback = {}) {
 		overlay.open(({ isOpen, close }) => (
 			<EditLinkDialog
 				open={isOpen}
@@ -96,7 +101,10 @@ export function useLinkActions() {
 					updateLink.mutate(
 						{ linkId: link.id, ...values },
 						{
-							onSuccess: () => snackbar.create({ render: () => <Snackbar message="링크를 수정했어요" /> }),
+							onSuccess: (updated) => {
+								onUpdated?.(updated);
+								snackbar.create({ render: () => <Snackbar message="링크를 수정했어요" /> });
+							},
 							onError: () => showFailure('링크를 수정하지 못했어요'),
 						},
 					)
@@ -112,5 +120,12 @@ export function useLinkActions() {
 		);
 	}
 
-	return { onDelete, onMove, onEdit, onTogglePin };
+	function onCopy(link: Link) {
+		navigator.clipboard.writeText(link.url).then(
+			() => snackbar.create({ render: () => <Snackbar message="링크를 복사했어요" /> }),
+			() => showFailure('링크를 복사하지 못했어요'),
+		);
+	}
+
+	return { onDelete, onMove, onEdit, onTogglePin, onCopy };
 }

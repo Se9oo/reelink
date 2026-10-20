@@ -76,7 +76,7 @@ export function FeedCard({ link, position, total, folderPath, viewed, onOpen }: 
 				)}
 			</div>
 
-			<div className="absolute inset-x-[18px] bottom-[22px] flex flex-col gap-2.5">
+			<div className="absolute inset-x-[18px] bottom-[22px] flex flex-col gap-2.5 pr-14 lg:pr-0">
 				{link.savedReason ? (
 					<>
 						<p className="text-[19px] leading-snug font-bold text-balance">{link.savedReason}</p>

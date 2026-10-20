@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { OverlayProvider } from 'overlay-kit';
 import { SnackbarProvider } from 'seed-design/ui/snackbar';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -10,6 +11,12 @@ import { Folder } from '@/entities/folder/model/types';
 import { Link } from '@/entities/link/model/types';
 
 import { apiClient } from '@/shared/api/client';
+
+const { mockPush } = vi.hoisted(() => ({ mockPush: vi.fn() }));
+
+vi.mock('next/navigation', () => ({
+	useRouter: () => ({ push: mockPush }),
+}));
 
 vi.mock('@/shared/api/client', () => ({
 	apiClient: { get: vi.fn(), patch: vi.fn(), delete: vi.fn(), post: vi.fn() },
@@ -54,11 +61,21 @@ function renderFeed() {
 
 	render(
 		<QueryClientProvider client={queryClient}>
-			<SnackbarProvider>
-				<RemindFeed />
-			</SnackbarProvider>
+			<OverlayProvider>
+				<SnackbarProvider>
+					<RemindFeed />
+				</SnackbarProvider>
+			</OverlayProvider>
 		</QueryClientProvider>,
 	);
+}
+
+async function chooseMoreMenuItem(user: ReturnType<typeof userEvent.setup>, itemName: string) {
+	const trigger = (await screen.findAllByRole('button', { name: '더보기' }))[0];
+	await user.click(trigger);
+
+	const menu = document.getElementById(trigger.getAttribute('aria-controls') ?? '');
+	await user.click(within(menu as HTMLElement).getByRole('menuitem', { name: itemName }));
 }
 
 describe('RemindFeed', () => {
@@ -133,5 +150,46 @@ describe('RemindFeed', () => {
 		await waitFor(() => expect(apiClient.post).toHaveBeenCalledWith('trash/link/l1/restore'));
 		expect(await screen.findByText('1 / 2')).toBeInTheDocument();
 		expect(screen.getByText('도커 컴포즈 정리')).toBeInTheDocument();
+	});
+
+	test('복사를 누르면 링크 주소를 복사하고 안내 스낵바를 띄운다', async () => {
+		const user = userEvent.setup();
+		const writeText = vi.spyOn(navigator.clipboard, 'writeText');
+		mockApi(feed);
+		renderFeed();
+
+		await user.click((await screen.findAllByRole('button', { name: '복사' }))[0]);
+
+		expect(writeText).toHaveBeenCalledWith('https://react.dev');
+		expect(await screen.findByText('링크를 복사했어요')).toBeInTheDocument();
+	});
+
+	test('더보기에서 링크 수정을 저장하면 카드 내용이 바로 바뀐다', async () => {
+		const user = userEvent.setup();
+		mockApi(feed);
+		vi.mocked(apiClient.patch).mockReturnValue({
+			json: async () => ({ ...feed[0], savedReason: '이번 주말에 꼭 해보기' }),
+		} as never);
+		renderFeed();
+
+		await chooseMoreMenuItem(user, '링크 수정');
+
+		const reason = await screen.findByRole('textbox', { name: /저장 이유/ });
+		await user.clear(reason);
+		await user.type(reason, '이번 주말에 꼭 해보기');
+		await user.click(screen.getByRole('button', { name: '저장' }));
+
+		expect(await screen.findByText('이번 주말에 꼭 해보기')).toBeInTheDocument();
+		expect(screen.queryByText('배포 전에 따라 해보기')).not.toBeInTheDocument();
+	});
+
+	test('더보기에서 폴더로 가기를 누르면 그 링크가 있는 폴더로 이동한다', async () => {
+		const user = userEvent.setup();
+		mockApi(feed);
+		renderFeed();
+
+		await chooseMoreMenuItem(user, '폴더로 가기');
+
+		expect(mockPush).toHaveBeenCalledWith('/folders/f1');
 	});
 });

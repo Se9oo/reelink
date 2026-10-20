@@ -3,15 +3,12 @@
 import { useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
-import {
-	IconArrowUpRightLine,
-	IconCheckmarkLine,
-	IconChevronDownLine,
-	IconChevronUpLine,
-	IconTrashcanLine,
-} from '@karrotmarket/react-monochrome-icon';
+import { useRouter } from 'next/navigation';
+
+import { IconCheckmarkLine, IconChevronDownLine, IconChevronUpLine } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
 
+import { FeedActions } from '@/widgets/remind-feed/ui/feed-actions';
 import { FeedCard } from '@/widgets/remind-feed/ui/feed-card';
 
 import { useLinkActions } from '@/features/link-actions/model/use-link-actions';
@@ -22,11 +19,14 @@ import { feedQueryOptions } from '@/entities/link/api/get-feed';
 import { useViewLink } from '@/entities/link/api/view-link';
 import { Link } from '@/entities/link/model/types';
 
+import { folderDetailPath } from '@/shared/config/routes';
+
 export function RemindFeed() {
 	const { data } = useQuery(feedQueryOptions());
 	const { data: folders = [] } = useQuery(foldersQueryOptions());
 	const viewLink = useViewLink();
-	const { onDelete } = useLinkActions();
+	const { onDelete, onCopy, onEdit, onMove } = useLinkActions();
+	const router = useRouter();
 	const listRef = useRef<HTMLDivElement>(null);
 
 	const [items, setItems] = useState<Link[] | null>(null);
@@ -73,6 +73,10 @@ export function RemindFeed() {
 		});
 	}
 
+	function replace(updated: Link) {
+		setItems((prev) => prev?.map((item) => (item.id === updated.id ? updated : item)) ?? prev);
+	}
+
 	function remove(link: Link) {
 		const index = items?.findIndex((item) => item.id === link.id) ?? -1;
 
@@ -116,9 +120,9 @@ export function RemindFeed() {
 				{items.map((link, index) => (
 					<section
 						key={link.id}
-						className="flex h-full snap-start snap-always items-center justify-center gap-3.5 p-2.5 lg:p-4"
+						className="relative flex h-full snap-start snap-always items-center justify-center gap-3.5 p-2.5 lg:p-4"
 					>
-						<div className="h-full w-full max-w-[420px] lg:w-[520px] lg:max-w-none">
+						<div className="relative h-full w-full max-w-[420px] lg:w-[520px] lg:max-w-none">
 							<FeedCard
 								link={link}
 								position={index + 1}
@@ -127,38 +131,15 @@ export function RemindFeed() {
 								viewed={viewedIds.has(link.id)}
 								onOpen={() => open(link)}
 							/>
-						</div>
-						<div className="hidden flex-col gap-3.5 self-end pb-3 lg:flex">
-							<a
-								href={link.url}
-								target="_blank"
-								rel="noopener noreferrer"
-								onClick={() => open(link)}
-								className="flex flex-col items-center gap-1.5 text-xs font-semibold text-[var(--seed-color-fg-neutral)]"
-							>
-								<span
-									className="flex h-12 w-12 items-center justify-center rounded-full
-										bg-[var(--seed-color-bg-brand-solid)] text-[var(--seed-color-palette-static-white)]"
-								>
-									<IconArrowUpRightLine size={20} />
-								</span>
-								열기
-							</a>
-							<button
-								type="button"
-								onClick={() => remove(link)}
-								className="flex cursor-pointer flex-col items-center gap-1.5 text-xs font-semibold
-									text-[var(--seed-color-fg-neutral)]"
-							>
-								<span
-									className="flex h-12 w-12 items-center justify-center rounded-full
-										bg-[var(--seed-color-bg-neutral-weak)] text-[var(--seed-color-fg-critical)]
-										hover:bg-[var(--seed-color-bg-neutral-weak-pressed)]"
-								>
-									<IconTrashcanLine size={20} />
-								</span>
-								삭제
-							</button>
+							<FeedActions
+								url={link.url}
+								onOpen={() => open(link)}
+								onCopy={() => onCopy(link)}
+								onDelete={() => remove(link)}
+								onEdit={() => onEdit(link, { onUpdated: replace })}
+								onMove={() => onMove(link, { onUpdated: replace })}
+								onGoToFolder={() => router.push(folderDetailPath(link.folderId))}
+							/>
 						</div>
 					</section>
 				))}

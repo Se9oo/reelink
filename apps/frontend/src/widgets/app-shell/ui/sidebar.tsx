@@ -22,7 +22,8 @@ export function Sidebar() {
 
 	return (
 		<aside
-			className="hidden h-full w-60 shrink-0 flex-col border-r border-[var(--seed-color-stroke-neutral-subtle)] lg:flex"
+			className="app-sidebar hidden h-full w-60 shrink-0 flex-col border-r
+				border-[var(--seed-color-stroke-neutral-subtle)] lg:flex"
 		>
 			<nav className="flex flex-col gap-1 px-2 py-3">
 				{QUICK_LINKS.map(({ href, label, Icon }) => {
