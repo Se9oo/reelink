@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SnackbarProvider } from 'seed-design/ui/snackbar';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
@@ -60,7 +60,11 @@ function renderSearch() {
 	);
 }
 
-const searchCalls = () => vi.mocked(apiClient.get).mock.calls.filter(([url]) => url === 'links/search');
+const searchCalls = () =>
+	vi.mocked(apiClient.get).mock.calls.filter(([url]) => url === 'links/search') as [
+		string,
+		{ searchParams?: { q?: string } } | undefined,
+	][];
 
 describe('LinkSearch', () => {
 	beforeEach(() => {
@@ -136,5 +140,43 @@ describe('LinkSearch', () => {
 		await user.type(input, 'x');
 
 		expect(screen.queryByText('이전 결과')).not.toBeInTheDocument();
+	});
+
+	test('다른 검색어로 바꾸면 새 결과가 오기 전까지 이전 검색어의 결과를 보여주지 않는다', async () => {
+		const user = userEvent.setup();
+		let resolveSecond: (links: Link[]) => void = () => {};
+		vi.mocked(apiClient.get).mockImplementation(((url: string, options?: { searchParams?: { q?: string } }) => ({
+			json: () => {
+				if (url === 'folders') {
+					return Promise.resolve(folders);
+				}
+
+				if (options?.searchParams?.q === 'abc') {
+					return Promise.resolve([link({ id: 'l1', title: '이전 결과' })]);
+				}
+
+				return new Promise<Link[]>((resolve) => {
+					resolveSecond = resolve;
+				});
+			},
+		})) as never);
+		renderSearch();
+
+		const input = screen.getByRole('textbox', { name: '링크 검색' });
+
+		await user.type(input, 'abc');
+		await screen.findByText('이전 결과', undefined, { timeout: 2000 });
+
+		await user.clear(input);
+		await user.type(input, 'xyz');
+		await waitFor(() => expect(searchCalls().some(([, options]) => options?.searchParams?.q === 'xyz')).toBe(true), {
+			timeout: 2000,
+		});
+
+		expect(screen.queryByText('이전 결과')).not.toBeInTheDocument();
+
+		resolveSecond([link({ id: 'l2', title: '새 결과' })]);
+
+		expect(await screen.findByText('새 결과')).toBeInTheDocument();
 	});
 });

@@ -1,4 +1,4 @@
-import { keepPreviousData, queryOptions } from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 
 import { linkKeys } from '@/entities/link/api/link-keys';
 import { Link } from '@/entities/link/model/types';
@@ -14,6 +14,5 @@ export function searchLinksQueryOptions(query: string) {
 		queryKey: linkKeys.search(query),
 		queryFn: ({ signal }) => searchLinks(query, signal),
 		enabled: query.length > 0,
-		placeholderData: keepPreviousData,
 	});
 }
