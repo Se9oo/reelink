@@ -8,6 +8,7 @@ import { MoveLinkDialog } from '@/features/link-actions/ui/move-link-dialog';
 
 import { useDeleteLink } from '@/entities/link/api/delete-link';
 import { useMoveLink } from '@/entities/link/api/move-link';
+import { usePinLink } from '@/entities/link/api/pin-link';
 import { useUpdateLink } from '@/entities/link/api/update-link';
 import { Link } from '@/entities/link/model/types';
 import { useRestoreItem } from '@/entities/trash/api/restore-item';
@@ -16,6 +17,7 @@ export function useLinkActions() {
 	const deleteLink = useDeleteLink();
 	const moveLink = useMoveLink();
 	const updateLink = useUpdateLink();
+	const pinLink = usePinLink();
 	const restoreItem = useRestoreItem();
 	const snackbar = useSnackbarAdapter();
 
@@ -97,5 +99,12 @@ export function useLinkActions() {
 		));
 	}
 
-	return { onDelete, onMove, onEdit };
+	function onTogglePin(link: Link) {
+		pinLink.mutate(
+			{ linkId: link.id, pinned: link.pinnedAt === null },
+			{ onError: () => showFailure('고정 상태를 바꾸지 못했어요') },
+		);
+	}
+
+	return { onDelete, onMove, onEdit, onTogglePin };
 }

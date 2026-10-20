@@ -11,5 +11,6 @@ export interface Link {
 	status: string;
 	createdAt: string;
 	lastRemindedAt: string | null;
+	pinnedAt: string | null;
 	deletedAt: string | null;
 }

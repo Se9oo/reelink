@@ -19,6 +19,7 @@ function link(overrides: Partial<Link> = {}): Link {
 		status: 'unviewed',
 		createdAt: '2026-10-16T00:00:00Z',
 		lastRemindedAt: null,
+		pinnedAt: null,
 		deletedAt: null,
 		...overrides,
 	};
@@ -26,7 +27,7 @@ function link(overrides: Partial<Link> = {}): Link {
 
 describe('LinkRow', () => {
 	test('제목·저장 이유·호스트명을 보여주고 새 탭으로 여는 링크를 건다', () => {
-		render(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+		render(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onTogglePin={() => {}} onDelete={() => {}} />);
 
 		const anchor = screen.getByRole('link');
 
@@ -42,14 +43,28 @@ describe('LinkRow', () => {
 		const threeDaysAgo = new Date(Date.now() - 3.5 * 24 * 60 * 60 * 1000).toISOString();
 
 		render(
-			<LinkRow link={link({ createdAt: threeDaysAgo })} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />,
+			<LinkRow
+				link={link({ createdAt: threeDaysAgo })}
+				onMove={() => {}}
+				onEdit={() => {}}
+				onTogglePin={() => {}}
+				onDelete={() => {}}
+			/>,
 		);
 
 		expect(screen.getByText('3일 전 저장')).toBeInTheDocument();
 	});
 
 	test('제목이 없으면 호스트명을 제목으로 보여준다', () => {
-		render(<LinkRow link={link({ title: null })} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+		render(
+			<LinkRow
+				link={link({ title: null })}
+				onMove={() => {}}
+				onEdit={() => {}}
+				onTogglePin={() => {}}
+				onDelete={() => {}}
+			/>,
+		);
 
 		expect(screen.getAllByText('n.news.naver.com')).toHaveLength(2);
 	});
@@ -58,7 +73,15 @@ describe('LinkRow', () => {
 		const user = userEvent.setup();
 		const onEdit = vi.fn();
 
-		render(<LinkRow link={link({ savedReason: null })} onMove={() => {}} onDelete={() => {}} onEdit={onEdit} />);
+		render(
+			<LinkRow
+				link={link({ savedReason: null })}
+				onMove={() => {}}
+				onTogglePin={() => {}}
+				onDelete={() => {}}
+				onEdit={onEdit}
+			/>,
+		);
 
 		await user.click(screen.getByRole('button', { name: '저장 이유 남기기' }));
 
@@ -66,19 +89,26 @@ describe('LinkRow', () => {
 	});
 
 	test('저장 이유가 있으면 저장 이유 남기기 버튼이 없다', () => {
-		render(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+		render(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onTogglePin={() => {}} onDelete={() => {}} />);
 
 		expect(screen.queryByRole('button', { name: '저장 이유 남기기' })).not.toBeInTheDocument();
 	});
 
 	test('folderPath가 있을 때만 폴더 경로 캡션을 보여준다', () => {
 		const { rerender } = render(
-			<LinkRow link={link()} folderPath="개발 > React" onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />,
+			<LinkRow
+				link={link()}
+				folderPath="개발 > React"
+				onMove={() => {}}
+				onEdit={() => {}}
+				onTogglePin={() => {}}
+				onDelete={() => {}}
+			/>,
 		);
 
 		expect(screen.getByText('개발 > React 안에 있음')).toBeInTheDocument();
 
-		rerender(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+		rerender(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onTogglePin={() => {}} onDelete={() => {}} />);
 
 		expect(screen.queryByText('안에 있음', { exact: false })).not.toBeInTheDocument();
 	});
@@ -90,6 +120,7 @@ describe('LinkRow', () => {
 				onMove={() => {}}
 				onEdit={() => {}}
 				onDelete={() => {}}
+				onTogglePin={() => {}}
 			/>,
 		);
 
@@ -100,7 +131,7 @@ describe('LinkRow', () => {
 		const user = userEvent.setup();
 		const onMove = vi.fn();
 
-		render(<LinkRow link={link()} onMove={onMove} onEdit={() => {}} onDelete={() => {}} />);
+		render(<LinkRow link={link()} onMove={onMove} onEdit={() => {}} onTogglePin={() => {}} onDelete={() => {}} />);
 
 		await user.click(screen.getByRole('button', { name: '더보기' }));
 		await user.click(await screen.findByRole('menuitem', { name: '폴더 이동' }));
@@ -112,7 +143,7 @@ describe('LinkRow', () => {
 		const user = userEvent.setup();
 		const onDelete = vi.fn();
 
-		render(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onDelete={onDelete} />);
+		render(<LinkRow link={link()} onMove={() => {}} onEdit={() => {}} onTogglePin={() => {}} onDelete={onDelete} />);
 
 		await user.click(screen.getByRole('button', { name: '더보기' }));
 		await user.click(await screen.findByRole('menuitem', { name: '삭제' }));
@@ -124,7 +155,7 @@ describe('LinkRow', () => {
 		const user = userEvent.setup();
 		const onEdit = vi.fn();
 
-		render(<LinkRow link={link()} onMove={() => {}} onDelete={() => {}} onEdit={onEdit} />);
+		render(<LinkRow link={link()} onMove={() => {}} onTogglePin={() => {}} onDelete={() => {}} onEdit={onEdit} />);
 
 		await user.click(screen.getByRole('button', { name: '더보기' }));
 		await user.click(await screen.findByRole('menuitem', { name: '수정' }));
@@ -135,11 +166,44 @@ describe('LinkRow', () => {
 	test('onMove를 넘기지 않으면 메뉴에 폴더 이동이 없다', async () => {
 		const user = userEvent.setup();
 
-		render(<LinkRow link={link()} onEdit={() => {}} onDelete={() => {}} />);
+		render(<LinkRow link={link()} onEdit={() => {}} onTogglePin={() => {}} onDelete={() => {}} />);
 
 		await user.click(screen.getByRole('button', { name: '더보기' }));
 
 		expect(await screen.findByRole('menuitem', { name: '삭제' })).toBeInTheDocument();
 		expect(screen.queryByRole('menuitem', { name: '폴더 이동' })).not.toBeInTheDocument();
+	});
+
+	test('고정된 링크는 고정 표시가 보이고, 메뉴에 고정 해제가 있다', async () => {
+		const user = userEvent.setup();
+		const onTogglePin = vi.fn();
+
+		render(
+			<LinkRow
+				link={link({ pinnedAt: '2026-10-20T00:00:00Z' })}
+				onEdit={() => {}}
+				onDelete={() => {}}
+				onTogglePin={onTogglePin}
+			/>,
+		);
+
+		expect(screen.getByLabelText('고정됨')).toBeInTheDocument();
+
+		await user.click(screen.getByRole('button', { name: '더보기' }));
+		await user.click(await screen.findByRole('menuitem', { name: '고정 해제' }));
+
+		expect(onTogglePin).toHaveBeenCalledTimes(1);
+	});
+
+	test('고정되지 않은 링크는 고정 표시가 없고, 메뉴에 상단 고정이 있다', async () => {
+		const user = userEvent.setup();
+
+		render(<LinkRow link={link()} onEdit={() => {}} onDelete={() => {}} onTogglePin={() => {}} />);
+
+		expect(screen.queryByLabelText('고정됨')).not.toBeInTheDocument();
+
+		await user.click(screen.getByRole('button', { name: '더보기' }));
+
+		expect(await screen.findByRole('menuitem', { name: '상단 고정' })).toBeInTheDocument();
 	});
 });

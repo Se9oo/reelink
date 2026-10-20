@@ -4,6 +4,9 @@ import {
 	IconDot3HorizontalFill,
 	IconGlobeLine,
 	IconPencilLine,
+	IconPushpinFill,
+	IconPushpinLine,
+	IconPushpinSlashLine,
 	IconTrashcanLine,
 } from '@karrotmarket/react-monochrome-icon';
 import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-design/ui/menu';
@@ -19,9 +22,10 @@ interface LinkRowProps {
 	onMove?: () => void;
 	onEdit: () => void;
 	onDelete: () => void;
+	onTogglePin: () => void;
 }
 
-export function LinkRow({ link, folderPath, onMove, onEdit, onDelete }: LinkRowProps) {
+export function LinkRow({ link, folderPath, onMove, onEdit, onDelete, onTogglePin }: LinkRowProps) {
 	const host = new URL(link.url).hostname;
 
 	return (
@@ -31,15 +35,28 @@ export function LinkRow({ link, folderPath, onMove, onEdit, onDelete }: LinkRowP
 				md:pl-3.5 md:transition-colors md:hover:border-[var(--seed-color-stroke-neutral-muted)]"
 		>
 			<div className="flex min-w-0 flex-1 items-start gap-3">
-				<div
-					className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[10px]
-						bg-[var(--seed-color-bg-neutral-weak)] text-[var(--seed-color-fg-neutral-muted)] md:h-16 md:w-16"
-				>
-					{link.thumbnailUrl ? (
-						// eslint-disable-next-line @next/next/no-img-element
-						<img src={link.thumbnailUrl} alt="" className="h-full w-full object-cover" />
-					) : (
-						<IconGlobeLine size={22} />
+				<div className="relative shrink-0">
+					<div
+						className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[10px]
+							bg-[var(--seed-color-bg-neutral-weak)] text-[var(--seed-color-fg-neutral-muted)] md:h-16 md:w-16"
+					>
+						{link.thumbnailUrl ? (
+							// eslint-disable-next-line @next/next/no-img-element
+							<img src={link.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+						) : (
+							<IconGlobeLine size={22} />
+						)}
+					</div>
+					{link.pinnedAt && (
+						<span
+							role="img"
+							aria-label="고정됨"
+							className="absolute -top-1.5 -left-1.5 flex h-5 w-5 items-center justify-center rounded-full
+								bg-[var(--seed-color-bg-brand-solid)] text-[var(--seed-color-palette-static-white)] ring-2
+								ring-[var(--seed-color-bg-layer-default)]"
+						>
+							<IconPushpinFill size={12} />
+						</span>
 					)}
 				</div>
 
@@ -92,6 +109,11 @@ export function LinkRow({ link, folderPath, onMove, onEdit, onDelete }: LinkRowP
 				</MenuTrigger>
 				<MenuContent>
 					<MenuGroup>
+						{link.pinnedAt ? (
+							<MenuItem label="고정 해제" prefixIcon={<IconPushpinSlashLine />} onClick={onTogglePin} />
+						) : (
+							<MenuItem label="상단 고정" prefixIcon={<IconPushpinLine />} onClick={onTogglePin} />
+						)}
 						{onMove && <MenuItem label="폴더 이동" prefixIcon={<IconFolderLine />} onClick={onMove} />}
 						<MenuItem label="수정" prefixIcon={<IconPencilLine />} onClick={onEdit} />
 						<MenuItem label="삭제" prefixIcon={<IconTrashcanLine />} onClick={onDelete} />

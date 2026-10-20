@@ -26,7 +26,7 @@ interface FolderDetailViewProps {
 export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 	const { data: folders } = useQuery(foldersQueryOptions());
 	const { data: links } = useQuery(folderLinksQueryOptions(folderId));
-	const { onDelete, onMove, onEdit } = useLinkActions();
+	const { onDelete, onMove, onEdit, onTogglePin } = useLinkActions();
 
 	if (!folders) {
 		return null;
@@ -139,6 +139,7 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 									onMove={() => onMove(link)}
 									onEdit={() => onEdit(link)}
 									onDelete={() => onDelete(link)}
+									onTogglePin={() => onTogglePin(link)}
 								/>
 							))}
 						</div>

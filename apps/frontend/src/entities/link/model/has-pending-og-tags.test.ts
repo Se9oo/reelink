@@ -19,6 +19,7 @@ function link(overrides: Partial<Link>): Link {
 		status: 'unviewed',
 		createdAt: now.toISOString(),
 		lastRemindedAt: null,
+		pinnedAt: null,
 		deletedAt: null,
 		...overrides,
 	};

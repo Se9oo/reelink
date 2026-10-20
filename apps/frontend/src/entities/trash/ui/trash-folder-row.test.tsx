@@ -95,6 +95,7 @@ describe('TrashFolderRow', () => {
 				status: 'unviewed',
 				createdAt: '2026-10-16T00:00:00Z',
 				lastRemindedAt: null,
+				pinnedAt: null,
 				deletedAt: '2026-10-16T00:00:00Z',
 				parentFolderName: '레시피',
 			},

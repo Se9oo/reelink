@@ -28,6 +28,7 @@ const link: Link = {
 	status: 'unviewed',
 	createdAt: '2026-10-16T00:00:00Z',
 	lastRemindedAt: null,
+	pinnedAt: null,
 	deletedAt: null,
 };
 
@@ -37,7 +38,7 @@ const folders = [
 ];
 
 function Harness() {
-	const { onDelete, onMove, onEdit } = useLinkActions();
+	const { onDelete, onMove, onEdit, onTogglePin } = useLinkActions();
 
 	return (
 		<>
@@ -49,6 +50,9 @@ function Harness() {
 			</button>
 			<button type="button" onClick={() => onEdit(link)}>
 				수정하기
+			</button>
+			<button type="button" onClick={() => onTogglePin(link)}>
+				고정하기
 			</button>
 		</>
 	);
@@ -263,6 +267,29 @@ describe('useLinkActions', () => {
 
 			expect(await screen.findByText('링크를 수정하지 못했어요')).toBeInTheDocument();
 			expect(screen.queryByText('링크를 수정했어요')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('링크 고정', () => {
+		test('고정되지 않은 링크를 고정하면 고정 API를 호출한다', async () => {
+			const user = userEvent.setup();
+			renderHarness();
+
+			await user.click(screen.getByRole('button', { name: '고정하기' }));
+
+			await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/l1/pin', { json: { pinned: true } }));
+		});
+
+		test('고정에 실패하면 실패 스낵바를 띄운다', async () => {
+			const user = userEvent.setup();
+			vi.mocked(apiClient.patch).mockImplementation((() => ({
+				json: async () => Promise.reject(new Error('fail')),
+			})) as never);
+			renderHarness();
+
+			await user.click(screen.getByRole('button', { name: '고정하기' }));
+
+			expect(await screen.findByText('고정 상태를 바꾸지 못했어요')).toBeInTheDocument();
 		});
 	});
 });
