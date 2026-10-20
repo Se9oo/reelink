@@ -3,9 +3,11 @@
 import NextLink from 'next/link';
 
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { IconChevronRightSmallLine, IconPlusSmallLine } from '@karrotmarket/react-monochrome-icon';
+import { IconChevronRightSmallLine } from '@karrotmarket/react-monochrome-icon';
 
 import { type FlattenedFolder } from '@/widgets/folder-list/model/flatten-tree';
+
+import { FolderActionsMenu } from '@/entities/folder/ui/folder-actions-menu';
 
 import { folderDetailPath } from '@/shared/config/routes';
 import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
@@ -21,6 +23,8 @@ interface MobileFolderRowProps {
 	insertLinePosition: 'top' | 'bottom' | null;
 	onToggle: (id: string) => void;
 	onRequestCreate: (parentId: string, parentName: string) => void;
+	onRequestRename: (id: string, name: string) => void;
+	onRequestDelete: (id: string, name: string) => void;
 }
 
 export function MobileFolderRow({
@@ -32,6 +36,8 @@ export function MobileFolderRow({
 	insertLinePosition,
 	onToggle,
 	onRequestCreate,
+	onRequestRename,
+	onRequestDelete,
 }: MobileFolderRowProps) {
 	const { setNodeRef: setDraggableRef, listeners, attributes, isDragging } = useDraggable({ id: item.id });
 	const { setNodeRef: setDroppableRef } = useDroppable({ id: item.id });
@@ -88,15 +94,14 @@ export function MobileFolderRow({
 						</span>
 					)}
 				</NextLink>
-				<button
-					type="button"
-					onClick={() => onRequestCreate(item.id, item.name)}
-					aria-label={`${item.name} 폴더 안에 새 폴더 만들기`}
-					className="relative z-10 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg
-						text-[var(--seed-color-fg-neutral-muted)]"
-				>
-					<IconPlusSmallLine size={20} />
-				</button>
+				<FolderActionsMenu
+					folderName={item.name}
+					isSystem={item.isSystem}
+					onCreateChild={() => onRequestCreate(item.id, item.name)}
+					onRename={() => onRequestRename(item.id, item.name)}
+					onDelete={() => onRequestDelete(item.id, item.name)}
+					triggerClassName="ml-2 h-8 w-8"
+				/>
 			</div>
 			<div
 				aria-hidden="true"

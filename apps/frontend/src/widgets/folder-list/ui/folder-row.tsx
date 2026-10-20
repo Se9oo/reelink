@@ -4,9 +4,11 @@ import NextLink from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { IconChevronRightSmallLine, IconPlusSmallLine, IconTrashcanLine } from '@karrotmarket/react-monochrome-icon';
+import { IconChevronRightSmallLine } from '@karrotmarket/react-monochrome-icon';
 
 import { type FlattenedFolder, VISUAL_INDENT_WIDTH } from '@/widgets/folder-list/model/flatten-tree';
+
+import { FolderActionsMenu } from '@/entities/folder/ui/folder-actions-menu';
 
 import { folderDetailPath } from '@/shared/config/routes';
 import { IconFolderFill } from '@/shared/ui/icons/icon-folder-fill';
@@ -21,6 +23,7 @@ interface FolderRowProps {
 	insertLinePosition: 'top' | 'bottom' | null;
 	onToggle: (id: string) => void;
 	onRequestCreate: (parentId: string, parentName: string) => void;
+	onRequestRename: (id: string, name: string) => void;
 	onRequestDelete: (id: string, name: string) => void;
 }
 
@@ -38,6 +41,7 @@ export function FolderRow({
 	insertLinePosition,
 	onToggle,
 	onRequestCreate,
+	onRequestRename,
 	onRequestDelete,
 }: FolderRowProps) {
 	const { setNodeRef: setDraggableRef, listeners, attributes, isDragging } = useDraggable({ id: item.id });
@@ -73,8 +77,12 @@ export function FolderRow({
 						type="button"
 						onClick={() => onToggle(item.id)}
 						aria-label={expanded ? `${item.name} 폴더 접기` : `${item.name} 폴더 펼치기`}
-						className="relative z-10 mx-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
-							text-[var(--seed-color-fg-neutral-muted)] hover:bg-[var(--seed-color-bg-neutral-weak-pressed)]"
+						className={`relative z-10 mx-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
+							text-[var(--seed-color-fg-neutral-muted)] ${
+								isActive
+									? 'hover:bg-[color-mix(in_srgb,var(--seed-color-fg-brand)_14%,transparent)]'
+									: 'hover:bg-[color-mix(in_srgb,var(--seed-color-fg-neutral)_8%,transparent)]'
+							}`}
 					>
 						<IconChevronRightSmallLine
 							size={16}
@@ -96,26 +104,15 @@ export function FolderRow({
 				>
 					{item.name}
 				</NextLink>
-				<button
-					type="button"
-					onClick={() => onRequestCreate(item.id, item.name)}
-					aria-label={`${item.name} 폴더 안에 새 폴더 만들기`}
-					className="relative z-10 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
-						text-(--seed-color-fg-neutral-muted) opacity-100 hover:bg-(--seed-color-bg-neutral-weak-pressed)
-						lg:opacity-0 lg:group-hover:opacity-100"
-				>
-					<IconPlusSmallLine size={20} />
-				</button>
-				<button
-					type="button"
-					onClick={() => onRequestDelete(item.id, item.name)}
-					aria-label={`${item.name} 폴더 삭제`}
-					className="relative z-10 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg
-						text-(--seed-color-fg-neutral-muted) opacity-100 hover:bg-(--seed-color-bg-critical-weak)
-						hover:text-(--seed-color-fg-critical) lg:opacity-0 lg:group-hover:opacity-100"
-				>
-					<IconTrashcanLine size={18} />
-				</button>
+				<FolderActionsMenu
+					folderName={item.name}
+					isSystem={item.isSystem}
+					onCreateChild={() => onRequestCreate(item.id, item.name)}
+					onRename={() => onRequestRename(item.id, item.name)}
+					onDelete={() => onRequestDelete(item.id, item.name)}
+					active={isActive}
+					triggerClassName="h-6 w-6 lg:opacity-0 lg:group-hover:opacity-100 lg:aria-expanded:opacity-100"
+				/>
 			</div>
 			<div
 				aria-hidden="true"

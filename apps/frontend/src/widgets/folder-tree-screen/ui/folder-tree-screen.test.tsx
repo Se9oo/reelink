@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { OverlayProvider } from 'overlay-kit';
 import { SnackbarProvider } from 'seed-design/ui/snackbar';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -27,9 +28,11 @@ function renderTree() {
 
 	render(
 		<QueryClientProvider client={queryClient}>
-			<SnackbarProvider>
-				<FolderTreeScreen />
-			</SnackbarProvider>
+			<OverlayProvider>
+				<SnackbarProvider>
+					<FolderTreeScreen />
+				</SnackbarProvider>
+			</OverlayProvider>
 		</QueryClientProvider>,
 	);
 }
@@ -40,6 +43,14 @@ const folders = [
 	folder({ id: 'next', name: 'Next.js', parentFolderId: 'dev', sortOrder: 1 }),
 	folder({ id: 'recipe', name: '레시피', sortOrder: 1 }),
 ];
+
+async function chooseFolderMenuItem(user: ReturnType<typeof userEvent.setup>, folderName: string, itemName: string) {
+	const trigger = await screen.findByRole('button', { name: `${folderName} 폴더 메뉴` });
+	await user.click(trigger);
+
+	const menu = document.getElementById(trigger.getAttribute('aria-controls') ?? '');
+	await user.click(within(menu as HTMLElement).getByRole('menuitem', { name: itemName }));
+}
 
 describe('FolderTreeScreen', () => {
 	beforeEach(() => {
@@ -95,5 +106,25 @@ describe('FolderTreeScreen', () => {
 		renderTree();
 
 		expect(await screen.findByText('아직 만든 폴더가 없어요')).toBeInTheDocument();
+	});
+
+	test('폴더 메뉴에서 이름 변경을 누르면 현재 이름이 채워진 이름 변경 창이 열린다', async () => {
+		const user = userEvent.setup();
+		mockFolders(folders);
+		renderTree();
+
+		await chooseFolderMenuItem(user, '레시피', '이름 변경');
+
+		expect(await screen.findByRole('textbox', { name: /폴더 이름/ })).toHaveValue('레시피');
+	});
+
+	test('폴더 메뉴에서 삭제를 누르면 삭제 확인 창이 열린다', async () => {
+		const user = userEvent.setup();
+		mockFolders(folders);
+		renderTree();
+
+		await chooseFolderMenuItem(user, '레시피', '삭제');
+
+		expect(await screen.findByText('"레시피" 폴더를 삭제할까요?')).toBeInTheDocument();
 	});
 });

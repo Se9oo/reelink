@@ -12,6 +12,8 @@ import { MOBILE_INDENT_WIDTH, MobileFolderRow } from '@/widgets/folder-tree-scre
 
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { CreateFolderModal } from '@/entities/folder/ui/create-folder-modal';
+import { DeleteFolderDialog } from '@/entities/folder/ui/delete-folder-dialog';
+import { RenameFolderModal } from '@/entities/folder/ui/rename-folder-modal';
 
 import { usePersistedToggleSet } from '@/shared/lib/use-toggle-set';
 
@@ -58,6 +60,18 @@ export function FolderTreeScreen() {
 		));
 	}
 
+	function openRenameDialog(id: string, name: string) {
+		overlay.open(({ isOpen, close }) => (
+			<RenameFolderModal open={isOpen} onOpenChange={(open) => !open && close()} folderId={id} currentName={name} />
+		));
+	}
+
+	function openDeleteDialog(id: string, name: string) {
+		overlay.open(({ isOpen, close }) => (
+			<DeleteFolderDialog open={isOpen} onOpenChange={(open) => !open && close()} folderId={id} folderName={name} />
+		));
+	}
+
 	return (
 		<div className="flex flex-col px-2 pb-32">
 			<button
@@ -90,6 +104,8 @@ export function FolderTreeScreen() {
 								insertLinePosition={insertLine?.targetId === item.id ? insertLine.position : null}
 								onToggle={toggle}
 								onRequestCreate={openCreateDialog}
+								onRequestRename={openRenameDialog}
+								onRequestDelete={openDeleteDialog}
 							/>
 						))}
 					</ul>

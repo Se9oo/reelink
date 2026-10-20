@@ -32,6 +32,7 @@ function renderRow() {
 					insertLinePosition={null}
 					onToggle={() => {}}
 					onRequestCreate={() => {}}
+					onRequestRename={() => {}}
 					onRequestDelete={() => {}}
 				/>
 			</ul>

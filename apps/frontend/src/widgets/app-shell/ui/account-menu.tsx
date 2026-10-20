@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-
 import { IconChevronDownSmallLine } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
 import { Avatar } from 'seed-design/ui/avatar';
@@ -12,7 +10,7 @@ import { useAccountMenuItems } from '@/widgets/app-shell/lib/use-account-menu-it
 
 import { meQueryOptions } from '@/entities/user/api/get-me';
 
-import { useMediaQuery } from '@/shared/lib/use-media-query';
+import { useBreakpointMenuState } from '@/shared/lib/use-breakpoint-menu-state';
 
 interface AccountMenuProps {
 	showLabel?: boolean;
@@ -24,33 +22,14 @@ export function AccountMenu({ showLabel = true, showHoverBackground = true, full
 	const { data: me } = useQuery(meQueryOptions());
 
 	const accountMenuItems = useAccountMenuItems();
-	const isDesktop = useMediaQuery('(min-width: 1024px)');
-
-	const [open, setOpen] = useState(false);
-	const [instant, setInstant] = useState(false);
-	const [prevIsDesktop, setPrevIsDesktop] = useState(isDesktop);
-
-	if (isDesktop !== prevIsDesktop) {
-		setPrevIsDesktop(isDesktop);
-		setOpen(false);
-		setInstant(true);
-	}
+	const { open, onOpenChange, instant } = useBreakpointMenuState();
 
 	if (!me) {
 		return <div className="h-6 w-6" />;
 	}
 
 	return (
-		<MenuRoot
-			size="small"
-			open={open}
-			onOpenChange={(nextOpen) => {
-				setOpen(nextOpen);
-				if (nextOpen) {
-					setInstant(false);
-				}
-			}}
-		>
+		<MenuRoot size="small" open={open} onOpenChange={onOpenChange}>
 			<MenuTrigger asChild>
 				<button
 					type="button"
