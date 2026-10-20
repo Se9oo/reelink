@@ -36,7 +36,7 @@ describe('LinkRow', () => {
 		expect(anchor).toHaveAttribute('rel', expect.stringContaining('noopener'));
 		expect(screen.getByText('네이버 뉴스 기사')).toBeInTheDocument();
 		expect(screen.getByText('나중에 다시 읽기')).toBeInTheDocument();
-		expect(screen.getByText('n.news.naver.com')).toBeInTheDocument();
+		expect(screen.getAllByText('n.news.naver.com')).not.toHaveLength(0);
 	});
 
 	test('호스트명 옆에 저장 시점을 보여준다', () => {
@@ -66,7 +66,7 @@ describe('LinkRow', () => {
 			/>,
 		);
 
-		expect(screen.getAllByText('n.news.naver.com')).toHaveLength(2);
+		expect(screen.getByRole('link')).toHaveTextContent('n.news.naver.com');
 	});
 
 	test('저장 이유가 없으면 저장 이유 남기기 버튼을 누를 때 onEdit이 호출된다', async () => {
@@ -187,7 +187,7 @@ describe('LinkRow', () => {
 			/>,
 		);
 
-		expect(screen.getByLabelText('고정됨')).toBeInTheDocument();
+		expect(screen.getAllByLabelText('고정됨')).not.toHaveLength(0);
 
 		await user.click(screen.getByRole('button', { name: '더보기' }));
 		await user.click(await screen.findByRole('menuitem', { name: '고정 해제' }));

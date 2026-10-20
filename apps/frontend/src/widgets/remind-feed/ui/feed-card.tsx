@@ -1,16 +1,9 @@
 'use client';
 
+import { hostColor } from '@/entities/link/model/host-color';
 import { Link } from '@/entities/link/model/types';
 
 import { formatRelativeTime } from '@/shared/lib/format-relative-time';
-
-const FALLBACK_COLORS = ['#2f6f5e', '#3a3d44', '#5b4b8a', '#8a4b5b', '#2f5a8a', '#7a5a2f'];
-
-function fallbackColor(host: string) {
-	const sum = [...host].reduce((total, char) => total + char.charCodeAt(0), 0);
-
-	return FALLBACK_COLORS[sum % FALLBACK_COLORS.length];
-}
 
 interface FeedCardProps {
 	link: Link;
@@ -53,7 +46,7 @@ export function FeedCard({ link, position, total, folderPath, viewed, revisit, o
 					</div>
 				</>
 			) : (
-				<div className="absolute inset-0" style={{ background: fallbackColor(host) }}>
+				<div className="absolute inset-0" style={{ background: hostColor(host) }}>
 					<div
 						className="absolute inset-x-6 top-0 bottom-[45%] flex items-center justify-center text-center text-3xl
 							font-extrabold break-all opacity-90"

@@ -99,14 +99,14 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 						<SectionHeader>
 							<SectionLabel>하위 폴더 {subfolders.length}</SectionLabel>
 						</SectionHeader>
-						<div className="flex flex-col md:grid md:grid-cols-2 md:gap-2 2xl:grid-cols-3">
+						<div className="flex flex-col md:flex-row md:flex-wrap md:gap-3">
 							{subfolders.map((subfolder) => (
 								<NextLink
 									key={subfolder.id}
 									href={folderDetailPath(subfolder.id)}
-									className="flex items-center gap-3 px-4 py-2.5 md:rounded-[14px] md:border
+									className="flex items-center gap-3 px-4 py-2.5 md:w-[200px] md:rounded-[14px] md:border
 										md:border-[var(--seed-color-stroke-neutral-subtle)] md:bg-[var(--seed-color-bg-layer-default)]
-										md:px-3.5 md:py-3 md:transition-colors md:hover:border-[var(--seed-color-stroke-neutral-muted)]"
+										md:px-3 md:py-3 md:transition-colors md:hover:border-[var(--seed-color-stroke-neutral-muted)]"
 								>
 									<span
 										className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px]
@@ -124,7 +124,10 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 											</span>
 										)}
 									</span>
-									<IconChevronRightSmallLine size={16} className="shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
+									<IconChevronRightSmallLine
+										size={16}
+										className="shrink-0 text-[var(--seed-color-fg-neutral-muted)] md:hidden"
+									/>
 								</NextLink>
 							))}
 						</div>
@@ -139,7 +142,7 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 							<SectionLabel>링크 {linkCount}</SectionLabel>
 							{links.length > 1 && <LinkSortMenu sort={sort} onSortChange={setSort} />}
 						</SectionHeader>
-						<div className="flex flex-col md:grid md:grid-cols-2 md:gap-2 2xl:grid-cols-3">
+						<div className="flex flex-col md:grid md:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] md:gap-3">
 							{sortLinks(links, sort).map((link) => (
 								<LinkRow
 									key={link.id}

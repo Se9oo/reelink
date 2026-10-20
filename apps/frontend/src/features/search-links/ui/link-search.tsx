@@ -65,7 +65,9 @@ export function LinkSearch({ children }: LinkSearchProps) {
 			{!searching ? (
 				children
 			) : (
-				<div className="flex flex-col md:grid md:grid-cols-2 md:gap-2 md:px-4 lg:px-0 2xl:grid-cols-3">
+				<div
+					className="flex flex-col md:grid md:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] md:gap-3 md:px-4 lg:px-0"
+				>
 					{results && resultsAreCurrent && (
 						<div className="px-4 pb-2 text-[12.5px] text-[var(--seed-color-fg-neutral-muted)] md:col-span-full md:px-0">
 							{results.length === 0 ? '검색 결과가 없어요' : `전체 링크에서 검색 · 결과 ${results.length}개`}
