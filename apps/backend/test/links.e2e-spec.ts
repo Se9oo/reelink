@@ -711,7 +711,7 @@ describe('LinksController (e2e)', () => {
 				.set('Cookie', `access_token=${accessToken}`)
 				.expect(200);
 
-			const ids: string[] = res.body.map((link: { id: string }) => link.id);
+			const ids: string[] = res.body.unviewed.map((link: { id: string }) => link.id);
 
 			expect(ids.indexOf(older.id)).toBeLessThan(ids.indexOf(newer.id));
 			expect(ids).not.toContain(viewed.id);
@@ -719,6 +719,75 @@ describe('LinksController (e2e)', () => {
 			expect(ids).not.toContain(others.id);
 
 			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('다시 보기에는 본 지 1주가 지난 내 링크만 들어가고, 안 본 링크·최근에 본 링크·삭제된 링크는 빠진다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '다시 보기 폴더' })
+				.expect(201);
+			const base = { userId: testUserId, folderId: folder.body.id as string, url: 'https://revisit.com' };
+			const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+
+			const [oldViewed] = await db
+				.insert(links)
+				.values({ ...base, status: 'viewed', viewedAt: eightDaysAgo })
+				.returning();
+			const [recentViewed] = await db
+				.insert(links)
+				.values({ ...base, status: 'viewed', viewedAt: new Date() })
+				.returning();
+			const [deletedViewed] = await db
+				.insert(links)
+				.values({ ...base, status: 'viewed', viewedAt: eightDaysAgo, deletedAt: new Date() })
+				.returning();
+			const [unviewed] = await db.insert(links).values(base).returning();
+
+			const res = await request(app.getHttpServer())
+				.get('/links/feed')
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+
+			const revisitIds: string[] = res.body.revisit.map((link: { id: string }) => link.id);
+
+			expect(revisitIds).toContain(oldViewed.id);
+			expect(revisitIds).not.toContain(recentViewed.id);
+			expect(revisitIds).not.toContain(deletedViewed.id);
+			expect(revisitIds).not.toContain(unviewed.id);
+		});
+
+		test('다시 보기는 최대 20개이고, 같은 날에는 순서가 바뀌지 않는다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '다시 보기 개수 폴더' })
+				.expect(201);
+			const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+
+			await db.insert(links).values(
+				Array.from({ length: 25 }, (_, index) => ({
+					userId: testUserId,
+					folderId: folder.body.id as string,
+					url: `https://revisit-${index}.com`,
+					status: 'viewed',
+					viewedAt: eightDaysAgo,
+				})),
+			);
+
+			const first = await request(app.getHttpServer())
+				.get('/links/feed')
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+			const second = await request(app.getHttpServer())
+				.get('/links/feed')
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+
+			const ids = (body: { revisit: { id: string }[] }) => body.revisit.map((link) => link.id);
+
+			expect(first.body.revisit).toHaveLength(20);
+			expect(ids(second.body)).toEqual(ids(first.body));
 		});
 
 		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {

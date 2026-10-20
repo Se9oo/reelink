@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import { and, asc, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, isNull, lt, or, sql } from 'drizzle-orm';
 
 import { countGraphemes } from '../common/count-graphemes.js';
 import { isValidHttpUrl } from '../common/is-valid-http-url.js';
@@ -11,6 +11,8 @@ import { fetchOgTags } from './fetch-og-tags.js';
 import { Link } from './links.types.js';
 
 const MAX_TEXT_LENGTH = 500;
+const REVISIT_AFTER_DAYS = 7;
+const REVISIT_LIMIT = 20;
 
 interface CreateLinkParams {
 	userId: string;
@@ -118,16 +120,34 @@ export class LinksService {
 	}
 
 	/**
-	 * 리마인드 피드: 아직 안 본 내 링크 전체를 오래된 등록순으로 조회한다. 소프트 삭제된 링크는 제외된다.
+	 * 리마인드 피드를 조회한다. 아직 안 본 내 링크 전체(오래된 등록순)와, 본 지 1주가 지난 링크 중 오늘 다시 꺼내볼 최대 20개(다시 보기)를 함께 돌려준다.
+	 * 다시 보기 순서는 링크 id와 오늘 날짜(KST)로 정해서, 같은 날에는 그대로이고 날이 바뀌면 섞인다. 소프트 삭제된 링크는 제외된다.
 	 * @param userId string
-	 * @returns Link[]
+	 * @returns { unviewed: Link[]; revisit: Link[] }
 	 */
-	async getFeed({ userId }: { userId: string }): Promise<Link[]> {
-		return await this.db
-			.select()
-			.from(links)
-			.where(and(eq(links.userId, userId), eq(links.status, 'unviewed'), isNull(links.deletedAt)))
-			.orderBy(asc(links.createdAt));
+	async getFeed({ userId }: { userId: string }): Promise<{ unviewed: Link[]; revisit: Link[] }> {
+		const [unviewed, revisit] = await Promise.all([
+			this.db
+				.select()
+				.from(links)
+				.where(and(eq(links.userId, userId), eq(links.status, 'unviewed'), isNull(links.deletedAt)))
+				.orderBy(asc(links.createdAt)),
+			this.db
+				.select()
+				.from(links)
+				.where(
+					and(
+						eq(links.userId, userId),
+						eq(links.status, 'viewed'),
+						isNull(links.deletedAt),
+						lt(links.viewedAt, sql`now() - interval '${sql.raw(String(REVISIT_AFTER_DAYS))} days'`),
+					),
+				)
+				.orderBy(sql`md5(${links.id}::text || (now() at time zone 'Asia/Seoul')::date::text)`)
+				.limit(REVISIT_LIMIT),
+		]);
+
+		return { unviewed, revisit };
 	}
 
 	/**
