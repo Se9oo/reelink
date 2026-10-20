@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SnackbarProvider } from 'seed-design/ui/snackbar';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
@@ -74,6 +74,7 @@ function renderDetail(folderId: string) {
 
 describe('FolderDetailView', () => {
 	beforeEach(() => {
+		window.localStorage.clear();
 		vi.mocked(apiClient.get).mockReset();
 		vi.mocked(apiClient.delete)
 			.mockReset()
@@ -107,13 +108,21 @@ describe('FolderDetailView', () => {
 		expect(screen.getByText('링크 1')).toBeInTheDocument();
 	});
 
-	test('링크만 있으면 섹션 제목을 보여주지 않는다', async () => {
+	test('링크만 있어도 링크 섹션 제목을 보여준다', async () => {
 		mockApi({ empty: [link({ id: 'l1', folderId: 'empty', title: '혼자 있는 링크' })] });
 		renderDetail('empty');
 
 		expect(await screen.findByText('혼자 있는 링크')).toBeInTheDocument();
-		expect(screen.queryByText('링크 1')).not.toBeInTheDocument();
+		expect(screen.getByText('링크 1')).toBeInTheDocument();
 		expect(screen.queryByText(/^하위 폴더/)).not.toBeInTheDocument();
+	});
+
+	test('하위 폴더만 있어도 하위 폴더 섹션 제목을 보여준다', async () => {
+		mockApi({});
+		renderDetail('react');
+
+		expect(await screen.findByText('하위 폴더 1')).toBeInTheDocument();
+		expect(screen.queryByText(/^링크 \d/)).not.toBeInTheDocument();
 	});
 
 	test('하위 폴더도 링크도 없으면 빈 상태 문구를 보여준다', async () => {
@@ -140,5 +149,49 @@ describe('FolderDetailView', () => {
 		await user.click(await screen.findByRole('menuitem', { name: '삭제' }));
 
 		expect(apiClient.delete).toHaveBeenCalledWith('links/l1');
+	});
+
+	describe('링크 정렬', () => {
+		const sortLinksFixture = [
+			link({ id: 'l1', folderId: 'empty', title: '나중 링크', createdAt: '2026-10-03T00:00:00Z' }),
+			link({ id: 'l2', folderId: 'empty', title: '가장 먼저 저장한 링크', createdAt: '2026-10-01T00:00:00Z' }),
+		];
+
+		function linkTitles() {
+			return screen
+				.getAllByRole('link')
+				.map((anchor) => anchor.textContent)
+				.filter((text) => text === '나중 링크' || text === '가장 먼저 저장한 링크');
+		}
+
+		test('기본은 최신순이고, 오래된순을 고르면 순서가 바뀐다', async () => {
+			const user = userEvent.setup();
+			mockApi({ empty: sortLinksFixture });
+			renderDetail('empty');
+
+			await screen.findByText('나중 링크');
+
+			expect(linkTitles()).toEqual(['나중 링크', '가장 먼저 저장한 링크']);
+
+			await user.click(screen.getByRole('button', { name: '최신순' }));
+			await user.click(await screen.findByRole('menuitem', { name: '오래된순' }));
+
+			expect(linkTitles()).toEqual(['가장 먼저 저장한 링크', '나중 링크']);
+			expect(screen.getByRole('button', { name: '오래된순' })).toBeInTheDocument();
+		});
+
+		test('고른 정렬은 다시 들어와도 유지된다', async () => {
+			const user = userEvent.setup();
+			mockApi({ empty: sortLinksFixture });
+			renderDetail('empty');
+
+			await user.click(await screen.findByRole('button', { name: '최신순' }));
+			await user.click(await screen.findByRole('menuitem', { name: '오래된순' }));
+
+			cleanup();
+			renderDetail('empty');
+
+			expect(await screen.findByRole('button', { name: '오래된순' })).toBeInTheDocument();
+		});
 	});
 });

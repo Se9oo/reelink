@@ -10,10 +10,13 @@ import { ActionButton } from 'seed-design/ui/action-button';
 
 import { useLinkActions } from '@/features/link-actions/model/use-link-actions';
 import { LinkSearch } from '@/features/search-links/ui/link-search';
+import { useLinkSort } from '@/features/sort-links/model/use-link-sort';
+import { LinkSortMenu } from '@/features/sort-links/ui/link-sort-menu';
 
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { buildFolderPath } from '@/entities/folder/model/build-folder-path';
 import { folderLinksQueryOptions } from '@/entities/link/api/get-folder-links';
+import { sortLinks } from '@/entities/link/model/sort-links';
 import { LinkRow } from '@/entities/link/ui/link-row';
 
 import { folderDetailPath, ROUTES } from '@/shared/config/routes';
@@ -27,6 +30,7 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 	const { data: folders } = useQuery(foldersQueryOptions());
 	const { data: links } = useQuery(folderLinksQueryOptions(folderId));
 	const { onDelete, onMove, onEdit, onTogglePin } = useLinkActions();
+	const { sort, setSort } = useLinkSort();
 
 	if (!folders) {
 		return null;
@@ -57,7 +61,6 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 		}
 	}
 
-	const showSectionLabels = subfolders.length > 0 && linkCount > 0;
 	const isEmpty = links !== undefined && subfolders.length === 0 && linkCount === 0;
 
 	return (
@@ -93,7 +96,9 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 
 				{subfolders.length > 0 && (
 					<Section>
-						{showSectionLabels && <SectionLabel>하위 폴더 {subfolders.length}</SectionLabel>}
+						<SectionHeader>
+							<SectionLabel>하위 폴더 {subfolders.length}</SectionLabel>
+						</SectionHeader>
 						<div className="flex flex-col md:grid md:grid-cols-2 md:gap-2 2xl:grid-cols-3">
 							{subfolders.map((subfolder) => (
 								<NextLink
@@ -130,9 +135,12 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 
 				{links && links.length > 0 && (
 					<Section>
-						{showSectionLabels && <SectionLabel>링크 {linkCount}</SectionLabel>}
+						<SectionHeader>
+							<SectionLabel>링크 {linkCount}</SectionLabel>
+							{links.length > 1 && <LinkSortMenu sort={sort} onSortChange={setSort} />}
+						</SectionHeader>
 						<div className="flex flex-col md:grid md:grid-cols-2 md:gap-2 2xl:grid-cols-3">
-							{links.map((link) => (
+							{sortLinks(links, sort).map((link) => (
 								<LinkRow
 									key={link.id}
 									link={link}
@@ -154,10 +162,10 @@ function Section({ children }: { children: ReactNode }) {
 	return <section className="md:mx-4 md:mt-5 lg:mx-0">{children}</section>;
 }
 
+function SectionHeader({ children }: { children: ReactNode }) {
+	return <div className="flex h-9 items-center justify-between pr-2 pl-4 md:mb-2 md:h-8 md:px-0">{children}</div>;
+}
+
 function SectionLabel({ children }: { children: ReactNode }) {
-	return (
-		<div className="hidden pb-2 text-[13px] font-semibold text-[var(--seed-color-fg-neutral-muted)] md:block">
-			{children}
-		</div>
-	);
+	return <span className="text-[13px] font-semibold text-[var(--seed-color-fg-neutral-muted)]">{children}</span>;
 }
