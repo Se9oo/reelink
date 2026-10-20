@@ -25,7 +25,7 @@ export function useLinkActions() {
 		snackbar.create({ render: () => <Snackbar variant="critical" message={message} /> });
 	}
 
-	function onDelete(link: Link) {
+	function onDelete(link: Link, callbacks: { onFailed?: () => void; onRestored?: () => void } = {}) {
 		deleteLink.mutate(link.id, {
 			onSuccess: () => {
 				snackbar.create({
@@ -34,13 +34,19 @@ export function useLinkActions() {
 							message="링크를 삭제했어요"
 							actionLabel="실행 취소"
 							onAction={() =>
-								restoreItem.mutate({ type: 'link', id: link.id }, { onError: () => showFailure('되돌리지 못했어요') })
+								restoreItem.mutate(
+									{ type: 'link', id: link.id },
+									{ onSuccess: callbacks.onRestored, onError: () => showFailure('되돌리지 못했어요') },
+								)
 							}
 						/>
 					),
 				});
 			},
-			onError: () => showFailure('링크를 삭제하지 못했어요'),
+			onError: () => {
+				callbacks.onFailed?.();
+				showFailure('링크를 삭제하지 못했어요');
+			},
 		});
 	}
 

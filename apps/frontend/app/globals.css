@@ -21,6 +21,7 @@
 	--seed-color-palette-carrot-900: #003366;
 	--seed-color-palette-carrot-1000: #001a33;
 	--app-bg-canvas: #f5f7fa;
+	--app-bg-feed: var(--seed-color-bg-layer-default);
 }
 
 :root[data-seed-color-mode='system'][data-seed-user-color-scheme='dark'],
@@ -37,6 +38,7 @@
 	--seed-color-palette-carrot-900: #c0e0ff;
 	--seed-color-palette-carrot-1000: #e0f0ff;
 	--app-bg-canvas: var(--seed-color-bg-layer-basement);
+	--app-bg-feed: var(--seed-color-palette-static-black);
 }
 
 @theme inline {

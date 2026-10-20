@@ -1,3 +1,5 @@
+import { RemindFeed } from '@/widgets/remind-feed/ui/remind-feed';
+
 export default function FeedPage() {
-	return <div className="p-6 text-sm text-[var(--seed-color-fg-neutral-muted)]">준비 중입니다.</div>;
+	return <RemindFeed />;
 }

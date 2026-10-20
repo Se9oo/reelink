@@ -14,7 +14,7 @@ import { ROUTES } from '@/shared/config/routes';
 
 const TABS = [
 	{ href: ROUTES.HOME, label: '홈', Icon: IconHouseFill },
-	{ href: ROUTES.FEED, label: '피드', Icon: IconVertrectangle2HorizontalFill },
+	{ href: ROUTES.FEED, label: '리마인드', Icon: IconVertrectangle2HorizontalFill },
 	{ href: ROUTES.FOLDERS, label: '링크', Icon: IconDocumentTrayFill },
 	{ href: ROUTES.SETTINGS, label: '설정', Icon: IconGearLine },
 ] as const;
