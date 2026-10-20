@@ -108,7 +108,7 @@ export class FoldersService {
 	}
 
 	/**
-	 * 폴더 안의 링크를 최신 등록순으로 조회한다. 하위 폴더의 링크와 소프트 삭제된 링크는 제외된다.
+	 * 폴더 안의 링크를 조회한다. 고정된 링크가 먼저(나중에 고정한 순), 나머지는 최신 등록순이다. 하위 폴더의 링크와 소프트 삭제된 링크는 제외된다.
 	 * @param userId string
 	 * @param folderId string
 	 * @returns Link[]
@@ -128,7 +128,7 @@ export class FoldersService {
 			.select()
 			.from(links)
 			.where(and(eq(links.folderId, folderId), eq(links.userId, userId), isNull(links.deletedAt)))
-			.orderBy(desc(links.createdAt));
+			.orderBy(sql`${links.pinnedAt} desc nulls last`, desc(links.createdAt));
 	}
 
 	/**

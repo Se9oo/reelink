@@ -55,6 +55,18 @@ export class LinksController {
 		return await this.linksService.updateLink({ userId, linkId, title, savedReason });
 	}
 
+	@Patch(':id/pin')
+	@UseGuards(JwtAuthGuard)
+	async pinLink(
+		@Req() req: Request,
+		@Param('id', ParseUUIDPipe) linkId: string,
+		@Body() { pinned }: { pinned?: unknown },
+	) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.linksService.pinLink({ userId, linkId, pinned });
+	}
+
 	@Patch(':id/folder')
 	@UseGuards(JwtAuthGuard)
 	async moveLink(

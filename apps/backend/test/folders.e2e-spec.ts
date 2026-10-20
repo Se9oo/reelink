@@ -868,6 +868,42 @@ describe('FoldersController (e2e)', () => {
 			expect(res.body.map((link: { id: string }) => link.id)).toEqual([newer.id, older.id]);
 		});
 
+		test('고정된 링크가 먼저 오고, 고정된 것끼리는 나중에 고정한 순서, 나머지는 최신 등록순이다.', async () => {
+			const folder = await createFolder('고정 정렬 폴더');
+
+			const [oldPinned] = await db
+				.insert(links)
+				.values({
+					userId: testUserId,
+					folderId: folder.id,
+					url: 'https://a.com',
+					createdAt: new Date('2026-01-01'),
+					pinnedAt: new Date('2026-03-01'),
+				})
+				.returning();
+			const [newPinned] = await db
+				.insert(links)
+				.values({
+					userId: testUserId,
+					folderId: folder.id,
+					url: 'https://b.com',
+					createdAt: new Date('2026-01-02'),
+					pinnedAt: new Date('2026-03-02'),
+				})
+				.returning();
+			const [newest] = await db
+				.insert(links)
+				.values({ userId: testUserId, folderId: folder.id, url: 'https://c.com', createdAt: new Date('2026-02-01') })
+				.returning();
+
+			const res = await request(app.getHttpServer())
+				.get(`/folders/${folder.id}/links`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+
+			expect(res.body.map((link: { id: string }) => link.id)).toEqual([newPinned.id, oldPinned.id, newest.id]);
+		});
+
 		test('소프트 삭제된 링크와 하위 폴더의 링크는 제외된다.', async () => {
 			const parent = await createFolder('부모');
 			const child = await createFolder('자식', parent.id);

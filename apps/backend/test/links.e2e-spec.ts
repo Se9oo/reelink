@@ -582,4 +582,89 @@ describe('LinksController (e2e)', () => {
 			await request(app.getHttpServer()).patch(`/links/${crypto.randomUUID()}`).send({ title: '제목' }).expect(401);
 		});
 	});
+
+	describe('Patch /links/:id/pin', () => {
+		async function createLink(name = '고정 테스트 폴더') {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name })
+				.expect(201);
+			const link = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://naver.com', folderId: folder.body.id })
+				.expect(201);
+
+			return { folderId: folder.body.id as string, linkId: link.body.id as string };
+		}
+
+		function pin(linkId: string, body: object, token = accessToken) {
+			return request(app.getHttpServer())
+				.patch(`/links/${linkId}/pin`)
+				.set('Cookie', `access_token=${token}`)
+				.send(body);
+		}
+
+		test('고정하면 pinnedAt이 채워지고, 해제하면 null이 된다.', async () => {
+			const { linkId } = await createLink();
+
+			const pinned = await pin(linkId, { pinned: true }).expect(200);
+
+			expect(pinned.body.pinnedAt).not.toBeNull();
+
+			const unpinned = await pin(linkId, { pinned: false }).expect(200);
+
+			expect(unpinned.body.pinnedAt).toBeNull();
+		});
+
+		test('pinned가 boolean이 아니면 400, uuid 형식이 아닌 id면 400 오류를 반환한다.', async () => {
+			const { linkId } = await createLink();
+
+			await pin(linkId, {}).expect(400);
+			await pin(linkId, { pinned: 'true' }).expect(400);
+			await pin('not-a-uuid', { pinned: true }).expect(400);
+		});
+
+		test('남의 링크거나 존재하지 않거나 삭제된 링크면 404 오류를 반환한다.', async () => {
+			const [otherUser] = await db.insert(users).values({ email: '고정-다른이메일', nickname: '다른유저' }).returning();
+			const otherToken = await app.get(JwtService).signAsync({ sub: otherUser.id });
+			const mine = await createLink();
+
+			await pin(mine.linkId, { pinned: true }, otherToken).expect(404);
+			await pin(crypto.randomUUID(), { pinned: true }).expect(404);
+
+			await request(app.getHttpServer())
+				.delete(`/links/${mine.linkId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await pin(mine.linkId, { pinned: true }).expect(404);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('다른 폴더로 옮기면 고정이 풀린다.', async () => {
+			const { linkId } = await createLink();
+			const target = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '고정 이동 대상' })
+				.expect(201);
+
+			await pin(linkId, { pinned: true }).expect(200);
+
+			const moved = await request(app.getHttpServer())
+				.patch(`/links/${linkId}/folder`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ folderId: target.body.id })
+				.expect(200);
+
+			expect(moved.body.pinnedAt).toBeNull();
+		});
+
+		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
+			await request(app.getHttpServer()).patch(`/links/${crypto.randomUUID()}/pin`).send({ pinned: true }).expect(401);
+		});
+	});
 });

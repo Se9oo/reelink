@@ -168,7 +168,34 @@ export class LinksService {
 	}
 
 	/**
-	 * 링크를 다른 폴더로 옮긴다.
+	 * 링크를 폴더 상단에 고정하거나 고정을 해제한다. 고정 시각을 pinnedAt에 기록하고, 해제하면 null로 둔다.
+	 * @param userId string
+	 * @param linkId string
+	 * @param pinned unknown true면 고정, false면 해제
+	 * @returns Link
+	 * @throws BadRequestException pinned가 boolean이 아닌 경우
+	 * @throws NotFoundException 링크가 없거나 삭제됐거나 내 링크가 아닌 경우
+	 */
+	async pinLink({ userId, linkId, pinned }: { userId: string; linkId: string; pinned: unknown }): Promise<Link> {
+		if (typeof pinned !== 'boolean') {
+			throw new BadRequestException('pinned는 true 또는 false여야 합니다.');
+		}
+
+		const [link] = await this.db
+			.update(links)
+			.set({ pinnedAt: pinned ? new Date() : null })
+			.where(and(eq(links.id, linkId), eq(links.userId, userId), isNull(links.deletedAt)))
+			.returning();
+
+		if (!link) {
+			throw new NotFoundException();
+		}
+
+		return link;
+	}
+
+	/**
+	 * 링크를 다른 폴더로 옮긴다. 상단 고정은 원래 폴더 기준이라 함께 해제된다.
 	 * @param userId string
 	 * @param linkId string
 	 * @param folderId string 옮겨갈 폴더, 내 폴더이고 삭제되지 않아야 함
@@ -192,7 +219,7 @@ export class LinksService {
 
 		const [link] = await this.db
 			.update(links)
-			.set({ folderId })
+			.set({ folderId, pinnedAt: null })
 			.where(and(eq(links.id, linkId), eq(links.userId, userId), isNull(links.deletedAt)))
 			.returning();
 
