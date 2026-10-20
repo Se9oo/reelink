@@ -118,5 +118,6 @@ export const links = pgTable('links', {
 	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true }),
 	pinnedAt: timestamp('pinned_at', { withTimezone: true }),
+	viewedAt: timestamp('viewed_at', { withTimezone: true }),
 	deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });

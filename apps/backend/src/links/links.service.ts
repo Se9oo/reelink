@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 
 import { countGraphemes } from '../common/count-graphemes.js';
 import { isValidHttpUrl } from '../common/is-valid-http-url.js';
@@ -115,6 +115,40 @@ export class LinksService {
 			)
 			.orderBy(desc(links.createdAt))
 			.limit(100);
+	}
+
+	/**
+	 * 리마인드 피드: 아직 안 본 내 링크 전체를 오래된 등록순으로 조회한다. 소프트 삭제된 링크는 제외된다.
+	 * @param userId string
+	 * @returns Link[]
+	 */
+	async getFeed({ userId }: { userId: string }): Promise<Link[]> {
+		return await this.db
+			.select()
+			.from(links)
+			.where(and(eq(links.userId, userId), eq(links.status, 'unviewed'), isNull(links.deletedAt)))
+			.orderBy(asc(links.createdAt));
+	}
+
+	/**
+	 * 링크를 열람 처리한다. 이미 본 링크면 처음 본 시각(viewedAt)을 그대로 둔다.
+	 * @param userId string
+	 * @param linkId string
+	 * @returns Link
+	 * @throws NotFoundException 링크가 없거나 삭제됐거나 내 링크가 아닌 경우
+	 */
+	async viewLink({ userId, linkId }: { userId: string; linkId: string }): Promise<Link> {
+		const [link] = await this.db
+			.update(links)
+			.set({ status: 'viewed', viewedAt: sql`coalesce(${links.viewedAt}, now())` })
+			.where(and(eq(links.id, linkId), eq(links.userId, userId), isNull(links.deletedAt)))
+			.returning();
+
+		if (!link) {
+			throw new NotFoundException();
+		}
+
+		return link;
 	}
 
 	/**

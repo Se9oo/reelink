@@ -1,0 +1,1 @@
+ALTER TABLE "links" ADD COLUMN "viewed_at" timestamp with time zone;

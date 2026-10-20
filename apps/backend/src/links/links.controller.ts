@@ -35,6 +35,14 @@ export class LinksController {
 		return await this.linksService.createLink({ userId, url, folderId, savedReason });
 	}
 
+	@Get('feed')
+	@UseGuards(JwtAuthGuard)
+	async getFeed(@Req() req: Request) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.linksService.getFeed({ userId });
+	}
+
 	@Get('search')
 	@UseGuards(JwtAuthGuard)
 	async searchLinks(@Req() req: Request, @Query('q') q?: unknown) {
@@ -53,6 +61,14 @@ export class LinksController {
 		const { sub: userId } = req.user as JwtPayload;
 
 		return await this.linksService.updateLink({ userId, linkId, title, savedReason });
+	}
+
+	@Patch(':id/view')
+	@UseGuards(JwtAuthGuard)
+	async viewLink(@Req() req: Request, @Param('id', ParseUUIDPipe) linkId: string) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.linksService.viewLink({ userId, linkId });
 	}
 
 	@Patch(':id/pin')

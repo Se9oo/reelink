@@ -22,10 +22,11 @@ describe('LinksController (e2e)', () => {
 	let app: INestApplication;
 	let db: DrizzleDb;
 	let accessToken: string;
+	let testUserId: string;
 
 	beforeAll(async () => {
 		context = await setupE2EApp('links-e2e@test.com', '링크테스트');
-		({ app, db, accessToken } = context);
+		({ app, db, accessToken, testUserId } = context);
 	});
 
 	afterAll(async () => {
@@ -665,6 +666,125 @@ describe('LinksController (e2e)', () => {
 
 		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
 			await request(app.getHttpServer()).patch(`/links/${crypto.randomUUID()}/pin`).send({ pinned: true }).expect(401);
+		});
+	});
+
+	describe('Get /links/feed', () => {
+		test('내 링크 중 안 봤고 삭제되지 않은 링크만 오래된 등록순으로 반환한다.', async () => {
+			const [otherUser] = await db.insert(users).values({ email: '피드-다른이메일', nickname: '다른유저' }).returning();
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '피드 폴더' })
+				.expect(201);
+			const [otherFolder] = await db.insert(folders).values({ userId: otherUser.id, name: '남의 폴더' }).returning();
+
+			const base = { userId: testUserId, folderId: folder.body.id as string, url: 'https://feed.com' };
+			const [newer] = await db
+				.insert(links)
+				.values({ ...base, createdAt: new Date('2020-01-03') })
+				.returning();
+			const [older] = await db
+				.insert(links)
+				.values({ ...base, createdAt: new Date('2020-01-01') })
+				.returning();
+			const [viewed] = await db
+				.insert(links)
+				.values({ ...base, createdAt: new Date('2020-01-02'), status: 'viewed', viewedAt: new Date() })
+				.returning();
+			const [deleted] = await db
+				.insert(links)
+				.values({ ...base, createdAt: new Date('2020-01-02'), deletedAt: new Date() })
+				.returning();
+			const [others] = await db
+				.insert(links)
+				.values({
+					userId: otherUser.id,
+					folderId: otherFolder.id,
+					url: 'https://feed.com',
+					createdAt: new Date('2019-01-01'),
+				})
+				.returning();
+
+			const res = await request(app.getHttpServer())
+				.get('/links/feed')
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+
+			const ids: string[] = res.body.map((link: { id: string }) => link.id);
+
+			expect(ids.indexOf(older.id)).toBeLessThan(ids.indexOf(newer.id));
+			expect(ids).not.toContain(viewed.id);
+			expect(ids).not.toContain(deleted.id);
+			expect(ids).not.toContain(others.id);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
+			await request(app.getHttpServer()).get('/links/feed').expect(401);
+		});
+	});
+
+	describe('Patch /links/:id/view', () => {
+		async function createLink() {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '열람 테스트 폴더' })
+				.expect(201);
+			const link = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://naver.com', folderId: folder.body.id })
+				.expect(201);
+
+			return link.body.id as string;
+		}
+
+		function view(linkId: string, token = accessToken) {
+			return request(app.getHttpServer()).patch(`/links/${linkId}/view`).set('Cookie', `access_token=${token}`);
+		}
+
+		test('열람 처리하면 status가 viewed가 되고 viewedAt이 채워진다.', async () => {
+			const linkId = await createLink();
+
+			const res = await view(linkId).expect(200);
+
+			expect(res.body.status).toBe('viewed');
+			expect(res.body.viewedAt).not.toBeNull();
+		});
+
+		test('이미 본 링크를 다시 열람 처리해도 처음 본 시각은 그대로다.', async () => {
+			const linkId = await createLink();
+
+			const first = await view(linkId).expect(200);
+			const second = await view(linkId).expect(200);
+
+			expect(second.body.viewedAt).toBe(first.body.viewedAt);
+		});
+
+		test('남의 링크거나 존재하지 않거나 삭제된 링크면 404, uuid 형식이 아니면 400 오류를 반환한다.', async () => {
+			const [otherUser] = await db.insert(users).values({ email: '열람-다른이메일', nickname: '다른유저' }).returning();
+			const otherToken = await app.get(JwtService).signAsync({ sub: otherUser.id });
+			const linkId = await createLink();
+
+			await view(linkId, otherToken).expect(404);
+			await view(crypto.randomUUID()).expect(404);
+			await view('not-a-uuid').expect(400);
+
+			await request(app.getHttpServer())
+				.delete(`/links/${linkId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await view(linkId).expect(404);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
+			await request(app.getHttpServer()).patch(`/links/${crypto.randomUUID()}/view`).expect(401);
 		});
 	});
 });
