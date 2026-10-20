@@ -1,5 +1,7 @@
 'use client';
 
+import type { CSSProperties } from 'react';
+
 import { IconChevronDownSmallLine } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
 import { Avatar } from 'seed-design/ui/avatar';
@@ -25,7 +27,7 @@ export function AccountMenu({ showLabel = true, showHoverBackground = true, full
 	const { open, onOpenChange, instant } = useBreakpointMenuState();
 
 	if (!me) {
-		return <div className="h-6 w-6" />;
+		return <div className="h-8 w-8" />;
 	}
 
 	return (
@@ -38,7 +40,12 @@ export function AccountMenu({ showLabel = true, showHoverBackground = true, full
 						showHoverBackground ? 'hover:bg-[var(--seed-color-bg-neutral-weak)]' : ''
 					}`}
 				>
-					<Avatar size="24" src={me.avatarUrl ?? undefined} fallback={<IdentityPlaceholder identity="person" />} />
+					<Avatar
+						size="24"
+						style={{ '--avatar-size': '32px' } as CSSProperties}
+						src={me.avatarUrl ?? undefined}
+						fallback={<IdentityPlaceholder identity="person" />}
+					/>
 					{showLabel && (
 						<>
 							<span className="min-w-0 truncate text-sm text-[var(--seed-color-fg-neutral)]">{me.nickname}</span>
