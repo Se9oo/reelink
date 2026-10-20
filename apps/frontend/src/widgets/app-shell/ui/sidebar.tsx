@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { IconHouseFill, IconVertrectangle2HorizontalFill } from '@karrotmarket/react-monochrome-icon';
+import { IconHouseFill, IconLightbulbDot5Fill } from '@karrotmarket/react-monochrome-icon';
 
 import { AccountMenu } from '@/widgets/app-shell/ui/account-menu';
 import { FolderList } from '@/widgets/folder-list/ui/folder-list';
@@ -14,7 +14,7 @@ import { ROUTES } from '@/shared/config/routes';
 
 const QUICK_LINKS = [
 	{ href: ROUTES.HOME, label: '홈', Icon: IconHouseFill },
-	{ href: ROUTES.FEED, label: '리마인드', Icon: IconVertrectangle2HorizontalFill },
+	{ href: ROUTES.FEED, label: '리마인드', Icon: IconLightbulbDot5Fill },
 ] as const;
 
 export function Sidebar() {

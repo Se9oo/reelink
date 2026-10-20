@@ -3,20 +3,16 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import {
-	IconDocumentTrayFill,
-	IconGearLine,
-	IconHouseFill,
-	IconVertrectangle2HorizontalFill,
-} from '@karrotmarket/react-monochrome-icon';
+import { IconGearLine, IconHouseFill, IconLightbulbDot5Fill } from '@karrotmarket/react-monochrome-icon';
 import { SnackbarAvoidOverlap } from 'seed-design/ui/snackbar';
 
 import { ROUTES } from '@/shared/config/routes';
+import { IconFolderFill } from '@/shared/ui/icons/icon-folder-fill';
 
 const TABS = [
 	{ href: ROUTES.HOME, label: '홈', Icon: IconHouseFill },
-	{ href: ROUTES.FEED, label: '리마인드', Icon: IconVertrectangle2HorizontalFill },
-	{ href: ROUTES.FOLDERS, label: '링크', Icon: IconDocumentTrayFill },
+	{ href: ROUTES.FEED, label: '리마인드', Icon: IconLightbulbDot5Fill },
+	{ href: ROUTES.FOLDERS, label: '링크', Icon: IconFolderFill },
 	{ href: ROUTES.SETTINGS, label: '설정', Icon: IconGearLine },
 ] as const;
 
