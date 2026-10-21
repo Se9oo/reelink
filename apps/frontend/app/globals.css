@@ -117,3 +117,19 @@ button:not(:disabled) {
 		left: calc(15rem + env(safe-area-inset-left, 0px));
 	}
 }
+
+@layer base {
+	:root {
+		--app-scrollbar: color-mix(in srgb, var(--seed-color-fg-neutral) 14%, var(--seed-color-bg-layer-default));
+		--app-scrollbar-hover: color-mix(in srgb, var(--seed-color-fg-neutral) 17%, var(--seed-color-bg-layer-default));
+	}
+
+	* {
+		scrollbar-width: auto;
+		scrollbar-color: var(--app-scrollbar) transparent;
+	}
+
+	*:hover {
+		scrollbar-color: var(--app-scrollbar-hover) transparent;
+	}
+}

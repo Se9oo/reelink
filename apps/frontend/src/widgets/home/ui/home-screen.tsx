@@ -120,7 +120,10 @@ export function HomeScreen() {
 
 						{recent.length > 0 && (
 							<Section label="최근 저장한 링크">
-								<div className="-mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+								<div
+									className="-mx-4 flex snap-x [scrollbar-color:transparent_transparent] gap-2.5 overflow-x-auto px-4
+										pb-1 hover:[scrollbar-color:var(--app-scrollbar-hover)_transparent] md:mx-0 md:px-0"
+								>
 									{recent.map((link) => (
 										<HomeLinkCard key={link.id} link={link} className="w-[176px] shrink-0 snap-start md:w-[200px]" />
 									))}
