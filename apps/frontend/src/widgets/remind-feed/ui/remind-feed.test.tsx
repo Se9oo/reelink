@@ -245,4 +245,40 @@ describe('RemindFeed', () => {
 		expect(await screen.findByText('오늘은 여기까지!')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: '링크 등록하기' })).toBeInTheDocument();
 	});
+
+	test('이미 봤어요 처리한 카드는 다시 열어도 열람 처리 API를 다시 부르지 않는다', async () => {
+		const user = userEvent.setup();
+		mockApi(feed);
+		renderFeed();
+
+		const card = await screen.findByRole('link', { name: /도커 컴포즈 정리/ });
+		await user.click(card);
+		await user.click(card);
+
+		await waitFor(() => expect(apiClient.patch).toHaveBeenCalledTimes(1));
+	});
+
+	test('버튼에 포커스가 있을 때 Backspace나 Delete를 눌러도 카드를 지우지 않는다', async () => {
+		const user = userEvent.setup();
+		mockApi(feed);
+		renderFeed();
+
+		await user.click((await screen.findAllByRole('button', { name: '복사' }))[0]);
+		await user.keyboard('{Backspace}{Delete}');
+
+		expect(apiClient.delete).not.toHaveBeenCalled();
+		expect(screen.getByText('도커 컴포즈 정리')).toBeInTheDocument();
+	});
+
+	test('목록에 포커스가 있을 때 Delete를 누르면 현재 카드를 지운다', async () => {
+		const user = userEvent.setup();
+		mockApi(feed);
+		renderFeed();
+
+		await screen.findByText('도커 컴포즈 정리');
+		screen.getByLabelText('리마인드').focus();
+		await user.keyboard('{Delete}');
+
+		await waitFor(() => expect(apiClient.delete).toHaveBeenCalledWith('links/l1'));
+	});
 });

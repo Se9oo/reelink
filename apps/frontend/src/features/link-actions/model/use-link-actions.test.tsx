@@ -37,35 +37,35 @@ const folders = [
 	{ id: 'f2', userId: 'user-1', parentFolderId: null, name: '목적지', sortOrder: 1, isSystem: false, deletedAt: null },
 ];
 
-function Harness() {
+function Harness({ target }: { target: Link }) {
 	const { onDelete, onMove, onEdit, onTogglePin } = useLinkActions();
 
 	return (
 		<>
-			<button type="button" onClick={() => onDelete(link)}>
+			<button type="button" onClick={() => onDelete(target)}>
 				삭제하기
 			</button>
-			<button type="button" onClick={() => onMove(link)}>
+			<button type="button" onClick={() => onMove(target)}>
 				이동하기
 			</button>
-			<button type="button" onClick={() => onEdit(link)}>
+			<button type="button" onClick={() => onEdit(target)}>
 				수정하기
 			</button>
-			<button type="button" onClick={() => onTogglePin(link)}>
+			<button type="button" onClick={() => onTogglePin(target)}>
 				고정하기
 			</button>
 		</>
 	);
 }
 
-function renderHarness() {
+function renderHarness(target: Link = link) {
 	const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
 
 	render(
 		<QueryClientProvider client={queryClient}>
 			<OverlayProvider>
 				<SnackbarProvider>
-					<Harness />
+					<Harness target={target} />
 				</SnackbarProvider>
 			</OverlayProvider>
 		</QueryClientProvider>,
@@ -194,6 +194,19 @@ describe('useLinkActions', () => {
 			await waitFor(() =>
 				expect(apiClient.patch).toHaveBeenCalledWith('links/l1/folder', { json: { folderId: 'f2' } }),
 			);
+		});
+
+		test('고정된 링크를 옮겼다가 실행 취소하면 원래 폴더로 돌리고 고정도 다시 건다', async () => {
+			const user = userEvent.setup();
+			renderHarness({ ...link, pinnedAt: '2026-10-20T00:00:00Z' });
+
+			await openMoveDialog(user);
+			await user.click(await screen.findByText('목적지'));
+			await user.click(screen.getByRole('button', { name: '이동' }));
+			await user.click(await screen.findByRole('button', { name: '실행 취소' }));
+
+			await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/l1/pin', { json: { pinned: true } }));
+			expect(apiClient.patch).toHaveBeenCalledWith('links/l1/folder', { json: { folderId: 'f1' } });
 		});
 
 		test('이동에 실패하면 실패 스낵바를 띄운다', async () => {

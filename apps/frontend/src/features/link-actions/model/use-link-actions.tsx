@@ -68,7 +68,19 @@ export function useLinkActions() {
 								onAction={() =>
 									moveLink.mutate(
 										{ linkId: link.id, folderId: link.folderId },
-										{ onSuccess: onUpdated, onError: () => showFailure('되돌리지 못했어요') },
+										{
+											onSuccess: (restored) => {
+												onUpdated?.(restored);
+
+												if (link.pinnedAt) {
+													pinLink.mutate(
+														{ linkId: link.id, pinned: true },
+														{ onSuccess: (repinned) => onUpdated?.(repinned) },
+													);
+												}
+											},
+											onError: () => showFailure('되돌리지 못했어요'),
+										},
 									)
 								}
 							/>

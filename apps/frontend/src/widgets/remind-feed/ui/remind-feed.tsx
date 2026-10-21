@@ -45,9 +45,10 @@ export function RemindFeed() {
 	const [source, setSource] = useState<Feed | null>(null);
 	const [lists, setLists] = useState<Record<Section, Link[]>>({ unviewed: [], revisit: [] });
 	const [viewedIds, setViewedIds] = useState<Set<string>>(new Set());
+	const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
 	if (data && data !== source) {
-		setLists(source ? mergeFeed(lists, data) : data);
+		setLists(source ? mergeFeed(lists, data, removedIds) : data);
 		setSource(data);
 	}
 
@@ -98,7 +99,7 @@ export function RemindFeed() {
 	}
 
 	function open(link: Link, section: Section) {
-		if (section === 'revisit') {
+		if (section === 'revisit' || viewedIds.has(link.id)) {
 			return;
 		}
 
@@ -107,6 +108,12 @@ export function RemindFeed() {
 	}
 
 	function restoreAt(link: Link, section: Section, index: number) {
+		setRemovedIds((prev) => {
+			const next = new Set(prev);
+			next.delete(link.id);
+
+			return next;
+		});
 		setLists((prev) => {
 			if (prev[section].some((item) => item.id === link.id)) {
 				return prev;
@@ -129,6 +136,7 @@ export function RemindFeed() {
 	function remove(link: Link, section: Section) {
 		const index = lists[section].findIndex((item) => item.id === link.id);
 
+		setRemovedIds((prev) => new Set(prev).add(link.id));
 		setLists((prev) => ({ ...prev, [section]: prev[section].filter((item) => item.id !== link.id) }));
 		onDelete(link, {
 			onFailed: () => restoreAt(link, section, index),
@@ -149,7 +157,7 @@ export function RemindFeed() {
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
-		if (event.key !== 'Delete' && event.key !== 'Backspace') {
+		if (event.key !== 'Delete' || event.repeat || event.target !== event.currentTarget) {
 			return;
 		}
 

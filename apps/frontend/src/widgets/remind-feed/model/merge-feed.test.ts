@@ -50,4 +50,11 @@ describe('mergeFeed', () => {
 		expect(merged.unviewed.map((item) => item.id)).toEqual(['viewed', 'b']);
 		expect(merged.revisit.map((item) => item.id)).toEqual(['r']);
 	});
+
+	test('화면에서 지운 카드는 서버 응답에 아직 남아 있어도 되살리지 않는다', () => {
+		const local = { unviewed: [link({ id: 'a' })], revisit: [] };
+		const server = { unviewed: [link({ id: 'a' }), link({ id: 'removed' }), link({ id: 'new' })], revisit: [] };
+
+		expect(mergeFeed(local, server, new Set(['removed'])).unviewed.map((item) => item.id)).toEqual(['a', 'new']);
+	});
 });
