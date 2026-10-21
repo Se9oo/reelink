@@ -56,7 +56,7 @@ export function HomeScreen() {
 					lg:pb-16"
 			>
 				<header>
-					<h1 className="text-xl font-extrabold text-balance text-[var(--seed-color-fg-neutral)] md:text-2xl">
+					<h1 className="text-xl font-extrabold text-balance break-keep text-[var(--seed-color-fg-neutral)] md:text-2xl">
 						{me.nickname}님, {greetingFor(new Date().getHours())}
 					</h1>
 					<p className="mt-1.5 text-sm text-[var(--seed-color-fg-neutral-muted)]">
@@ -81,7 +81,8 @@ export function HomeScreen() {
 									오늘의 리마인드
 								</span>
 								<h2
-									className="mt-2 text-xl leading-snug font-extrabold text-balance text-[var(--seed-color-fg-neutral)]"
+									className="mt-2 text-xl leading-snug font-extrabold text-balance break-keep
+										text-[var(--seed-color-fg-neutral)]"
 								>
 									안 본 링크 <Em>{remind.unviewedCount}개</Em>, 오늘 다시 볼 링크 <Em>{remind.revisitCount}개</Em>가
 									기다려요
