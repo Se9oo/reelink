@@ -11,5 +11,19 @@ export interface Link {
 	status: string;
 	createdAt: Date;
 	lastRemindedAt: Date | null;
+	pinnedAt: Date | null;
+	viewedAt: Date | null;
 	deletedAt: Date | null;
+}
+
+export interface HomeSummary {
+	remind: {
+		unviewedCount: number;
+		revisitCount: number;
+		oldestUnviewed: Link | null;
+		previews: Link[];
+	};
+	week: { saved: number; viewed: number; cleaned: number; viewedLastWeek: number };
+	recent: Link[];
+	throwbacks: { label: 'oneMonth' | 'threeMonths'; link: Link }[];
 }

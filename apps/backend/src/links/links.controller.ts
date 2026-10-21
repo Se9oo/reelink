@@ -35,6 +35,14 @@ export class LinksController {
 		return await this.linksService.createLink({ userId, url, folderId, savedReason });
 	}
 
+	@Get('home')
+	@UseGuards(JwtAuthGuard)
+	async getHome(@Req() req: Request) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.linksService.getHome({ userId });
+	}
+
 	@Get('feed')
 	@UseGuards(JwtAuthGuard)
 	async getFeed(@Req() req: Request) {
