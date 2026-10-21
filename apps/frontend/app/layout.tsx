@@ -18,10 +18,15 @@ const pretendard = localFont({
 export const metadata: Metadata = {
 	title: 'Reelink',
 	description: '나중에 볼 링크, 잊기 전에 다시 떠오르게',
+	appleWebApp: { title: 'Reelink' },
 };
 
 export const viewport: Viewport = {
 	colorScheme: 'light dark',
+	themeColor: [
+		{ media: '(prefers-color-scheme: light)', color: '#f5f7fa' },
+		{ media: '(prefers-color-scheme: dark)', color: '#121316' },
+	],
 };
 
 const themeScript = `
