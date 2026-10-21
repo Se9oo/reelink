@@ -12,5 +12,6 @@ export interface Link {
 	createdAt: string;
 	lastRemindedAt: string | null;
 	pinnedAt: string | null;
+	viewedAt: string | null;
 	deletedAt: string | null;
 }

@@ -62,6 +62,7 @@ describe('getChildSummary', () => {
 			createdAt: '2026-10-16T00:00:00Z',
 			lastRemindedAt: null,
 			pinnedAt: null,
+			viewedAt: null,
 			deletedAt: '2026-10-16T00:00:00Z',
 			parentFolderName: null,
 			...overrides,

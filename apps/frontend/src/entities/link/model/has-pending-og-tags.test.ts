@@ -20,6 +20,7 @@ function link(overrides: Partial<Link>): Link {
 		createdAt: now.toISOString(),
 		lastRemindedAt: null,
 		pinnedAt: null,
+		viewedAt: null,
 		deletedAt: null,
 		...overrides,
 	};

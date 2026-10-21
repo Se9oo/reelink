@@ -9,7 +9,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
 	return (
 		<div className="flex h-dvh overflow-hidden">
 			<Sidebar />
-			<div className="flex h-full flex-1 flex-col">
+			<div className="flex h-full min-w-0 flex-1 flex-col">
 				<MobileHeader />
 				<main className="flex-1 overflow-y-auto pt-14 pb-16 lg:pt-0 lg:pb-0">{children}</main>
 				<BottomNavigation />

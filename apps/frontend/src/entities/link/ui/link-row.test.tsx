@@ -20,6 +20,7 @@ function link(overrides: Partial<Link> = {}): Link {
 		createdAt: '2026-10-16T00:00:00Z',
 		lastRemindedAt: null,
 		pinnedAt: null,
+		viewedAt: null,
 		deletedAt: null,
 		...overrides,
 	};

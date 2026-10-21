@@ -80,9 +80,11 @@ export function RemindFeed() {
 	}
 
 	const registerButton = (
-		<ActionButton variant="brandSolid" size="medium" onClick={openRegisterModal} className="mt-3">
-			링크 등록하기
-		</ActionButton>
+		<div className="mt-3">
+			<ActionButton variant="brandSolid" size="medium" onClick={openRegisterModal}>
+				링크 등록하기
+			</ActionButton>
+		</div>
 	);
 
 	if (entries.length === 0) {
