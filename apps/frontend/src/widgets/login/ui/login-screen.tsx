@@ -2,6 +2,7 @@ import { PrefixIcon } from '@seed-design/react';
 import { ActionButton } from 'seed-design/ui/action-button';
 
 import { API_URL } from '@/shared/config/env';
+import { ReelinkSymbol, ReelinkWordmark } from '@/shared/ui/logo/reelink-logo';
 
 import { GithubIcon, GoogleIcon } from './provider-icons';
 
@@ -9,8 +10,11 @@ export function LoginScreen() {
 	return (
 		<main className="flex flex-1 flex-col items-center justify-center px-6">
 			<div className="animate-fade-in-up flex w-full max-w-sm flex-col items-center gap-8 text-center">
-				<div className="flex flex-col gap-2">
-					<h1 className="text-2xl font-semibold tracking-tight text-[var(--seed-color-fg-neutral)]">Reelink</h1>
+				<div className="flex flex-col items-center gap-3">
+					<ReelinkSymbol size={76} />
+					<h1 className="text-3xl text-[var(--seed-color-fg-neutral)]">
+						<ReelinkWordmark />
+					</h1>
 					<p className="text-sm text-[var(--seed-color-fg-neutral-muted)]">나중에 볼 링크, 잊기 전에 다시 떠오르게</p>
 				</div>
 

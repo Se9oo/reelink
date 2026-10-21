@@ -11,6 +11,7 @@ import { FolderList } from '@/widgets/folder-list/ui/folder-list';
 import { ThemeToggle } from '@/features/toggle-theme/ui/theme-toggle';
 
 import { ROUTES } from '@/shared/config/routes';
+import { ReelinkSymbol, ReelinkWordmark } from '@/shared/ui/logo/reelink-logo';
 
 const QUICK_LINKS = [
 	{ href: ROUTES.HOME, label: '홈', Icon: IconHouseFill },
@@ -25,6 +26,10 @@ export function Sidebar() {
 			className="app-sidebar hidden h-full w-60 shrink-0 flex-col border-r
 				border-[var(--seed-color-stroke-neutral-subtle)] lg:flex"
 		>
+			<Link href={ROUTES.HOME} aria-label="Reelink 홈" className="flex items-center gap-2.5 px-4 pt-4">
+				<ReelinkSymbol size={30} />
+				<ReelinkWordmark className="text-lg text-[var(--seed-color-fg-neutral)]" />
+			</Link>
 			<nav className="flex flex-col gap-1 px-2 py-3">
 				{QUICK_LINKS.map(({ href, label, Icon }) => {
 					const isActive = pathname === href;
