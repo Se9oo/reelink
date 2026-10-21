@@ -175,6 +175,7 @@ function Stat({ label, value }: { label: string; value: number }) {
 			<p className="truncate text-xs text-[var(--seed-color-fg-neutral-muted)] md:text-[12.5px]">{label}</p>
 			<p className="mt-1 text-xl font-extrabold text-[var(--seed-color-fg-neutral)] tabular-nums md:text-2xl">
 				{value}
+				<span className="ml-0.5 text-[13px] font-semibold text-[var(--seed-color-fg-neutral-muted)]">개</span>
 			</p>
 		</div>
 	);
