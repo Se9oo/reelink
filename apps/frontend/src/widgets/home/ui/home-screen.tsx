@@ -73,7 +73,7 @@ export function HomeScreen() {
 							className="flex items-center justify-between gap-5 rounded-[20px] border
 								border-[var(--seed-color-stroke-neutral-subtle)] bg-[var(--seed-color-bg-layer-default)] p-5 md:p-6"
 						>
-							<div className="min-w-0">
+							<div className="min-w-0 flex-1">
 								<span
 									className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[var(--seed-color-fg-brand)]"
 								>
@@ -96,7 +96,7 @@ export function HomeScreen() {
 										<span className="shrink-0">&quot;예요.</span>
 									</p>
 								)}
-								<div className="mt-4">
+								<div className="mt-4 flex justify-end md:justify-start">
 									<ActionButton variant="brandSolid" size="medium" onClick={() => router.push(ROUTES.FEED)}>
 										리마인드 시작
 									</ActionButton>
