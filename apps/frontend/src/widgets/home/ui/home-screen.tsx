@@ -53,7 +53,7 @@ export function HomeScreen() {
 		<div className="min-h-full overflow-x-hidden bg-[var(--app-bg-canvas)]">
 			<div
 				className="mx-auto flex w-full max-w-[920px] min-w-0 flex-col gap-7 px-4 pt-5 pb-24 md:px-8 md:pt-8 lg:px-10
-					lg:pb-16"
+					lg:pb-16 xl:max-w-[1160px]"
 			>
 				<header>
 					<h1 className="text-xl font-extrabold text-balance break-keep text-[var(--seed-color-fg-neutral)] md:text-2xl">
