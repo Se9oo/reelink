@@ -6,10 +6,11 @@ import { AuthModule } from './auth/auth.module.js';
 import { DrizzleModule } from './db/drizzle.module.js';
 import { FoldersModule } from './folders/folders.module.js';
 import { LinksModule } from './links/links.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { TrashModule } from './trash/trash.module.js';
 
 @Module({
-	imports: [DrizzleModule, AuthModule, FoldersModule, LinksModule, TrashModule],
+	imports: [DrizzleModule, AuthModule, FoldersModule, LinksModule, TrashModule, NotificationsModule],
 	controllers: [AppController],
 	providers: [AppService],
 })
