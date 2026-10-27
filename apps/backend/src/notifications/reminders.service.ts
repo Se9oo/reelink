@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 
-import { and, asc, eq, exists, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, eq, exists, isNull, lte, or, sql } from 'drizzle-orm';
 
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { links, notificationChannels, users } from '../db/schema.js';
@@ -10,6 +10,7 @@ import { buildReminderMessage } from './build-reminder-message.js';
 import { KakaoApiError, refreshKakaoToken, sendKakaoMemo } from './kakao-api.js';
 
 const TOKEN_REFRESH_MARGIN_MS = 10 * 60 * 1000;
+const REFRESH_TOKEN_RENEW_BEFORE_MS = 14 * 24 * 60 * 60 * 1000;
 const REMIND_EVERY_DAYS = 3;
 const KAKAO_SCOPE_NOT_AGREED = '-402';
 
@@ -37,7 +38,7 @@ export class RemindersService {
 	constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
 	/**
-	 * 매일 KST 09:00에 리마인드를 보낸 뒤, 보낼 게 없던 사용자까지 포함해 만료가 가까운 카카오 토큰을 갱신한다.
+	 * 매일 KST 09:00에 리마인드를 보낸 뒤, 보낼 게 없던 사용자까지 포함해 만료가 가까운 refresh token을 연장한다.
 	 */
 	@Cron('0 9 * * *', { timeZone: 'Asia/Seoul' })
 	async handleDailyReminders() {
@@ -47,7 +48,8 @@ export class RemindersService {
 	}
 
 	/**
-	 * 알림 on/off와 상관없이 active 카카오 채널 전부의 토큰을 만료가 가까우면 갱신해, refresh token이 2개월 뒤 만료되지 않게 한다.
+	 * 알림 on/off와 상관없이, refresh token 만료가 2주 안으로 다가온(또는 만료 시각을 아직 모르는) active 카카오 채널만 갱신해
+	 * refresh token을 연장한다. 카카오는 남은 기간이 1개월 미만일 때 갱신하면 새 refresh token을 주므로, 한 번 연장하면 약 6주 동안 대상에서 빠진다.
 	 * 한 채널이 실패해도 나머지는 계속 처리한다.
 	 * @param now Date
 	 */
@@ -55,11 +57,20 @@ export class RemindersService {
 		const channels = await this.db
 			.select()
 			.from(notificationChannels)
-			.where(and(eq(notificationChannels.provider, 'kakao'), eq(notificationChannels.status, 'active')));
+			.where(
+				and(
+					eq(notificationChannels.provider, 'kakao'),
+					eq(notificationChannels.status, 'active'),
+					or(
+						isNull(notificationChannels.refreshTokenExpiresAt),
+						lte(notificationChannels.refreshTokenExpiresAt, new Date(now.getTime() + REFRESH_TOKEN_RENEW_BEFORE_MS)),
+					),
+				),
+			);
 
 		await forEachInBatches(channels, CONCURRENCY, async (channel) => {
 			try {
-				await this.getValidAccessToken(channel, now);
+				await this.getValidAccessToken(channel, now, { force: true });
 			} catch (err) {
 				this.logger.error(`Token refresh failed for user ${channel.userId}: ${(err as Error).message}`);
 			}
@@ -200,6 +211,9 @@ export class RemindersService {
 				accessToken: tokens.accessToken,
 				refreshToken: tokens.refreshToken ?? channel.refreshToken,
 				tokenExpiresAt: new Date(now.getTime() + tokens.expiresIn * 1000),
+				refreshTokenExpiresAt: tokens.refreshTokenExpiresIn
+					? new Date(now.getTime() + tokens.refreshTokenExpiresIn * 1000)
+					: channel.refreshTokenExpiresAt,
 			};
 			await this.db.update(notificationChannels).set(refreshed).where(eq(notificationChannels.id, channel.id));
 			Object.assign(channel, refreshed);

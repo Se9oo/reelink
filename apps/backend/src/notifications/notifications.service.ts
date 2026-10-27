@@ -75,6 +75,7 @@ export class NotificationsService {
 			accessToken: tokens.accessToken,
 			refreshToken: tokens.refreshToken,
 			tokenExpiresAt: new Date(Date.now() + tokens.expiresIn * 1000),
+			refreshTokenExpiresAt: new Date(Date.now() + tokens.refreshTokenExpiresIn * 1000),
 			status: 'active',
 		};
 

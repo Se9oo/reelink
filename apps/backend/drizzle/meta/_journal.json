@@ -50,6 +50,13 @@
       "when": 1793076420841,
       "tag": "0006_chief_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793085635064,
+      "tag": "0007_lame_proteus",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,7 @@ export interface KakaoTokens {
 	accessToken: string;
 	refreshToken: string;
 	expiresIn: number;
+	refreshTokenExpiresIn: number;
 	scope: string;
 }
 
@@ -21,6 +22,7 @@ export interface RefreshedKakaoTokens {
 	accessToken: string;
 	refreshToken: string | null;
 	expiresIn: number;
+	refreshTokenExpiresIn: number | null;
 }
 
 /**
@@ -70,6 +72,7 @@ export async function exchangeKakaoCode(code: string): Promise<KakaoTokens> {
 		accessToken: body.access_token,
 		refreshToken: body.refresh_token,
 		expiresIn: body.expires_in,
+		refreshTokenExpiresIn: body.refresh_token_expires_in,
 		scope: body.scope ?? '',
 	};
 }
@@ -77,7 +80,7 @@ export async function exchangeKakaoCode(code: string): Promise<KakaoTokens> {
 /**
  * refresh token으로 새 access token을 받는다.
  * @param refreshToken string
- * @returns RefreshedKakaoTokens refresh token은 남은 기간이 1개월 미만일 때만 새로 내려오고, 아니면 null
+ * @returns RefreshedKakaoTokens refresh token과 그 만료까지 남은 초는 남은 기간이 1개월 미만일 때만 새로 내려오고, 아니면 null
  * @throws KakaoApiError refresh token이 무효면 error가 invalid_grant
  */
 export async function refreshKakaoToken(refreshToken: string): Promise<RefreshedKakaoTokens> {
@@ -87,6 +90,7 @@ export async function refreshKakaoToken(refreshToken: string): Promise<Refreshed
 		accessToken: body.access_token,
 		refreshToken: body.refresh_token ?? null,
 		expiresIn: body.expires_in,
+		refreshTokenExpiresIn: body.refresh_token_expires_in ?? null,
 	};
 }
 

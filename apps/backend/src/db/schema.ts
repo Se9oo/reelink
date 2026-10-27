@@ -51,6 +51,7 @@ export const notificationChannels = pgTable(
 		accessToken: text('access_token'),
 		refreshToken: text('refresh_token'),
 		tokenExpiresAt: timestamp('token_expires_at', { withTimezone: true }),
+		refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { withTimezone: true }),
 		status: text('status').notNull().default('active'),
 	},
 	(table) => [unique('notification_channels_user_provider_unique').on(table.userId, table.provider)],

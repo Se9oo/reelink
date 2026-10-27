@@ -14,6 +14,7 @@ vi.mock('../src/notifications/kakao-api.js', () => ({
 		accessToken: 'kakao-access',
 		refreshToken: 'kakao-refresh',
 		expiresIn: 21599,
+		refreshTokenExpiresIn: 5183999,
 		scope: 'talk_message profile_nickname',
 	})),
 	fetchKakaoUserId: vi.fn(async () => '12345'),
@@ -77,6 +78,7 @@ describe('NotificationsController (e2e)', () => {
 			accessToken: 'a',
 			refreshToken: 'r',
 			expiresIn: 21599,
+			refreshTokenExpiresIn: 5183999,
 			scope: 'profile_nickname',
 		});
 		const { state, stateCookie } = await startConnect();
@@ -111,6 +113,7 @@ describe('NotificationsController (e2e)', () => {
 			refreshToken: 'kakao-refresh',
 			status: 'active',
 		});
+		expect(channel.refreshTokenExpiresAt!.getTime()).toBeGreaterThan(Date.now() + 59 * 24 * 60 * 60 * 1000);
 
 		const [user] = await db.select().from(users).where(eq(users.id, testUserId));
 		expect(user.notificationMethod).toBe('kakao');

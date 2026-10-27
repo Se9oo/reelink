@@ -2,7 +2,12 @@ import { eq } from 'drizzle-orm';
 
 import { DrizzleDb } from '../src/db/drizzle.module.js';
 import { folders, links, notificationChannels, users } from '../src/db/schema.js';
-import { KakaoApiError, refreshKakaoToken, sendKakaoMemo } from '../src/notifications/kakao-api.js';
+import {
+	KakaoApiError,
+	type RefreshedKakaoTokens,
+	refreshKakaoToken,
+	sendKakaoMemo,
+} from '../src/notifications/kakao-api.js';
 import { RemindersService } from '../src/notifications/reminders.service.js';
 
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
@@ -16,6 +21,18 @@ vi.mock('../src/notifications/kakao-api.js', async (importOriginal) => ({
 const NOW = new Date('2001-01-10T00:00:00Z');
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 24 * 60 * 60 * 1000);
 const invalidGrant = () => new KakaoApiError(400, 'token refresh', 'invalid_grant');
+
+function mockRefresh(result: RefreshedKakaoTokens | Error) {
+	vi.mocked(refreshKakaoToken).mockImplementation(async (refreshToken) => {
+		if (refreshToken !== 'valid-refresh') {
+			throw new Error(`unexpected refresh for ${refreshToken}`);
+		}
+		if (result instanceof Error) {
+			throw result;
+		}
+		return result;
+	});
+}
 
 describe('RemindersService (e2e)', () => {
 	let context: E2ETestContext;
@@ -52,6 +69,7 @@ describe('RemindersService (e2e)', () => {
 				accessToken: 'valid-access',
 				refreshToken: 'valid-refresh',
 				tokenExpiresAt: new Date(NOW.getTime() + 60 * 60 * 1000),
+				refreshTokenExpiresAt: new Date(NOW.getTime() + 50 * 24 * 60 * 60 * 1000),
 			})
 			.returning();
 		channelId = channel.id;
@@ -163,7 +181,7 @@ describe('RemindersService (e2e)', () => {
 			.update(notificationChannels)
 			.set({ tokenExpiresAt: new Date(NOW.getTime() + 60 * 1000) })
 			.where(eq(notificationChannels.id, channelId));
-		vi.mocked(refreshKakaoToken).mockResolvedValue({ accessToken: 'new-access', refreshToken: null, expiresIn: 21599 });
+		mockRefresh({ accessToken: 'new-access', refreshToken: null, expiresIn: 21599, refreshTokenExpiresIn: null });
 		await insertLink();
 
 		await reminders.sendDailyReminders(NOW);
@@ -180,7 +198,7 @@ describe('RemindersService (e2e)', () => {
 
 	test('refresh token이 무효(invalid_grant)면 채널을 revoked로 바꾸고 보내지 않는다.', async () => {
 		await db.update(notificationChannels).set({ tokenExpiresAt: NOW }).where(eq(notificationChannels.id, channelId));
-		vi.mocked(refreshKakaoToken).mockRejectedValue(invalidGrant());
+		mockRefresh(invalidGrant());
 		await insertLink();
 
 		await reminders.sendDailyReminders(NOW);
@@ -192,7 +210,7 @@ describe('RemindersService (e2e)', () => {
 
 	test('서버 설정 오류(invalid_client)로 갱신이 실패하면 revoked로 바꾸지 않는다.', async () => {
 		await db.update(notificationChannels).set({ tokenExpiresAt: NOW }).where(eq(notificationChannels.id, channelId));
-		vi.mocked(refreshKakaoToken).mockRejectedValue(new KakaoApiError(401, 'token refresh', 'invalid_client'));
+		mockRefresh(new KakaoApiError(401, 'token refresh', 'invalid_client'));
 		await insertLink();
 
 		await reminders.sendDailyReminders(NOW);
@@ -213,7 +231,7 @@ describe('RemindersService (e2e)', () => {
 
 	test('발송이 401로 실패하면 토큰을 갱신해 한 번 더 보낸다.', async () => {
 		vi.mocked(sendKakaoMemo).mockRejectedValueOnce(new KakaoApiError(401, 'memo send'));
-		vi.mocked(refreshKakaoToken).mockResolvedValue({ accessToken: 'new-access', refreshToken: null, expiresIn: 21599 });
+		mockRefresh({ accessToken: 'new-access', refreshToken: null, expiresIn: 21599, refreshTokenExpiresIn: null });
 		await insertLink();
 
 		await reminders.sendDailyReminders(NOW);
@@ -225,7 +243,7 @@ describe('RemindersService (e2e)', () => {
 
 	test('발송이 401이고 갱신도 invalid_grant면 revoked로 바꾼다.', async () => {
 		vi.mocked(sendKakaoMemo).mockRejectedValueOnce(new KakaoApiError(401, 'memo send'));
-		vi.mocked(refreshKakaoToken).mockRejectedValue(invalidGrant());
+		mockRefresh(invalidGrant());
 		await insertLink();
 
 		await reminders.sendDailyReminders(NOW);
@@ -240,7 +258,7 @@ describe('RemindersService (e2e)', () => {
 
 		await reminders.sendDailyReminders(NOW);
 
-		expect(refreshKakaoToken).not.toHaveBeenCalled();
+		expect(refreshKakaoToken).not.toHaveBeenCalledWith('valid-refresh');
 		expect((await getChannel()).status).toBe('revoked');
 	});
 
@@ -288,44 +306,69 @@ describe('RemindersService (e2e)', () => {
 	});
 
 	describe('refreshExpiringTokens', () => {
-		test('보낼 링크가 없어도 만료가 가까운 토큰을 갱신해 refresh token을 살려둔다.', async () => {
-			await db.update(notificationChannels).set({ tokenExpiresAt: NOW }).where(eq(notificationChannels.id, channelId));
-			vi.mocked(refreshKakaoToken).mockResolvedValue({
+		const renewed = {
+			accessToken: 'new-access',
+			refreshToken: 'new-refresh',
+			expiresIn: 21599,
+			refreshTokenExpiresIn: 5183999,
+		};
+
+		async function setRefreshTokenExpiresAt(refreshTokenExpiresAt: Date | null) {
+			await db
+				.update(notificationChannels)
+				.set({ refreshTokenExpiresAt })
+				.where(eq(notificationChannels.id, channelId));
+		}
+
+		test('refresh token 만료가 2주 안으로 다가오면, access token이 유효해도 갱신해 새 refresh token과 만료 시각을 저장한다.', async () => {
+			await setRefreshTokenExpiresAt(new Date(NOW.getTime() + 13 * 24 * 60 * 60 * 1000));
+			mockRefresh(renewed);
+
+			await reminders.refreshExpiringTokens(NOW);
+
+			expect(refreshKakaoToken).toHaveBeenCalledWith('valid-refresh');
+			expect(await getChannel()).toMatchObject({
 				accessToken: 'new-access',
 				refreshToken: 'new-refresh',
-				expiresIn: 21599,
+				refreshTokenExpiresAt: new Date(NOW.getTime() + 5183999 * 1000),
 			});
-
-			await reminders.refreshExpiringTokens(NOW);
-
-			expect(refreshKakaoToken).toHaveBeenCalledWith('valid-refresh');
-			expect(await getChannel()).toMatchObject({ accessToken: 'new-access', refreshToken: 'new-refresh' });
 		});
 
-		test('알림을 꺼둔 사용자(manual)도 토큰을 갱신해 나중에 다시 켰을 때 연동이 살아 있게 한다.', async () => {
-			await db.update(users).set({ notificationMethod: 'manual' }).where(eq(users.id, testUserId));
+		test('refresh token 만료까지 2주 넘게 남았으면, access token이 만료됐어도 갱신하지 않는다.', async () => {
 			await db.update(notificationChannels).set({ tokenExpiresAt: NOW }).where(eq(notificationChannels.id, channelId));
-			vi.mocked(refreshKakaoToken).mockResolvedValue({
-				accessToken: 'new-access',
-				refreshToken: null,
-				expiresIn: 21599,
-			});
+			mockRefresh(renewed);
 
 			await reminders.refreshExpiringTokens(NOW);
 
-			expect(refreshKakaoToken).toHaveBeenCalledWith('valid-refresh');
-			expect((await getChannel()).accessToken).toBe('new-access');
+			expect(refreshKakaoToken).not.toHaveBeenCalledWith('valid-refresh');
 		});
 
-		test('아직 유효한 토큰은 갱신하지 않는다.', async () => {
+		test('refresh token 만료 시각을 모르면(기존 연동) 갱신하고, 새 refresh token이 안 내려오면 만료 시각은 비워둔다.', async () => {
+			await setRefreshTokenExpiresAt(null);
+			mockRefresh({ ...renewed, refreshToken: null, refreshTokenExpiresIn: null });
+
 			await reminders.refreshExpiringTokens(NOW);
 
-			expect(refreshKakaoToken).not.toHaveBeenCalled();
+			expect(await getChannel()).toMatchObject({
+				accessToken: 'new-access',
+				refreshToken: 'valid-refresh',
+				refreshTokenExpiresAt: null,
+			});
+		});
+
+		test('알림을 꺼둔 사용자(manual)도 refresh token을 연장해 나중에 다시 켰을 때 연동이 살아 있게 한다.', async () => {
+			await db.update(users).set({ notificationMethod: 'manual' }).where(eq(users.id, testUserId));
+			await setRefreshTokenExpiresAt(NOW);
+			mockRefresh(renewed);
+
+			await reminders.refreshExpiringTokens(NOW);
+
+			expect((await getChannel()).refreshToken).toBe('new-refresh');
 		});
 
 		test('refresh token이 무효(invalid_grant)면 revoked로 바꾼다.', async () => {
-			await db.update(notificationChannels).set({ tokenExpiresAt: NOW }).where(eq(notificationChannels.id, channelId));
-			vi.mocked(refreshKakaoToken).mockRejectedValue(invalidGrant());
+			await setRefreshTokenExpiresAt(NOW);
+			mockRefresh(invalidGrant());
 
 			await reminders.refreshExpiringTokens(NOW);
 
