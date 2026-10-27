@@ -2,13 +2,16 @@
 
 import { useEffect } from 'react';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ActionButton } from 'seed-design/ui/action-button';
 import { Snackbar, useSnackbarAdapter } from 'seed-design/ui/snackbar';
+import { Switch } from 'seed-design/ui/switch';
+
+import { useConnectKakaoNotification } from '@/features/connect-kakao-notification/model/use-connect-kakao-notification';
 
 import { notificationSettingsQueryOptions } from '@/entities/notification/api/get-notification-settings';
-
-import { apiClient } from '@/shared/api/client';
+import { notificationKeys } from '@/entities/notification/api/notification-keys';
+import { useUpdateNotificationMethod } from '@/entities/notification/api/update-notification-method';
 
 const RESULT_MESSAGES: Record<string, { message: string; variant: 'default' | 'critical' }> = {
 	connected: { message: '카카오 알림을 연동했어요', variant: 'default' },
@@ -20,12 +23,9 @@ export function KakaoNotificationConnect() {
 	const { data } = useQuery(notificationSettingsQueryOptions());
 	const snackbar = useSnackbarAdapter();
 
-	const connect = useMutation({
-		mutationFn: () => apiClient.get('notifications/kakao/connect').json<{ url: string }>(),
-		onSuccess: ({ url }) => {
-			window.location.href = url;
-		},
-	});
+	const connect = useConnectKakaoNotification();
+	const updateMethod = useUpdateNotificationMethod();
+	const queryClient = useQueryClient();
 
 	useEffect(() => {
 		const url = new URL(window.location.href);
@@ -45,12 +45,34 @@ export function KakaoNotificationConnect() {
 	}
 
 	if (data.kakaoStatus === 'active') {
-		return <span className="text-sm text-[var(--seed-color-fg-neutral-muted)]">연동됨</span>;
+		return (
+			<Switch
+				size="24"
+				checked={data.notificationMethod === 'kakao'}
+				disabled={updateMethod.isPending}
+				onCheckedChange={(checked) =>
+					updateMethod.mutate(checked ? 'kakao' : 'manual', {
+						onError: () => {
+							snackbar.create({
+								render: () => <Snackbar variant="critical" message="알림 설정을 바꾸지 못했어요. 다시 시도해주세요" />,
+							});
+							queryClient.invalidateQueries({ queryKey: notificationKeys.settings });
+						},
+					})
+				}
+				inputProps={{ 'aria-label': '카카오톡 알림 받기' }}
+			/>
+		);
 	}
 
 	return (
-		<ActionButton size="small" variant="neutralWeak" loading={connect.isPending} onClick={() => connect.mutate()}>
-			{data.kakaoStatus === 'revoked' ? '다시 연동하기' : '연동하기'}
-		</ActionButton>
+		<div className="flex items-center gap-2">
+			{data.kakaoStatus === 'revoked' && (
+				<span className="text-sm text-[var(--seed-color-fg-critical)]">연동이 끊어졌어요</span>
+			)}
+			<ActionButton size="small" variant="neutralWeak" loading={connect.isPending} onClick={() => connect.mutate()}>
+				{data.kakaoStatus === 'revoked' ? '다시 연동하기' : '연동하기'}
+			</ActionButton>
+		</div>
 	);
 }

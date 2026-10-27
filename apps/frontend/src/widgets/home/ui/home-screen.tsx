@@ -13,6 +13,7 @@ import { greetingFor, praiseFor, subGreetingFor } from '@/widgets/home/model/hom
 import { HomeLinkCard } from '@/widgets/home/ui/home-link-card';
 import { RemindPreviewStack } from '@/widgets/home/ui/remind-preview-stack';
 
+import { KakaoRevokedBanner } from '@/features/connect-kakao-notification/ui/kakao-revoked-banner';
 import { RegisterLinkModal } from '@/features/register-link/ui/register-link-modal';
 
 import { homeKeys, homeQueryOptions } from '@/entities/link/api/get-home';
@@ -63,6 +64,8 @@ export function HomeScreen() {
 						{subGreetingFor(remind.unviewedCount)}
 					</p>
 				</header>
+
+				<KakaoRevokedBanner />
 
 				{isEmpty ? (
 					<EmptyHome onRegister={openRegisterModal} />

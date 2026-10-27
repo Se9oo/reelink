@@ -12,7 +12,7 @@ export default function SettingsPage() {
 			</section>
 
 			<section className="flex items-center justify-between">
-				<span className="text-sm text-[var(--seed-color-fg-neutral)]">카카오 알림 연동</span>
+				<span className="text-sm text-[var(--seed-color-fg-neutral)]">카카오톡 알림</span>
 				<KakaoNotificationConnect />
 			</section>
 

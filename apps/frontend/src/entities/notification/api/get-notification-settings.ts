@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 
+import { notificationKeys } from '@/entities/notification/api/notification-keys';
 import { NotificationSettings } from '@/entities/notification/model/types';
 
 import { apiClient } from '@/shared/api/client';
@@ -9,5 +10,5 @@ function getNotificationSettings() {
 }
 
 export function notificationSettingsQueryOptions() {
-	return queryOptions({ queryKey: ['notification-settings'], queryFn: getNotificationSettings });
+	return queryOptions({ queryKey: notificationKeys.settings, queryFn: getNotificationSettings });
 }
