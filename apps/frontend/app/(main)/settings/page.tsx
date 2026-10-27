@@ -1,3 +1,4 @@
+import { KakaoNotificationConnect } from '@/features/connect-kakao-notification/ui/kakao-notification-connect';
 import { ThemeToggle } from '@/features/toggle-theme/ui/theme-toggle';
 
 export default function SettingsPage() {
@@ -12,7 +13,7 @@ export default function SettingsPage() {
 
 			<section className="flex items-center justify-between">
 				<span className="text-sm text-[var(--seed-color-fg-neutral)]">카카오 알림 연동</span>
-				<span className="text-sm text-[var(--seed-color-fg-neutral-muted)]">준비 중</span>
+				<KakaoNotificationConnect />
 			</section>
 
 			<section className="flex items-center justify-between">
