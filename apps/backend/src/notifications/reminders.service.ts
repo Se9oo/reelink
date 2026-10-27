@@ -13,7 +13,22 @@ const TOKEN_REFRESH_MARGIN_MS = 10 * 60 * 1000;
 const REMIND_EVERY_DAYS = 3;
 const KAKAO_SCOPE_NOT_AGREED = '-402';
 
+const CONCURRENCY = 10;
+
 type Channel = typeof notificationChannels.$inferSelect;
+
+/**
+ * items를 size개씩 묶어, 묶음 안에서는 동시에, 묶음끼리는 차례로 fn을 실행한다.
+ * @param items T[]
+ * @param size number 동시에 실행할 개수
+ * @param fn (item: T) => Promise<void> 실패를 직접 처리해야 한다(던지면 같은 묶음의 결과를 기다리지 않고 멈춤)
+ */
+async function forEachInBatches<T>(items: T[], size: number, fn: (item: T) => Promise<void>) {
+	// ponytail: 묶음 단위라 가장 느린 요청 하나가 묶음 전체를 기다리게 함, 사용자가 많아져 이게 병목이면 풀(pool) 방식이나 BullMQ로
+	for (let i = 0; i < items.length; i += size) {
+		await Promise.all(items.slice(i, i + size).map(fn));
+	}
+}
 
 @Injectable()
 export class RemindersService {
@@ -42,13 +57,13 @@ export class RemindersService {
 			.from(notificationChannels)
 			.where(and(eq(notificationChannels.provider, 'kakao'), eq(notificationChannels.status, 'active')));
 
-		for (const channel of channels) {
+		await forEachInBatches(channels, CONCURRENCY, async (channel) => {
 			try {
 				await this.getValidAccessToken(channel, now);
 			} catch (err) {
 				this.logger.error(`Token refresh failed for user ${channel.userId}: ${(err as Error).message}`);
 			}
-		}
+		});
 	}
 
 	/**
@@ -89,13 +104,13 @@ export class RemindersService {
 				),
 			);
 
-		for (const { userId, channel } of targets) {
+		await forEachInBatches(targets, CONCURRENCY, async ({ userId, channel }) => {
 			try {
 				await this.remindUser(userId, channel, now);
 			} catch (err) {
 				this.logger.error(`Reminder failed for user ${userId}: ${(err as Error).message}`);
 			}
-		}
+		});
 	}
 
 	/**

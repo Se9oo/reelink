@@ -254,6 +254,39 @@ describe('RemindersService (e2e)', () => {
 		expect(await getLastRemindedAt()).toBeNull();
 	});
 
+	test('한 사용자 발송이 실패해도 다른 사용자에게는 보낸다.', async () => {
+		const [otherUser] = await db
+			.insert(users)
+			.values({ email: 'reminders-other@test.com', nickname: '다른사용자', notificationMethod: 'kakao' })
+			.returning();
+		const [otherFolder] = await db.insert(folders).values({ userId: otherUser.id, name: '폴더' }).returning();
+		await db.insert(notificationChannels).values({
+			userId: otherUser.id,
+			provider: 'kakao',
+			externalId: '2',
+			accessToken: 'other-access',
+			refreshToken: 'other-refresh',
+			tokenExpiresAt: new Date(NOW.getTime() + 60 * 60 * 1000),
+		});
+		await db
+			.insert(links)
+			.values({ userId: otherUser.id, folderId: otherFolder.id, url: 'https://example.com/b', createdAt: daysAgo(8) });
+		await insertLink();
+		vi.mocked(sendKakaoMemo).mockImplementation(async (accessToken) => {
+			if (accessToken === 'valid-access') {
+				throw new KakaoApiError(500, 'memo send');
+			}
+		});
+
+		await reminders.sendDailyReminders(NOW);
+
+		const [other] = await db.select().from(users).where(eq(users.id, otherUser.id));
+		expect(other.lastRemindedAt).toEqual(NOW);
+		expect(await getLastRemindedAt()).toBeNull();
+
+		await db.delete(users).where(eq(users.id, otherUser.id));
+	});
+
 	describe('refreshExpiringTokens', () => {
 		test('보낼 링크가 없어도 만료가 가까운 토큰을 갱신해 refresh token을 살려둔다.', async () => {
 			await db.update(notificationChannels).set({ tokenExpiresAt: NOW }).where(eq(notificationChannels.id, channelId));
