@@ -142,4 +142,41 @@ describe('AuthService / AuthController (e2e)', () => {
 			await db.delete(users).where(eq(users.id, testUser.id));
 		});
 	});
+
+	describe('refresh 쿠키 경로', () => {
+		afterEach(() => {
+			delete process.env.REFRESH_COOKIE_PATH;
+		});
+
+		function refreshCookieOf(res: request.Response) {
+			return (res.headers['set-cookie'] as unknown as string[]).find((cookie) => cookie.startsWith('refresh_token='));
+		}
+
+		async function refresh() {
+			const { refreshToken } = await authService.issueTokens(context.testUserId);
+
+			return await request(app.getHttpServer())
+				.post('/auth/refresh')
+				.set('Cookie', `refresh_token=${refreshToken}`)
+				.expect(204);
+		}
+
+		test('REFRESH_COOKIE_PATH가 없으면 /auth 경로로 refresh 쿠키를 굽는다', async () => {
+			expect(refreshCookieOf(await refresh())).toContain('Path=/auth;');
+		});
+
+		test('REFRESH_COOKIE_PATH가 있으면 그 경로로 refresh 쿠키를 굽는다(Nginx /api 접두사 대응)', async () => {
+			process.env.REFRESH_COOKIE_PATH = '/api/auth';
+
+			expect(refreshCookieOf(await refresh())).toContain('Path=/api/auth;');
+		});
+
+		test('로그아웃은 refresh 쿠키를 구운 것과 같은 경로로 지운다', async () => {
+			process.env.REFRESH_COOKIE_PATH = '/api/auth';
+
+			const res = await request(app.getHttpServer()).post('/auth/logout').expect(204);
+
+			expect(refreshCookieOf(res)).toContain('Path=/api/auth;');
+		});
+	});
 });

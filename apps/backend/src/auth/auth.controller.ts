@@ -12,6 +12,15 @@ const REFRESH_TOKEN_COOKIE = 'refresh_token';
 const SESSION_HINT_COOKIE = 'has_session';
 const LOGIN_REDIRECT_PATH = '/home';
 
+/**
+ * refresh 쿠키를 실을 경로를 반환한다. Nginx 뒤에서는 브라우저가 보는 경로가 /api/auth라 REFRESH_COOKIE_PATH로 바꾼다.
+ * env는 import 이후에 로드되므로 상수가 아니라 요청 시점에 읽는다.
+ * @returns string
+ */
+function refreshCookiePath(): string {
+	return process.env.REFRESH_COOKIE_PATH ?? '/auth';
+}
+
 @Controller('auth')
 export class AuthController {
 	constructor(private readonly authService: AuthService) {}
@@ -55,7 +64,7 @@ export class AuthController {
 			await this.authService.revokeRefreshToken(refreshToken);
 		}
 		res.clearCookie(ACCESS_TOKEN_COOKIE);
-		res.clearCookie(REFRESH_TOKEN_COOKIE, { path: '/auth' });
+		res.clearCookie(REFRESH_TOKEN_COOKIE, { path: refreshCookiePath() });
 		res.clearCookie(SESSION_HINT_COOKIE);
 		res.sendStatus(204);
 	}
@@ -99,7 +108,7 @@ export class AuthController {
 			httpOnly: true,
 			sameSite: 'lax',
 			maxAge: 30 * 24 * 60 * 60 * 1000,
-			path: '/auth',
+			path: refreshCookiePath(),
 		});
 		res.cookie(SESSION_HINT_COOKIE, '1', {
 			httpOnly: true,
