@@ -135,4 +135,46 @@ describe('NotificationsController (e2e)', () => {
 		expect(channels).toHaveLength(1);
 		expect(channels[0].status).toBe('active');
 	});
+
+	describe('PATCH /notifications/settings', () => {
+		function patchSettings(body: object) {
+			return request(app.getHttpServer())
+				.patch('/notifications/settings')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send(body);
+		}
+
+		test('알림 방법을 manual로 바꾸면 바뀐 설정을 반환한다.', async () => {
+			const res = await patchSettings({ notificationMethod: 'manual' }).expect(200);
+
+			expect(res.body).toEqual({ notificationMethod: 'manual', kakaoStatus: 'active' });
+		});
+
+		test('카카오 채널이 active면 kakao로 다시 바꿀 수 있다.', async () => {
+			const res = await patchSettings({ notificationMethod: 'kakao' }).expect(200);
+
+			expect(res.body.notificationMethod).toBe('kakao');
+		});
+
+		test('카카오 채널이 revoked면 kakao로 바꿀 수 없다.', async () => {
+			await db
+				.update(notificationChannels)
+				.set({ status: 'revoked' })
+				.where(eq(notificationChannels.userId, testUserId));
+
+			await patchSettings({ notificationMethod: 'kakao' }).expect(400);
+		});
+
+		test('지원하지 않는 알림 방법은 400을 반환한다.', async () => {
+			await patchSettings({ notificationMethod: 'slack' }).expect(400);
+			await patchSettings({}).expect(400);
+		});
+
+		test('본문 없이 요청해도 500이 아니라 400을 반환한다.', async () => {
+			await request(app.getHttpServer())
+				.patch('/notifications/settings')
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(400);
+		});
+	});
 });

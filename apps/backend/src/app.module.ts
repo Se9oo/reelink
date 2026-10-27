@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -10,7 +11,15 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 import { TrashModule } from './trash/trash.module.js';
 
 @Module({
-	imports: [DrizzleModule, AuthModule, FoldersModule, LinksModule, TrashModule, NotificationsModule],
+	imports: [
+		ScheduleModule.forRoot(),
+		DrizzleModule,
+		AuthModule,
+		FoldersModule,
+		LinksModule,
+		TrashModule,
+		NotificationsModule,
+	],
 	controllers: [AppController],
 	providers: [AppService],
 })

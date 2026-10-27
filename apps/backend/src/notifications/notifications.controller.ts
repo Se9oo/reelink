@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Patch, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import type { Request, Response } from 'express';
@@ -25,6 +25,14 @@ export class NotificationsController {
 		const { sub: userId } = req.user as JwtPayload;
 
 		return await this.notificationsService.getSettings(userId);
+	}
+
+	@Patch('settings')
+	@UseGuards(JwtAuthGuard)
+	async updateSettings(@Req() req: Request, @Body('notificationMethod') notificationMethod: unknown) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.notificationsService.updateNotificationMethod(userId, notificationMethod);
 	}
 
 	@Get('kakao/connect')

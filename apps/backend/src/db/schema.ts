@@ -13,6 +13,7 @@ export const users = pgTable('users', {
 	avatarUrl: text('avatar_url'),
 	reminderIntervalDays: integer('reminder_interval_days').notNull().default(7),
 	notificationMethod: text('notification_method').notNull().default('manual'),
+	lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true }),
 });
 
 export const accounts = pgTable(

@@ -21,7 +21,8 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node src/db/migrate.ts"
+    "db:migrate": "node src/db/migrate.ts",
+    "reminders:send": "nest start --entryFile notifications/send-reminders"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -29,6 +30,7 @@
     "@nestjs/jwt": "^12.0.2",
     "@nestjs/passport": "^12.0.0",
     "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/schedule": "^12.0.2",
     "cookie-parser": "^1.4.7",
     "drizzle-orm": "^0.45.3",
     "open-graph-scraper": "^6.12.0",
