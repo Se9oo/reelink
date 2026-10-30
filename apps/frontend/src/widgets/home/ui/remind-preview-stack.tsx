@@ -34,7 +34,12 @@ export function RemindPreviewStack({ links }: RemindPreviewStackProps) {
 					>
 						{link.thumbnailUrl && (
 							// eslint-disable-next-line @next/next/no-img-element
-							<img src={link.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+							<img
+								src={link.thumbnailUrl}
+								referrerPolicy="no-referrer"
+								alt=""
+								className="absolute inset-0 h-full w-full object-cover"
+							/>
 						)}
 						<div className="absolute inset-0 bg-gradient-to-b from-transparent from-40% to-[rgb(10_14_20/0.72)]" />
 						<p className="absolute inset-x-2.5 bottom-2.5 line-clamp-3 text-[11px] leading-snug font-bold">

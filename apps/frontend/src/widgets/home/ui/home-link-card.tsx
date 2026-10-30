@@ -29,7 +29,7 @@ export function HomeLinkCard({ link, className = '' }: HomeLinkCardProps) {
 			>
 				{link.thumbnailUrl ? (
 					// eslint-disable-next-line @next/next/no-img-element
-					<img src={link.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+					<img src={link.thumbnailUrl} referrerPolicy="no-referrer" alt="" className="h-full w-full object-cover" />
 				) : (
 					<IconGlobeLine size={24} />
 				)}

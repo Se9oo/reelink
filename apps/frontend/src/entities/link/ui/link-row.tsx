@@ -55,7 +55,7 @@ export function LinkRow({ link, folderPath, onMove, onEdit, onDelete, onTogglePi
 				>
 					{link.thumbnailUrl ? (
 						// eslint-disable-next-line @next/next/no-img-element
-						<img src={link.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+						<img src={link.thumbnailUrl} referrerPolicy="no-referrer" alt="" className="h-full w-full object-cover" />
 					) : (
 						<IconGlobeLine size={22} />
 					)}
@@ -70,7 +70,7 @@ export function LinkRow({ link, folderPath, onMove, onEdit, onDelete, onTogglePi
 			>
 				{link.thumbnailUrl ? (
 					// eslint-disable-next-line @next/next/no-img-element
-					<img src={link.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+					<img src={link.thumbnailUrl} referrerPolicy="no-referrer" alt="" className="h-full w-full object-cover" />
 				) : (
 					<div
 						aria-hidden="true"

@@ -32,6 +32,7 @@ export function FeedCard({ link, position, total, folderPath, viewed, revisit, o
 					{/* eslint-disable-next-line @next/next/no-img-element */}
 					<img
 						src={link.thumbnailUrl}
+						referrerPolicy="no-referrer"
 						alt=""
 						aria-hidden="true"
 						className="absolute inset-0 h-full w-full scale-125 object-cover blur-2xl brightness-75"
@@ -40,6 +41,7 @@ export function FeedCard({ link, position, total, folderPath, viewed, revisit, o
 						{/* eslint-disable-next-line @next/next/no-img-element */}
 						<img
 							src={link.thumbnailUrl}
+							referrerPolicy="no-referrer"
 							alt=""
 							className="max-h-full max-w-full rounded-xl object-contain shadow-[0_8px_24px_rgb(0_0_0/0.3)]"
 						/>
