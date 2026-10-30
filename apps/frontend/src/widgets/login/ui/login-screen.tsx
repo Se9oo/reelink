@@ -15,7 +15,6 @@ export function LoginScreen() {
 					<h1 className="text-3xl text-[var(--seed-color-fg-neutral)]">
 						<ReelinkWordmark />
 					</h1>
-					<p className="text-sm text-[var(--seed-color-fg-neutral-muted)]">나중에 볼 링크, 잊기 전에 다시 떠오르게</p>
 				</div>
 
 				<div className="flex w-full flex-col gap-3">
