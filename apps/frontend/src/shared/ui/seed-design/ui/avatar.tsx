@@ -20,11 +20,15 @@ export interface AvatarProps extends Omit<SeedAvatar.RootProps, "asChild"> {
  * @see https://seed-design.io/react/components/avatar
  */
 export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
-  ({ src, alt, fallback, children, ...otherProps }, ref) => {
+  ({ src, alt, fallback, children, className, ...otherProps }, ref) => {
     return (
-      <SeedAvatar.Root ref={ref} {...otherProps}>
+      <SeedAvatar.Root
+        ref={ref}
+        className={`data-[loading-state=loading]:invisible ${className ?? ""}`}
+        {...otherProps}
+      >
         <SeedAvatar.Fallback>{fallback}</SeedAvatar.Fallback>
-        <SeedAvatar.Image src={src} alt={alt} />
+        <SeedAvatar.Image src={src} alt={alt} referrerPolicy="no-referrer" />
         {children}
       </SeedAvatar.Root>
     );
