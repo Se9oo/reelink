@@ -30,7 +30,8 @@ export async function setupE2EApp(email: string, nickname: string): Promise<E2ET
 
 	const app = moduleFixture.createNestApplication();
 	app.use(cookieParser());
-	await app.init();
+	// supertest가 요청마다 임시 포트에 listen하면 그 포트를 127.0.0.1로 쓰는 다른 프로세스로 요청이 새는 경우가 있어서, 127.0.0.1에 미리 한 번 띄워 둔다
+	await app.listen(0, '127.0.0.1');
 
 	const db = app.get<DrizzleDb>(DRIZZLE);
 	const jwt = app.get(JwtService);

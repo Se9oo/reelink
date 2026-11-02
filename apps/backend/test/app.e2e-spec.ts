@@ -14,7 +14,7 @@ describe('AppController (e2e)', () => {
 		}).compile();
 
 		app = moduleFixture.createNestApplication();
-		await app.init();
+		await app.listen(0, '127.0.0.1');
 	});
 
 	it('/ (GET)', () => {
