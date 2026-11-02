@@ -51,7 +51,8 @@ export class TrashService {
 
 	/**
 	 * 삭제된 폴더/링크를 복구한다. 원래 부모(폴더)가 살아있으면 그대로, 죽어있으면 최상위(폴더)
-	 * 또는 미분류 시스템 폴더(링크)로 옮겨서 복구한다.
+	 * 또는 미분류 시스템 폴더(링크)로 옮겨서 복구한다. 시스템 폴더를 복구할 때 같은 이름의 살아있는 시스템 폴더가
+	 * 이미 있으면 그 안으로 내용을 합치고(상단 고정 해제) 복구한 폴더는 지운 뒤, 살아있는 쪽을 반환한다.
 	 * @param userId string
 	 * @param type 'folder' | 'link'
 	 * @param id string
@@ -119,16 +120,21 @@ export class TrashService {
 		}
 
 		const { deletedAt } = folder;
+		const mergeTarget = folder.isSystem
+			? await this.foldersService.findLiveSystemFolder(userId, folder.name)
+			: undefined;
 		const parentAlive = folder.parentFolderId ? await this.isFolderAlive(userId, folder.parentFolderId) : false;
 		const restoredParentFolderId = parentAlive ? folder.parentFolderId : null;
-		const sortOrder = await this.foldersService.nextSortOrder(userId, restoredParentFolderId);
+		const sortOrder = await this.foldersService.nextSortOrder(userId, mergeTarget?.id ?? restoredParentFolderId);
 
 		return await this.db.transaction(async (tx) => {
-			const [restored] = await tx
-				.update(folders)
-				.set({ deletedAt: null, parentFolderId: restoredParentFolderId, sortOrder })
-				.where(eq(folders.id, folderId))
-				.returning();
+			const [restored] = mergeTarget
+				? [mergeTarget]
+				: await tx
+						.update(folders)
+						.set({ deletedAt: null, parentFolderId: restoredParentFolderId, sortOrder })
+						.where(eq(folders.id, folderId))
+						.returning();
 
 			const { rows: descendants } = await tx.execute<{ id: string }>(sql`
 				WITH RECURSIVE descendant_folders AS (
@@ -151,7 +157,26 @@ export class TrashService {
 				.set({ deletedAt: null })
 				.where(and(inArray(links.folderId, descendantIds), gte(links.deletedAt, deletedAt)));
 
-			return restored;
+			if (!mergeTarget) {
+				return restored;
+			}
+
+			// 같은 시스템 폴더가 둘이 되지 않게 살아있는 쪽으로 합친다. 따로 지워둔 항목도 옮겨야 아래 delete의 cascade로 영구 삭제되지 않는다
+			const children = await tx
+				.select({ id: folders.id })
+				.from(folders)
+				.where(eq(folders.parentFolderId, folderId))
+				.orderBy(folders.sortOrder);
+			for (const [index, child] of children.entries()) {
+				await tx
+					.update(folders)
+					.set({ parentFolderId: mergeTarget.id, sortOrder: sortOrder + index })
+					.where(eq(folders.id, child.id));
+			}
+			await tx.update(links).set({ folderId: mergeTarget.id, pinnedAt: null }).where(eq(links.folderId, folderId));
+			await tx.delete(folders).where(eq(folders.id, folderId));
+
+			return mergeTarget;
 		});
 	}
 

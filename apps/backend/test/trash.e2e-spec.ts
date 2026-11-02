@@ -393,6 +393,90 @@ describe('TrashController (e2e)', () => {
 			expect(restoredInto).toMatchObject({ isSystem: true, name: '미분류', deletedAt: null });
 		});
 
+		test('미분류 폴더 복구: 살아있는 미분류가 이미 있으면 그 안으로 합치고 옛 미분류는 지운다.', async () => {
+			const folderA = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '폴더A' })
+				.expect(201);
+			const linkA = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://naver.com', folderId: folderA.body.id })
+				.expect(201);
+			await request(app.getHttpServer())
+				.delete(`/folders/${folderA.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+			const resA = await request(app.getHttpServer())
+				.post(`/trash/link/${linkA.body.id}/restore`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(201);
+			const oldUncategorizedId = resA.body.folderId;
+			await request(app.getHttpServer())
+				.patch(`/links/${linkA.body.id}/pin`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ pinned: true })
+				.expect(200);
+
+			const subFolder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '미분류 하위', parentFolderId: oldUncategorizedId })
+				.expect(201);
+			const trashedEarlier = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://daum.net', folderId: oldUncategorizedId })
+				.expect(201);
+			await request(app.getHttpServer())
+				.delete(`/links/${trashedEarlier.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+			await request(app.getHttpServer())
+				.delete(`/folders/${oldUncategorizedId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			const folderB = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '폴더B' })
+				.expect(201);
+			const linkB = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://google.com', folderId: folderB.body.id })
+				.expect(201);
+			await request(app.getHttpServer())
+				.delete(`/folders/${folderB.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+			const resB = await request(app.getHttpServer())
+				.post(`/trash/link/${linkB.body.id}/restore`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(201);
+			const liveUncategorizedId = resB.body.folderId;
+
+			const res = await request(app.getHttpServer())
+				.post(`/trash/folder/${oldUncategorizedId}/restore`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(201);
+
+			expect(res.body.id).toEqual(liveUncategorizedId);
+
+			const [movedLink] = await db.select().from(links).where(eq(links.id, linkA.body.id));
+			const [movedSubFolder] = await db.select().from(folders).where(eq(folders.id, subFolder.body.id));
+			const [stillTrashed] = await db.select().from(links).where(eq(links.id, trashedEarlier.body.id));
+			const oldUncategorized = await db.select().from(folders).where(eq(folders.id, oldUncategorizedId));
+
+			expect(movedLink).toMatchObject({ folderId: liveUncategorizedId, deletedAt: null, pinnedAt: null });
+			expect(movedSubFolder).toMatchObject({ parentFolderId: liveUncategorizedId, deletedAt: null });
+			expect(stillTrashed.folderId).toEqual(liveUncategorizedId);
+			expect(stillTrashed.deletedAt).not.toBeNull();
+			expect(oldUncategorized).toHaveLength(0);
+		});
+
 		test('삭제되지 않은 항목을 복구 시도하면 404 오류를 반환한다.', async () => {
 			const folder = await request(app.getHttpServer())
 				.post('/folders')

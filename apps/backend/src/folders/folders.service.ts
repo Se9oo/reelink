@@ -132,22 +132,29 @@ export class FoldersService {
 	}
 
 	/**
+	 * 휴지통에 없는 시스템 폴더를 이름으로 찾는다.
+	 * @param userId string
+	 * @param name string 시스템 폴더 이름(예: "미분류")
+	 * @returns Folder | undefined
+	 */
+	async findLiveSystemFolder(userId: string, name: string): Promise<Folder | undefined> {
+		const [folder] = await this.db
+			.select()
+			.from(folders)
+			.where(
+				and(eq(folders.userId, userId), eq(folders.isSystem, true), eq(folders.name, name), isNull(folders.deletedAt)),
+			);
+
+		return folder;
+	}
+
+	/**
 	 * "미분류" 시스템 폴더를 반환한다. 없으면 최상위에 지연 생성한다.
 	 * @param userId string
 	 * @returns Folder
 	 */
 	async getOrCreateUncategorizedFolder(userId: string): Promise<Folder> {
-		const [existing] = await this.db
-			.select()
-			.from(folders)
-			.where(
-				and(
-					eq(folders.userId, userId),
-					eq(folders.isSystem, true),
-					eq(folders.name, '미분류'),
-					isNull(folders.deletedAt),
-				),
-			);
+		const existing = await this.findLiveSystemFolder(userId, '미분류');
 
 		if (existing) {
 			return existing;
