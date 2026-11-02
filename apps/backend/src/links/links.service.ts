@@ -7,6 +7,7 @@ import { countGraphemes } from '../common/count-graphemes.js';
 import { isValidHttpUrl } from '../common/is-valid-http-url.js';
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { folders, links } from '../db/schema.js';
+import { lockUserFolders } from '../folders/lock-user-folders.js';
 
 import { fetchOgTags } from './fetch-og-tags.js';
 import { HomeSummary, Link } from './links.types.js';
@@ -61,7 +62,7 @@ export class LinksService {
 	 * @param savedReason unknown 생략 가능, 앞뒤 공백을 지우고 비어 있으면 null로 저장
 	 * @returns Link
 	 * @throws BadRequestException folderId가 없거나 url이 http/https 형식이 아닌 경우, 저장 이유가 문자열이 아니거나 500자를 넘는 경우
-	 * @throws NotFoundException folderId가 내 폴더가 아니거나 존재하지 않는 경우
+	 * @throws NotFoundException folderId가 내 폴더가 아니거나 존재하지 않거나 삭제된 경우
 	 */
 	async createLink({ userId, url, folderId, savedReason }: CreateLinkParams): Promise<Link> {
 		if (!folderId) {
@@ -74,19 +75,25 @@ export class LinksService {
 
 		const normalizedSavedReason = normalizeOptionalText('savedReason', savedReason);
 
-		const [folder] = await this.db
-			.select()
-			.from(folders)
-			.where(and(eq(folders.id, folderId), eq(folders.userId, userId)));
+		const link = await this.db.transaction(async (tx) => {
+			await lockUserFolders(tx, userId);
 
-		if (!folder) {
-			throw new NotFoundException();
-		}
+			const [folder] = await tx
+				.select()
+				.from(folders)
+				.where(and(eq(folders.id, folderId), eq(folders.userId, userId), isNull(folders.deletedAt)));
 
-		const [link] = await this.db
-			.insert(links)
-			.values({ userId, folderId, url, savedReason: normalizedSavedReason })
-			.returning();
+			if (!folder) {
+				throw new NotFoundException();
+			}
+
+			const [created] = await tx
+				.insert(links)
+				.values({ userId, folderId, url, savedReason: normalizedSavedReason })
+				.returning();
+
+			return created;
+		});
 
 		void this.applyOgTags(link.id, url);
 
@@ -340,26 +347,30 @@ export class LinksService {
 			throw new BadRequestException('folderId는 필수입니다.');
 		}
 
-		const [folder] = await this.db
-			.select()
-			.from(folders)
-			.where(and(eq(folders.id, folderId), eq(folders.userId, userId), isNull(folders.deletedAt)));
+		return await this.db.transaction(async (tx) => {
+			await lockUserFolders(tx, userId);
 
-		if (!folder) {
-			throw new NotFoundException();
-		}
+			const [folder] = await tx
+				.select()
+				.from(folders)
+				.where(and(eq(folders.id, folderId), eq(folders.userId, userId), isNull(folders.deletedAt)));
 
-		const [link] = await this.db
-			.update(links)
-			.set({ folderId, pinnedAt: null })
-			.where(and(eq(links.id, linkId), eq(links.userId, userId), isNull(links.deletedAt)))
-			.returning();
+			if (!folder) {
+				throw new NotFoundException();
+			}
 
-		if (!link) {
-			throw new NotFoundException();
-		}
+			const [link] = await tx
+				.update(links)
+				.set({ folderId, pinnedAt: null })
+				.where(and(eq(links.id, linkId), eq(links.userId, userId), isNull(links.deletedAt)))
+				.returning();
 
-		return link;
+			if (!link) {
+				throw new NotFoundException();
+			}
+
+			return link;
+		});
 	}
 
 	/**

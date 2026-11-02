@@ -9,6 +9,8 @@ export const DRIZZLE = Symbol('DRIZZLE');
 
 export type DrizzleDb = NodePgDatabase<typeof schema>;
 
+export type DrizzleTx = Parameters<Parameters<DrizzleDb['transaction']>[0]>[0];
+
 @Global()
 @Module({
 	providers: [

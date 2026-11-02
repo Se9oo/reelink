@@ -1,11 +1,12 @@
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import request from 'supertest';
 
 import { DrizzleDb } from '../src/db/drizzle.module.js';
 import { folders, links, users } from '../src/db/schema.js';
+import { TrashService } from '../src/trash/trash.service.js';
 
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
@@ -475,6 +476,54 @@ describe('TrashController (e2e)', () => {
 			expect(stillTrashed.folderId).toEqual(liveUncategorizedId);
 			expect(stillTrashed.deletedAt).not.toBeNull();
 			expect(oldUncategorized).toHaveLength(0);
+		});
+
+		test('링크 복구: 미분류가 없을 때 동시에 복구해도 미분류는 하나만 생긴다.', async () => {
+			const liveUncategorized = await db
+				.select()
+				.from(folders)
+				.where(
+					and(
+						eq(folders.userId, testUserId),
+						eq(folders.isSystem, true),
+						eq(folders.name, '미분류'),
+						isNull(folders.deletedAt),
+					),
+				);
+			for (const folder of liveUncategorized) {
+				await request(app.getHttpServer())
+					.delete(`/folders/${folder.id}`)
+					.set('Cookie', `access_token=${accessToken}`)
+					.expect(204);
+			}
+
+			const linkIds: string[] = [];
+			for (const name of ['동시A', '동시B', '동시C', '동시D']) {
+				const folder = await request(app.getHttpServer())
+					.post('/folders')
+					.set('Cookie', `access_token=${accessToken}`)
+					.send({ name })
+					.expect(201);
+				const link = await request(app.getHttpServer())
+					.post('/links')
+					.set('Cookie', `access_token=${accessToken}`)
+					.send({ url: 'https://naver.com', folderId: folder.body.id })
+					.expect(201);
+				await request(app.getHttpServer())
+					.delete(`/folders/${folder.body.id}`)
+					.set('Cookie', `access_token=${accessToken}`)
+					.expect(204);
+				linkIds.push(link.body.id);
+			}
+
+			// 풀에 연결을 미리 만들어 둬야 동시 요청이 실제로 겹친다(연결 생성 중엔 첫 요청이 혼자 끝까지 실행됨)
+			await Promise.all(Array.from({ length: 10 }, () => db.execute(sql`SELECT 1`)));
+			const trashService = app.get(TrashService);
+			const restored = await Promise.all(
+				linkIds.map((id) => trashService.restoreItem({ userId: testUserId, type: 'link', id })),
+			);
+
+			expect(new Set(restored.map((link) => (link as { folderId: string }).folderId)).size).toBe(1);
 		});
 
 		test('삭제되지 않은 항목을 복구 시도하면 404 오류를 반환한다.', async () => {

@@ -3,11 +3,12 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { countGraphemes } from '../common/count-graphemes.js';
-import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
+import { DRIZZLE, type DrizzleDb, type DrizzleTx } from '../db/drizzle.module.js';
 import { folders, links } from '../db/schema.js';
 import { Link } from '../links/links.types.js';
 
 import { Folder } from './folders.types.js';
+import { lockUserFolders } from './lock-user-folders.js';
 
 const MAX_FOLDER_NAME_LENGTH = 50;
 
@@ -52,10 +53,11 @@ export class FoldersService {
 	 * 같은 userId + parentFolderId를 가진 형제 폴더들 사이의 다음 sortOrder(현재 최댓값+1).
 	 * @param userId string
 	 * @param parentFolderId string | null 최상위 폴더면 null
+	 * @param tx DrizzleTx lockUserFolders를 잡은 트랜잭션
 	 * @returns number
 	 */
-	async nextSortOrder(userId: string, parentFolderId: string | null): Promise<number> {
-		const siblings = await this.db
+	async nextSortOrder(userId: string, parentFolderId: string | null, tx: DrizzleTx): Promise<number> {
+		const siblings = await tx
 			.select()
 			.from(folders)
 			.where(
@@ -75,22 +77,39 @@ export class FoldersService {
 	 * @param parentFolderId string | null | undefined 생략하거나 null이면 최상위 폴더로 생성
 	 * @returns Folder
 	 * @throws BadRequestException 이름이 없거나 공백뿐이거나 50자를 넘는 경우
+	 * @throws NotFoundException 부모 폴더가 없거나 삭제됐거나 내 폴더가 아닌 경우
 	 */
 	async createFolder({ userId, name, parentFolderId }: CreateFolderParams): Promise<Folder> {
 		const normalizedName = normalizeFolderName(name);
-		const sortOrder = await this.nextSortOrder(userId, parentFolderId ?? null);
 
-		const [folder] = await this.db
-			.insert(folders)
-			.values({
-				userId,
-				name: normalizedName,
-				parentFolderId,
-				sortOrder,
-			})
-			.returning();
+		return await this.db.transaction(async (tx) => {
+			await lockUserFolders(tx, userId);
 
-		return folder;
+			if (parentFolderId) {
+				const [parent] = await tx
+					.select()
+					.from(folders)
+					.where(and(eq(folders.id, parentFolderId), eq(folders.userId, userId), isNull(folders.deletedAt)));
+
+				if (!parent) {
+					throw new NotFoundException();
+				}
+			}
+
+			const sortOrder = await this.nextSortOrder(userId, parentFolderId ?? null, tx);
+
+			const [folder] = await tx
+				.insert(folders)
+				.values({
+					userId,
+					name: normalizedName,
+					parentFolderId,
+					sortOrder,
+				})
+				.returning();
+
+			return folder;
+		});
 	}
 
 	/**
@@ -135,10 +154,11 @@ export class FoldersService {
 	 * 휴지통에 없는 시스템 폴더를 이름으로 찾는다.
 	 * @param userId string
 	 * @param name string 시스템 폴더 이름(예: "미분류")
+	 * @param tx DrizzleTx lockUserFolders를 잡은 트랜잭션
 	 * @returns Folder | undefined
 	 */
-	async findLiveSystemFolder(userId: string, name: string): Promise<Folder | undefined> {
-		const [folder] = await this.db
+	async findLiveSystemFolder(userId: string, name: string, tx: DrizzleTx): Promise<Folder | undefined> {
+		const [folder] = await tx
 			.select()
 			.from(folders)
 			.where(
@@ -151,18 +171,19 @@ export class FoldersService {
 	/**
 	 * "미분류" 시스템 폴더를 반환한다. 없으면 최상위에 지연 생성한다.
 	 * @param userId string
+	 * @param tx DrizzleTx lockUserFolders를 잡은 트랜잭션
 	 * @returns Folder
 	 */
-	async getOrCreateUncategorizedFolder(userId: string): Promise<Folder> {
-		const existing = await this.findLiveSystemFolder(userId, '미분류');
+	async getOrCreateUncategorizedFolder(userId: string, tx: DrizzleTx): Promise<Folder> {
+		const existing = await this.findLiveSystemFolder(userId, '미분류', tx);
 
 		if (existing) {
 			return existing;
 		}
 
-		const sortOrder = await this.nextSortOrder(userId, null);
+		const sortOrder = await this.nextSortOrder(userId, null, tx);
 
-		const [created] = await this.db
+		const [created] = await tx
 			.insert(folders)
 			.values({ userId, name: '미분류', isSystem: true, sortOrder })
 			.returning();
@@ -177,45 +198,49 @@ export class FoldersService {
 	 * @param name string 생략하면 이름은 그대로 둠
 	 * @param parentFolderId string 생략하면 부모는 그대로 둠, null이면 최상위로 이동
 	 * @returns Folder
-	 * @throws NotFoundException 폴더가 없거나 내 폴더가 아닌 경우, 새 부모가 없거나 내 폴더가 아닌 경우
+	 * @throws NotFoundException 폴더가 없거나 내 폴더가 아닌 경우, 새 부모가 없거나 삭제됐거나 내 폴더가 아닌 경우
 	 * @throws ForbiddenException 시스템 폴더(isSystem)인 경우
 	 * @throws BadRequestException 새 부모가 자기 자신이거나 자기 하위 폴더인 경우(순환 방지), 이름이 공백뿐이거나 50자를 넘는 경우
 	 */
 	async updateFolder({ userId, folderId, name, parentFolderId }: UpdateFolderParams): Promise<Folder> {
-		const [folder] = await this.db
-			.select()
-			.from(folders)
-			.where(and(eq(folders.id, folderId), eq(folders.userId, userId)));
+		return await this.db.transaction(async (tx) => {
+			await lockUserFolders(tx, userId);
 
-		if (!folder) {
-			throw new NotFoundException();
-		}
+			const [folder] = await tx
+				.select()
+				.from(folders)
+				.where(and(eq(folders.id, folderId), eq(folders.userId, userId)));
 
-		if (folder.isSystem) {
-			throw new ForbiddenException();
-		}
-
-		const updates: { name?: string; parentFolderId?: string | null; sortOrder?: number } = {};
-
-		if (name !== undefined) {
-			updates.name = normalizeFolderName(name);
-		}
-
-		if (parentFolderId !== undefined) {
-			if (parentFolderId !== null) {
-				await this.assertValidNewParent(userId, folderId, parentFolderId);
+			if (!folder) {
+				throw new NotFoundException();
 			}
-			updates.parentFolderId = parentFolderId;
-			updates.sortOrder = await this.nextSortOrder(userId, parentFolderId);
-		}
 
-		const [updatedFolder] = await this.db
-			.update(folders)
-			.set(updates)
-			.where(and(eq(folders.id, folderId), eq(folders.userId, userId)))
-			.returning();
+			if (folder.isSystem) {
+				throw new ForbiddenException();
+			}
 
-		return updatedFolder;
+			const updates: { name?: string; parentFolderId?: string | null; sortOrder?: number } = {};
+
+			if (name !== undefined) {
+				updates.name = normalizeFolderName(name);
+			}
+
+			if (parentFolderId !== undefined) {
+				if (parentFolderId !== null) {
+					await this.assertValidNewParent(userId, folderId, parentFolderId, tx);
+				}
+				updates.parentFolderId = parentFolderId;
+				updates.sortOrder = await this.nextSortOrder(userId, parentFolderId, tx);
+			}
+
+			const [updatedFolder] = await tx
+				.update(folders)
+				.set(updates)
+				.where(and(eq(folders.id, folderId), eq(folders.userId, userId)))
+				.returning();
+
+			return updatedFolder;
+		});
 	}
 
 	/**
@@ -225,16 +250,18 @@ export class FoldersService {
 	 * @throws NotFoundException 폴더가 없거나 내 폴더가 아닌 경우
 	 */
 	async deleteFolder({ userId, folderId }: { userId: string; folderId: string }): Promise<void> {
-		const [folder] = await this.db
-			.select()
-			.from(folders)
-			.where(and(eq(folders.id, folderId), eq(folders.userId, userId)));
-
-		if (!folder) {
-			throw new NotFoundException();
-		}
-
 		await this.db.transaction(async (tx) => {
+			await lockUserFolders(tx, userId);
+
+			const [folder] = await tx
+				.select()
+				.from(folders)
+				.where(and(eq(folders.id, folderId), eq(folders.userId, userId)));
+
+			if (!folder) {
+				throw new NotFoundException();
+			}
+
 			// WITH RECURSIVE: folderId 자신(앵커)에서 시작해, parent_folder_id로 연결된 자손을
 			// 더 이상 안 나올 때까지 반복해서 모음 — DB 안에서 트리 전체를 한 번의 쿼리로 탐색
 			const { rows: descendants } = await tx.execute<{ id: string }>(sql`
@@ -315,26 +342,33 @@ export class FoldersService {
 	}
 
 	/**
-	 * 새 부모가 실제로 존재하는 내 폴더인지, 그리고 이동 대상 폴더 자신이나 그 하위 폴더가 아닌지 확인한다.
+	 * 새 부모가 존재하고 삭제되지 않은 내 폴더인지, 그리고 이동 대상 폴더 자신이나 그 하위 폴더가 아닌지 확인한다.
 	 * @param userId string
 	 * @param folderId string 이동하려는 폴더 자신의 id
 	 * @param newParentFolderId string 옮겨갈 새 부모 폴더의 id
-	 * @throws NotFoundException 새 부모가 존재하지 않거나 내 폴더가 아닌 경우
+	 * @param tx DrizzleTx lockUserFolders를 잡은 트랜잭션
+	 * @throws NotFoundException 새 부모가 존재하지 않거나 삭제됐거나 내 폴더가 아닌 경우
 	 * @throws BadRequestException 새 부모가 자기 자신이거나 자기 하위 폴더인 경우(순환 방지)
 	 */
-	private async assertValidNewParent(userId: string, folderId: string, newParentFolderId: string): Promise<void> {
+	private async assertValidNewParent(
+		userId: string,
+		folderId: string,
+		newParentFolderId: string,
+		tx: DrizzleTx,
+	): Promise<void> {
 		if (newParentFolderId === folderId) {
 			throw new BadRequestException('폴더를 자기 자신 밑으로 이동할 수 없습니다.');
 		}
 
 		let current = newParentFolderId;
 		while (true) {
-			const [parent] = await this.db
+			const [parent] = await tx
 				.select()
 				.from(folders)
 				.where(and(eq(folders.id, current), eq(folders.userId, userId)));
 
-			if (!parent) {
+			// 삭제는 하위로 cascade되므로 바로 위 부모만 살아있으면 된다
+			if (!parent || (parent.id === newParentFolderId && parent.deletedAt)) {
 				throw new NotFoundException();
 			}
 

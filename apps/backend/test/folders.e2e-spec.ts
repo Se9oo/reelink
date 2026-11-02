@@ -68,6 +68,46 @@ describe('FoldersController (e2e)', () => {
 			});
 		});
 
+		test('parentFolderId가 없거나 남의 폴더거나 삭제된 폴더면 404 오류를 반환한다.', async () => {
+			await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '자식', parentFolderId: crypto.randomUUID() })
+				.expect(404);
+
+			const [otherUser] = await db.insert(users).values({ email: '...', nickname: '...' }).returning();
+			const otherUserToken = await app.get(JwtService).signAsync({ sub: otherUser.id });
+			const otherUserFolder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${otherUserToken}`)
+				.send({ name: '다른 유저 폴더' })
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '자식', parentFolderId: otherUserFolder.body.id })
+				.expect(404);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+
+			const deleted = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '지울 부모' })
+				.expect(201);
+			await request(app.getHttpServer())
+				.delete(`/folders/${deleted.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '자식', parentFolderId: deleted.body.id })
+				.expect(404);
+		});
+
 		test('같은 부모 밑에 폴더가 이미 있으면 sortOrder가 기존 sortOrder 최댓값 + 1이 된다.', async () => {
 			const parent = await request(app.getHttpServer())
 				.post('/folders')
@@ -440,6 +480,29 @@ describe('FoldersController (e2e)', () => {
 				.expect(404);
 
 			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('삭제된 폴더 밑으로는 이동할 수 없다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '이동시도' })
+				.expect(201);
+			const deleted = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '지울 부모' })
+				.expect(201);
+			await request(app.getHttpServer())
+				.delete(`/folders/${deleted.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await request(app.getHttpServer())
+				.patch(`/folders/${folder.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ parentFolderId: deleted.body.id })
+				.expect(404);
 		});
 	});
 

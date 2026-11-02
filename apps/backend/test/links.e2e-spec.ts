@@ -88,6 +88,24 @@ describe('LinksController (e2e)', () => {
 				.expect(400);
 		});
 
+		test('삭제된 폴더에는 등록할 수 없고 404 오류를 반환한다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '지울 폴더' })
+				.expect(201);
+			await request(app.getHttpServer())
+				.delete(`/folders/${folder.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://naver.com', folderId: folder.body.id })
+				.expect(404);
+		});
+
 		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
 			const folder = await request(app.getHttpServer())
 				.post('/folders')

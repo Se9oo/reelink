@@ -2,10 +2,11 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 
 import { and, eq, gte, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 
-import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
+import { DRIZZLE, type DrizzleDb, type DrizzleTx } from '../db/drizzle.module.js';
 import { folders, links } from '../db/schema.js';
 import { FoldersService } from '../folders/folders.service.js';
 import { Folder } from '../folders/folders.types.js';
+import { lockUserFolders } from '../folders/lock-user-folders.js';
 import { Link } from '../links/links.types.js';
 
 import { TrashResponse } from './trash.types.js';
@@ -110,24 +111,26 @@ export class TrashService {
 	}
 
 	private async restoreFolder(userId: string, folderId: string): Promise<Folder> {
-		const [folder] = await this.db
-			.select()
-			.from(folders)
-			.where(and(eq(folders.id, folderId), eq(folders.userId, userId), isNotNull(folders.deletedAt)));
-
-		if (!folder?.deletedAt) {
-			throw new NotFoundException();
-		}
-
-		const { deletedAt } = folder;
-		const mergeTarget = folder.isSystem
-			? await this.foldersService.findLiveSystemFolder(userId, folder.name)
-			: undefined;
-		const parentAlive = folder.parentFolderId ? await this.isFolderAlive(userId, folder.parentFolderId) : false;
-		const restoredParentFolderId = parentAlive ? folder.parentFolderId : null;
-		const sortOrder = await this.foldersService.nextSortOrder(userId, mergeTarget?.id ?? restoredParentFolderId);
-
 		return await this.db.transaction(async (tx) => {
+			await lockUserFolders(tx, userId);
+
+			const [folder] = await tx
+				.select()
+				.from(folders)
+				.where(and(eq(folders.id, folderId), eq(folders.userId, userId), isNotNull(folders.deletedAt)));
+
+			if (!folder?.deletedAt) {
+				throw new NotFoundException();
+			}
+
+			const { deletedAt } = folder;
+			const mergeTarget = folder.isSystem
+				? await this.foldersService.findLiveSystemFolder(userId, folder.name, tx)
+				: undefined;
+			const parentAlive = folder.parentFolderId ? await this.isFolderAlive(userId, folder.parentFolderId, tx) : false;
+			const restoredParentFolderId = parentAlive ? folder.parentFolderId : null;
+			const sortOrder = await this.foldersService.nextSortOrder(userId, mergeTarget?.id ?? restoredParentFolderId, tx);
+
 			const [restored] = mergeTarget
 				? [mergeTarget]
 				: await tx
@@ -181,31 +184,35 @@ export class TrashService {
 	}
 
 	private async restoreLink(userId: string, linkId: string): Promise<Link> {
-		const [link] = await this.db
-			.select()
-			.from(links)
-			.where(and(eq(links.id, linkId), eq(links.userId, userId), isNotNull(links.deletedAt)));
+		return await this.db.transaction(async (tx) => {
+			await lockUserFolders(tx, userId);
 
-		if (!link) {
-			throw new NotFoundException();
-		}
+			const [link] = await tx
+				.select()
+				.from(links)
+				.where(and(eq(links.id, linkId), eq(links.userId, userId), isNotNull(links.deletedAt)));
 
-		const folderAlive = await this.isFolderAlive(userId, link.folderId);
-		const restoredFolderId = folderAlive
-			? link.folderId
-			: (await this.foldersService.getOrCreateUncategorizedFolder(userId)).id;
+			if (!link) {
+				throw new NotFoundException();
+			}
 
-		const [restored] = await this.db
-			.update(links)
-			.set({ deletedAt: null, folderId: restoredFolderId })
-			.where(eq(links.id, linkId))
-			.returning();
+			const folderAlive = await this.isFolderAlive(userId, link.folderId, tx);
+			const restoredFolderId = folderAlive
+				? link.folderId
+				: (await this.foldersService.getOrCreateUncategorizedFolder(userId, tx)).id;
 
-		return restored;
+			const [restored] = await tx
+				.update(links)
+				.set({ deletedAt: null, folderId: restoredFolderId })
+				.where(eq(links.id, linkId))
+				.returning();
+
+			return restored;
+		});
 	}
 
-	private async isFolderAlive(userId: string, folderId: string): Promise<boolean> {
-		const [folder] = await this.db
+	private async isFolderAlive(userId: string, folderId: string, tx: DrizzleTx): Promise<boolean> {
+		const [folder] = await tx
 			.select()
 			.from(folders)
 			.where(and(eq(folders.id, folderId), eq(folders.userId, userId), isNull(folders.deletedAt)));
