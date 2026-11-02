@@ -339,6 +339,60 @@ describe('TrashController (e2e)', () => {
 			expect(uncategorizedFolders).toHaveLength(1);
 		});
 
+		test('링크 복구: 미분류 폴더가 휴지통에 있으면 새 미분류 폴더를 만들어 복구한다.', async () => {
+			const folderA = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '폴더A' })
+				.expect(201);
+			const linkA = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://naver.com', folderId: folderA.body.id })
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.delete(`/folders/${folderA.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+			const resA = await request(app.getHttpServer())
+				.post(`/trash/link/${linkA.body.id}/restore`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(201);
+			const trashedUncategorizedId = resA.body.folderId;
+
+			await request(app.getHttpServer())
+				.delete(`/folders/${trashedUncategorizedId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			const folderB = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '폴더B' })
+				.expect(201);
+			const linkB = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://daum.net', folderId: folderB.body.id })
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.delete(`/folders/${folderB.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+			const resB = await request(app.getHttpServer())
+				.post(`/trash/link/${linkB.body.id}/restore`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(201);
+
+			expect(resB.body.folderId).not.toEqual(trashedUncategorizedId);
+
+			const [restoredInto] = await db.select().from(folders).where(eq(folders.id, resB.body.folderId));
+
+			expect(restoredInto).toMatchObject({ isSystem: true, name: '미분류', deletedAt: null });
+		});
+
 		test('삭제되지 않은 항목을 복구 시도하면 404 오류를 반환한다.', async () => {
 			const folder = await request(app.getHttpServer())
 				.post('/folders')

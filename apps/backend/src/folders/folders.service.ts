@@ -140,7 +140,14 @@ export class FoldersService {
 		const [existing] = await this.db
 			.select()
 			.from(folders)
-			.where(and(eq(folders.userId, userId), eq(folders.isSystem, true), eq(folders.name, '미분류')));
+			.where(
+				and(
+					eq(folders.userId, userId),
+					eq(folders.isSystem, true),
+					eq(folders.name, '미분류'),
+					isNull(folders.deletedAt),
+				),
+			);
 
 		if (existing) {
 			return existing;
