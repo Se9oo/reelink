@@ -1,11 +1,14 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Cron } from '@nestjs/schedule';
 
 import { createHash, randomBytes } from 'crypto';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, notExists, sql } from 'drizzle-orm';
 
-import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
-import { accounts, refreshTokens, users } from '../db/schema.js';
+import { DRIZZLE, type DrizzleDb, type DrizzleTx } from '../db/drizzle.module.js';
+import { accounts, folders, links, refreshTokens, users } from '../db/schema.js';
+import { findLiveSystemFolder } from '../folders/find-live-system-folder.js';
+import { lockUserFolders } from '../folders/lock-user-folders.js';
 
 import { type AuthUser, type OAuthProfile, type TokenPair } from './auth.types.js';
 
@@ -20,13 +23,28 @@ export class AuthService {
 		return createHash('sha256').update(rawToken).digest('hex');
 	}
 
-	async findOrCreateUser({ provider, providerAccountId, email, nickname, avatarUrl }: OAuthProfile): Promise<AuthUser> {
+	/**
+	 * 소셜 계정으로 사용자를 찾거나 만든다. guestUserId가 있으면 게스트 데이터를 그 계정으로 이어받는다.
+	 * - 처음 보는 계정: 게스트 행에 계정을 붙이고 프로필로 채워 정식 사용자로 바꾼다.
+	 * - 이미 가입된 계정: 게스트의 폴더·링크를 기존 사용자로 옮기고 게스트 행을 지운다.
+	 * @param profile OAuthProfile
+	 * @param guestUserId string | undefined 현재 세션이 게스트일 때 그 users.id
+	 * @returns AuthUser
+	 */
+	async findOrCreateUser(
+		{ provider, providerAccountId, email, nickname, avatarUrl }: OAuthProfile,
+		guestUserId?: string,
+	): Promise<AuthUser> {
 		const [account] = await this.db
 			.select()
 			.from(accounts)
 			.where(and(eq(accounts.provider, provider), eq(accounts.providerAccountId, providerAccountId)));
 
 		if (account) {
+			if (guestUserId) {
+				await this.mergeGuestInto(guestUserId, account.userId);
+			}
+
 			const [user] = await this.db.select().from(users).where(eq(users.id, account.userId));
 
 			if (avatarUrl && avatarUrl !== user.avatarUrl) {
@@ -38,10 +56,133 @@ export class AuthService {
 		}
 
 		return this.db.transaction(async (tx) => {
-			const [newUser] = await tx.insert(users).values({ email, nickname, avatarUrl }).returning();
-			await tx.insert(accounts).values({ userId: newUser.id, provider, providerAccountId });
-			return newUser;
+			const [claimed] = guestUserId
+				? await tx
+						.update(users)
+						.set({ email, nickname, avatarUrl: avatarUrl ?? null, isGuest: false })
+						.where(and(eq(users.id, guestUserId), eq(users.isGuest, true)))
+						.returning()
+				: [];
+			if (claimed) {
+				await tx.delete(refreshTokens).where(eq(refreshTokens.userId, claimed.id));
+			}
+			// 게스트 행이 그새 사라졌으면(동시에 다른 콜백이 이어받았거나 정리 크론) 새 사용자로 만든다
+			const user = claimed ?? (await tx.insert(users).values({ email, nickname, avatarUrl }).returning())[0];
+			await tx.insert(accounts).values({ userId: user.id, provider, providerAccountId });
+			return user;
 		});
+	}
+
+	/**
+	 * 게스트 사용자를 만든다. 소셜 계정(accounts)은 없다.
+	 * @returns AuthUser
+	 */
+	async createGuest(): Promise<AuthUser> {
+		const [guest] = await this.db.insert(users).values({ email: '', nickname: 'Guest', isGuest: true }).returning();
+		return guest;
+	}
+
+	/**
+	 * 만료되지 않은 refresh token의 주인이 게스트면 그 users.id를 반환한다.
+	 * @param refreshToken string | undefined
+	 * @returns string | undefined 토큰이 없거나 무효하거나 게스트가 아니면 undefined
+	 */
+	async findGuestIdBySession(refreshToken: string | undefined): Promise<string | undefined> {
+		if (!refreshToken) {
+			return undefined;
+		}
+
+		const [row] = await this.db
+			.select({ userId: users.id })
+			.from(refreshTokens)
+			.innerJoin(users, eq(users.id, refreshTokens.userId))
+			.where(
+				and(
+					eq(refreshTokens.tokenHash, this.tokenToHash(refreshToken)),
+					gt(refreshTokens.expiresAt, new Date()),
+					eq(users.isGuest, true),
+				),
+			);
+
+		return row?.userId;
+	}
+
+	/**
+	 * 게스트의 폴더·링크(소프트 삭제 포함)를 기존 사용자에게 옮기고 게스트 행을 지운다.
+	 * 게스트 최상위 폴더는 기존 최상위 폴더 뒤에 원래 순서대로 붙고, 양쪽 다 휴지통에 없는 미분류가 있으면 하나로 합친다.
+	 * @param guestUserId string
+	 * @param userId string
+	 */
+	private async mergeGuestInto(guestUserId: string, userId: string): Promise<void> {
+		await this.db.transaction(async (tx) => {
+			await lockUserFolders(tx, userId);
+			await lockUserFolders(tx, guestUserId);
+
+			const guestUncategorized = await findLiveSystemFolder(guestUserId, '미분류', tx);
+			const uncategorized = await findLiveSystemFolder(userId, '미분류', tx);
+
+			if (guestUncategorized && uncategorized) {
+				await this.appendGuestFolders(tx, guestUserId, userId, guestUncategorized.id, uncategorized.id);
+				await tx.update(links).set({ folderId: uncategorized.id }).where(eq(links.folderId, guestUncategorized.id));
+				await tx.delete(folders).where(eq(folders.id, guestUncategorized.id));
+			}
+
+			await this.appendGuestFolders(tx, guestUserId, userId, null, null);
+			await tx.update(folders).set({ userId }).where(eq(folders.userId, guestUserId));
+			await tx.update(links).set({ userId }).where(eq(links.userId, guestUserId));
+			await tx.delete(users).where(eq(users.id, guestUserId));
+		});
+	}
+
+	/**
+	 * 게스트의 fromParentId 밑 폴더들을 기존 사용자의 toParentId 밑 형제 폴더 뒤로, 원래 순서를 유지한 채 옮긴다.
+	 * @param tx DrizzleTx
+	 * @param guestUserId string
+	 * @param userId string
+	 * @param fromParentId string | null null이면 게스트 최상위
+	 * @param toParentId string | null null이면 기존 사용자 최상위
+	 */
+	private async appendGuestFolders(
+		tx: DrizzleTx,
+		guestUserId: string,
+		userId: string,
+		fromParentId: string | null,
+		toParentId: string | null,
+	): Promise<void> {
+		await tx.execute(sql`
+			UPDATE folders f
+			SET parent_folder_id = ${toParentId}::uuid, sort_order = base.next + moved.rn - 1
+			FROM (
+				SELECT id, row_number() OVER (ORDER BY sort_order, id) AS rn
+				FROM folders
+				WHERE user_id = ${guestUserId} AND parent_folder_id IS NOT DISTINCT FROM ${fromParentId}::uuid
+			) moved,
+			(
+				SELECT coalesce(max(sort_order) + 1, 0) AS next
+				FROM folders
+				WHERE user_id = ${userId} AND parent_folder_id IS NOT DISTINCT FROM ${toParentId}::uuid
+			) base
+			WHERE f.id = moved.id
+		`);
+	}
+
+	/**
+	 * 매일 KST 00:00, 만료되지 않은 refresh token이 하나도 없는(= 30일 동안 안 들어온) 게스트를 지운다. 폴더·링크는 FK cascade로 함께 지워진다.
+	 * @param now Date
+	 */
+	@Cron('0 0 * * *', { timeZone: 'Asia/Seoul' })
+	async deleteAbandonedGuests(now = new Date()): Promise<void> {
+		await this.db.delete(users).where(
+			and(
+				eq(users.isGuest, true),
+				notExists(
+					this.db
+						.select({ id: refreshTokens.id })
+						.from(refreshTokens)
+						.where(and(eq(refreshTokens.userId, users.id), gt(refreshTokens.expiresAt, now))),
+				),
+			),
+		);
 	}
 
 	/**
@@ -102,8 +243,8 @@ export class AuthService {
 			throw new UnauthorizedException('Not Exist User');
 		}
 
-		const { id, email, nickname, avatarUrl } = user;
+		const { id, email, nickname, avatarUrl, isGuest } = user;
 
-		return { id, email, nickname, avatarUrl };
+		return { id, email, nickname, avatarUrl, isGuest };
 	}
 }

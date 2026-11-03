@@ -11,6 +11,7 @@ export interface AuthUser {
 	email: string;
 	nickname: string;
 	avatarUrl: string | null;
+	isGuest: boolean;
 }
 
 export interface TokenPair {

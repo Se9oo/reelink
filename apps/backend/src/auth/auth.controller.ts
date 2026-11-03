@@ -76,6 +76,23 @@ export class AuthController {
 		return this.authService.findUserById(sub);
 	}
 
+	/** 게스트 세션 시작. 이미 유효한 refresh 쿠키가 있으면 새 게스트를 만들지 않고 그 세션을 이어 쓴다(기존 게스트 데이터가 고아가 되지 않게). */
+	@Post('guest')
+	async guest(@Req() req: Request, @Res() res: Response) {
+		const refreshToken: string | undefined = req.cookies?.[REFRESH_TOKEN_COOKIE];
+		const rotated = refreshToken
+			? await this.authService.rotateRefreshToken(refreshToken).catch((err: unknown) => {
+					if (err instanceof UnauthorizedException) {
+						return null;
+					}
+					throw err;
+				})
+			: null;
+		const tokens = rotated ?? (await this.authService.issueTokens((await this.authService.createGuest()).id));
+		this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+		res.sendStatus(204);
+	}
+
 	@Post('refresh')
 	async refresh(@Req() req: Request, @Res() res: Response) {
 		const refreshToken: string | undefined = req.cookies?.[REFRESH_TOKEN_COOKIE];
@@ -87,10 +104,11 @@ export class AuthController {
 		res.sendStatus(204);
 	}
 
-	/** 3개 provider 콜백이 공유하는 뒷단: strategy의 validate() 결과(req.user) → 사용자 조회/생성 → 토큰 발급 → 쿠키 설정 → 프론트로 리다이렉트. */
+	/** 3개 provider 콜백이 공유하는 뒷단: strategy의 validate() 결과(req.user) → 사용자 조회/생성(게스트 세션이면 이어받기) → 토큰 발급 → 쿠키 설정 → 프론트로 리다이렉트. */
 	private async handleOAuthCallback(req: Request, res: Response) {
 		const profile = req.user as OAuthProfile;
-		const user = await this.authService.findOrCreateUser(profile);
+		const guestUserId = await this.authService.findGuestIdBySession(req.cookies?.[REFRESH_TOKEN_COOKIE]);
+		const user = await this.authService.findOrCreateUser(profile, guestUserId);
 		const tokens = await this.authService.issueTokens(user.id);
 		this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 		res.redirect(`${process.env.FRONTEND_URL ?? 'http://localhost:3000'}${LOGIN_REDIRECT_PATH}`);

@@ -7,6 +7,7 @@ import { DRIZZLE, type DrizzleDb, type DrizzleTx } from '../db/drizzle.module.js
 import { folders, links } from '../db/schema.js';
 import { Link } from '../links/links.types.js';
 
+import { findLiveSystemFolder } from './find-live-system-folder.js';
 import { Folder } from './folders.types.js';
 import { lockUserFolders } from './lock-user-folders.js';
 
@@ -151,31 +152,13 @@ export class FoldersService {
 	}
 
 	/**
-	 * 휴지통에 없는 시스템 폴더를 이름으로 찾는다.
-	 * @param userId string
-	 * @param name string 시스템 폴더 이름(예: "미분류")
-	 * @param tx DrizzleTx lockUserFolders를 잡은 트랜잭션
-	 * @returns Folder | undefined
-	 */
-	async findLiveSystemFolder(userId: string, name: string, tx: DrizzleTx): Promise<Folder | undefined> {
-		const [folder] = await tx
-			.select()
-			.from(folders)
-			.where(
-				and(eq(folders.userId, userId), eq(folders.isSystem, true), eq(folders.name, name), isNull(folders.deletedAt)),
-			);
-
-		return folder;
-	}
-
-	/**
 	 * "미분류" 시스템 폴더를 반환한다. 없으면 최상위에 지연 생성한다.
 	 * @param userId string
 	 * @param tx DrizzleTx lockUserFolders를 잡은 트랜잭션
 	 * @returns Folder
 	 */
 	async getOrCreateUncategorizedFolder(userId: string, tx: DrizzleTx): Promise<Folder> {
-		const existing = await this.findLiveSystemFolder(userId, '미분류', tx);
+		const existing = await findLiveSystemFolder(userId, '미분류', tx);
 
 		if (existing) {
 			return existing;

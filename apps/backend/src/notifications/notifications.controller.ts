@@ -31,6 +31,7 @@ export class NotificationsController {
 	@UseGuards(JwtAuthGuard)
 	async updateSettings(@Req() req: Request, @Body('notificationMethod') notificationMethod: unknown) {
 		const { sub: userId } = req.user as JwtPayload;
+		await this.notificationsService.assertNotGuest(userId);
 
 		return await this.notificationsService.updateNotificationMethod(userId, notificationMethod);
 	}
@@ -39,6 +40,7 @@ export class NotificationsController {
 	@UseGuards(JwtAuthGuard)
 	async connectKakao(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
 		const { sub: userId } = req.user as JwtPayload;
+		await this.notificationsService.assertNotGuest(userId);
 		const nonce = randomUUID();
 		const stateToken = await this.jwt.signAsync({ sub: userId, nonce }, { expiresIn: '10m' });
 

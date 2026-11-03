@@ -14,6 +14,7 @@ export const users = pgTable('users', {
 	reminderIntervalDays: integer('reminder_interval_days').notNull().default(7),
 	notificationMethod: text('notification_method').notNull().default('manual'),
 	lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true }),
+	isGuest: boolean('is_guest').notNull().default(false),
 });
 
 export const accounts = pgTable(

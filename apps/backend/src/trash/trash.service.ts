@@ -4,6 +4,7 @@ import { and, eq, gte, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 
 import { DRIZZLE, type DrizzleDb, type DrizzleTx } from '../db/drizzle.module.js';
 import { folders, links } from '../db/schema.js';
+import { findLiveSystemFolder } from '../folders/find-live-system-folder.js';
 import { FoldersService } from '../folders/folders.service.js';
 import { Folder } from '../folders/folders.types.js';
 import { lockUserFolders } from '../folders/lock-user-folders.js';
@@ -124,9 +125,7 @@ export class TrashService {
 			}
 
 			const { deletedAt } = folder;
-			const mergeTarget = folder.isSystem
-				? await this.foldersService.findLiveSystemFolder(userId, folder.name, tx)
-				: undefined;
+			const mergeTarget = folder.isSystem ? await findLiveSystemFolder(userId, folder.name, tx) : undefined;
 			const parentAlive = folder.parentFolderId ? await this.isFolderAlive(userId, folder.parentFolderId, tx) : false;
 			const restoredParentFolderId = parentAlive ? folder.parentFolderId : null;
 			const sortOrder = await this.foldersService.nextSortOrder(userId, mergeTarget?.id ?? restoredParentFolderId, tx);
