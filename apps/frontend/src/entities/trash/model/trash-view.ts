@@ -1,6 +1,6 @@
 import { TrashFolder, TrashLink } from '@/entities/trash/model/types';
 
-const RETENTION_DAYS = 30;
+export const RETENTION_DAYS = 30;
 const URGENT_THRESHOLD_DAYS = 3;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -15,14 +15,40 @@ export function isUrgent(daysLeft: number): boolean {
 	return daysLeft <= URGENT_THRESHOLD_DAYS;
 }
 
-/** 펼치기 미리보기용 — 특정 폴더의 직속 하위 폴더·링크 개수(둘 다 삭제된 전체 목록 기준). */
-export function getChildSummary(
-	folderId: string,
-	allFolders: TrashFolder[],
-	allLinks: TrashLink[],
-): { subfolderCount: number; linkCount: number } {
+export type TrashItem =
+	| { kind: 'folder'; id: string; daysLeft: number; folder: TrashFolder; children: TrashChildren }
+	| { kind: 'link'; id: string; daysLeft: number; link: TrashLink };
+
+interface TrashChildren {
+	folders: TrashFolder[];
+	links: TrashLink[];
+}
+
+/** 폴더·링크를 한 목록으로 합쳐 완전 삭제까지 남은 일수가 적은 순으로 정렬한다. */
+export function buildTrashItems(folders: TrashFolder[], links: TrashLink[], now = new Date()): TrashItem[] {
+	const items: TrashItem[] = [
+		...folders.map((folder) => ({
+			kind: 'folder' as const,
+			id: folder.id,
+			daysLeft: getDaysUntilPurge(folder.deletedAt ?? now.toISOString(), now),
+			folder,
+			children: getChildren(folder.id, folders, links),
+		})),
+		...links.map((link) => ({
+			kind: 'link' as const,
+			id: link.id,
+			daysLeft: getDaysUntilPurge(link.deletedAt ?? now.toISOString(), now),
+			link,
+		})),
+	];
+
+	return items.sort((a, b) => a.daysLeft - b.daysLeft);
+}
+
+/** 특정 폴더의 직속 하위 폴더·링크(둘 다 삭제된 전체 목록 기준). */
+export function getChildren(folderId: string, allFolders: TrashFolder[], allLinks: TrashLink[]): TrashChildren {
 	return {
-		subfolderCount: allFolders.filter((folder) => folder.parentFolderId === folderId).length,
-		linkCount: allLinks.filter((link) => link.folderId === folderId).length,
+		folders: allFolders.filter((folder) => folder.parentFolderId === folderId),
+		links: allLinks.filter((link) => link.folderId === folderId),
 	};
 }

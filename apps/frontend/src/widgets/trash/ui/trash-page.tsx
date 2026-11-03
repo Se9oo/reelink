@@ -3,8 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { overlay } from 'overlay-kit';
 
-import { TrashDesktopView } from '@/widgets/trash/ui/trash-desktop-view';
-import { TrashMobileView } from '@/widgets/trash/ui/trash-mobile-view';
+import { TrashView } from '@/widgets/trash/ui/trash-view';
 
 import { trashQueryOptions } from '@/entities/trash/api/get-trash';
 import { useRestoreItem } from '@/entities/trash/api/restore-item';
@@ -34,9 +33,8 @@ export function TrashPage() {
 	};
 
 	return (
-		<div className="min-h-full bg-[var(--app-bg-canvas)]">
-			<TrashMobileView folders={data.folders} links={data.links} {...handlers} />
-			<TrashDesktopView folders={data.folders} links={data.links} {...handlers} />
+		<div className="h-full bg-[var(--seed-color-bg-layer-default)] lg:h-auto lg:min-h-full lg:bg-[var(--app-bg-canvas)]">
+			<TrashView folders={data.folders} links={data.links} {...handlers} />
 		</div>
 	);
 }
