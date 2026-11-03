@@ -12,7 +12,13 @@ export interface OgTags {
  */
 export async function fetchOgTags(url: string): Promise<OgTags> {
 	try {
-		const { error, result } = await ogs({ url, timeout: 5 });
+		// 우리 봇 이름을 밝히되, 사이트들이 미리보기용 OG 태그를 내주는 기준인 facebookexternalhit 토큰을 덧붙인다.
+		// 이게 없으면 YouTube Music은 지원 중단 브라우저 페이지를, 브라우저 UA면 Threads는 OG 태그 없는 앱 껍데기를 준다
+		const { error, result } = await ogs({
+			url,
+			timeout: 5,
+			fetchOptions: { headers: { 'user-agent': 'Mozilla/5.0 (compatible; ReelinkBot/1.0) facebookexternalhit/1.1' } },
+		});
 
 		if (error) {
 			return { title: null, thumbnailUrl: null };

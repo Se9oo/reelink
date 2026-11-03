@@ -52,4 +52,16 @@ describe('fetchOgTags', () => {
 
 		expect(result).toEqual({ title: '제목', thumbnailUrl: null });
 	});
+
+	test('우리 봇 이름에 facebookexternalhit 토큰을 붙인 User-Agent로 요청한다(YouTube Music이 그 외 요청엔 지원 중단 브라우저 페이지를 줘서)', async () => {
+		vi.mocked(ogs).mockResolvedValue({ error: false, html: '', response: {}, result: {} } as never);
+
+		await fetchOgTags('https://music.youtube.com');
+
+		expect(ogs).toHaveBeenCalledWith(
+			expect.objectContaining({
+				fetchOptions: { headers: { 'user-agent': 'Mozilla/5.0 (compatible; ReelinkBot/1.0) facebookexternalhit/1.1' } },
+			}),
+		);
+	});
 });
