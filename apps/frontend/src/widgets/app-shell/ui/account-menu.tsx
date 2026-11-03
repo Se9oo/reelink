@@ -23,7 +23,7 @@ interface AccountMenuProps {
 export function AccountMenu({ showLabel = true, showHoverBackground = true, fullWidth = false }: AccountMenuProps) {
 	const { data: me } = useQuery(meQueryOptions());
 
-	const accountMenuItems = useAccountMenuItems();
+	const accountMenuItems = useAccountMenuItems(me?.isGuest ?? false);
 	const { open, onOpenChange, instant } = useBreakpointMenuState();
 
 	if (!me) {

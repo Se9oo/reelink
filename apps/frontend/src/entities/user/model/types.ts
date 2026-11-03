@@ -3,4 +3,5 @@ export interface User {
 	email: string;
 	nickname: string;
 	avatarUrl: string | null;
+	isGuest: boolean;
 }

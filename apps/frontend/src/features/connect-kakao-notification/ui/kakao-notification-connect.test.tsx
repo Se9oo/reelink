@@ -16,9 +16,13 @@ vi.mock('@/shared/api/client', () => ({
 
 const AUTHORIZE_URL = 'https://kauth.kakao.com/oauth/authorize?scope=talk_message';
 
-function mockApi(settings: NotificationSettings) {
+function mockApi(settings: NotificationSettings, { isGuest = false } = {}) {
+	const responses: Record<string, unknown> = {
+		'notifications/kakao/connect': { url: AUTHORIZE_URL },
+		'auth/me': { id: 'u', email: '', nickname: '게스트', avatarUrl: null, isGuest },
+	};
 	vi.mocked(apiClient.get).mockImplementation(((url: string) => ({
-		json: async () => (url === 'notifications/kakao/connect' ? { url: AUTHORIZE_URL } : settings),
+		json: async () => responses[url] ?? settings,
 	})) as never);
 }
 
@@ -44,6 +48,15 @@ describe('KakaoNotificationConnect', () => {
 		renderConnect();
 
 		expect(await screen.findByRole('button', { name: '연동하기' })).toBeInTheDocument();
+		expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+	});
+
+	test('게스트면 연동 버튼·토글 대신 로그인 화면 링크를 보여준다.', async () => {
+		mockApi({ notificationMethod: 'manual', kakaoStatus: null }, { isGuest: true });
+		renderConnect();
+
+		expect(await screen.findByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login');
+		expect(screen.queryByRole('button', { name: '연동하기' })).not.toBeInTheDocument();
 		expect(screen.queryByRole('switch')).not.toBeInTheDocument();
 	});
 

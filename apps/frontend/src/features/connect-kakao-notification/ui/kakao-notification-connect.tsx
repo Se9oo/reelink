@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 
+import Link from 'next/link';
+
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ActionButton } from 'seed-design/ui/action-button';
 import { Snackbar, useSnackbarAdapter } from 'seed-design/ui/snackbar';
@@ -12,6 +14,9 @@ import { useConnectKakaoNotification } from '@/features/connect-kakao-notificati
 import { notificationSettingsQueryOptions } from '@/entities/notification/api/get-notification-settings';
 import { notificationKeys } from '@/entities/notification/api/notification-keys';
 import { useUpdateNotificationMethod } from '@/entities/notification/api/update-notification-method';
+import { meQueryOptions } from '@/entities/user/api/get-me';
+
+import { ROUTES } from '@/shared/config/routes';
 
 const RESULT_MESSAGES: Record<string, { message: string; variant: 'default' | 'critical' }> = {
 	connected: { message: '카카오 알림을 연동했어요', variant: 'default' },
@@ -21,6 +26,7 @@ const RESULT_MESSAGES: Record<string, { message: string; variant: 'default' | 'c
 
 export function KakaoNotificationConnect() {
 	const { data } = useQuery(notificationSettingsQueryOptions());
+	const { data: me } = useQuery(meQueryOptions());
 	const snackbar = useSnackbarAdapter();
 
 	const connect = useConnectKakaoNotification();
@@ -40,8 +46,16 @@ export function KakaoNotificationConnect() {
 		window.history.replaceState(null, '', url);
 	}, [snackbar]);
 
-	if (!data) {
+	if (!data || !me) {
 		return null;
+	}
+
+	if (me.isGuest) {
+		return (
+			<ActionButton asChild size="small" variant="neutralWeak">
+				<Link href={ROUTES.LOGIN}>로그인</Link>
+			</ActionButton>
+		);
 	}
 
 	if (data.kakaoStatus === 'active') {

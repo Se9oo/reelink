@@ -1,6 +1,8 @@
 import { PrefixIcon } from '@seed-design/react';
 import { ActionButton } from 'seed-design/ui/action-button';
 
+import { GuestStartButton } from '@/widgets/login/ui/guest-start-button';
+
 import { API_URL } from '@/shared/config/env';
 import { ReelinkSymbol, ReelinkWordmark } from '@/shared/ui/logo/reelink-logo';
 
@@ -30,6 +32,14 @@ export function LoginScreen() {
 							GitHub로 시작하기
 						</a>
 					</ActionButton>
+
+					<div className="flex items-center gap-3 py-1 text-xs text-[var(--seed-color-fg-neutral-subtle)]">
+						<span className="h-px flex-1 bg-[var(--seed-color-stroke-neutral-subtle)]" />
+						또는
+						<span className="h-px flex-1 bg-[var(--seed-color-stroke-neutral-subtle)]" />
+					</div>
+
+					<GuestStartButton />
 				</div>
 			</div>
 		</main>

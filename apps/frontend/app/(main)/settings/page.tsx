@@ -3,11 +3,15 @@ import type { ReactNode } from 'react';
 import { KakaoNotificationConnect } from '@/features/connect-kakao-notification/ui/kakao-notification-connect';
 import { ThemeSwitch } from '@/features/toggle-theme/ui/theme-switch';
 
+import { GuestDataNotice } from '@/entities/user/ui/guest-data-notice';
+
 export default function SettingsPage() {
 	return (
 		<div className="min-h-full bg-[var(--app-bg-canvas)]">
 			<div className="mx-auto flex w-full max-w-[640px] flex-col gap-7 px-4 pt-5 pb-24 md:px-8 md:pt-8 lg:pb-16">
 				<h1 className="text-xl font-bold text-[var(--seed-color-fg-neutral)]">설정</h1>
+
+				<GuestDataNotice />
 
 				<SettingsGroup label="화면">
 					<SettingsRow label="다크 모드">
