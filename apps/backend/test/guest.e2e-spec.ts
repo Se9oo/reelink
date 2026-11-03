@@ -68,15 +68,34 @@ describe('게스트 모드 (e2e)', () => {
 			await db.delete(users).where(eq(users.id, guest.id));
 		});
 
+		test('정식 사용자의 refresh 쿠키가 있으면 그 계정으로 들어가지 않고 새 게스트를 만든다', async () => {
+			const { refreshToken } = await authService.issueTokens(context.testUserId);
+
+			const res = await request(app.getHttpServer())
+				.post('/auth/guest')
+				.set('Cookie', `refresh_token=${refreshToken}`)
+				.expect(204);
+
+			const me = await request(app.getHttpServer())
+				.get('/auth/me')
+				.set('Cookie', `access_token=${cookieValue(res, 'access_token')}`)
+				.expect(200);
+
+			expect(me.body).toMatchObject({ isGuest: true });
+			expect(me.body.id).not.toBe(context.testUserId);
+
+			await db.delete(users).where(eq(users.id, me.body.id));
+		});
+
 		test('refresh token 확인 중 무효 토큰이 아닌 에러가 나면 새 게스트를 만들지 않고 실패한다', async () => {
 			const createSpy = vi.spyOn(authService, 'createGuest');
-			const rotateSpy = vi.spyOn(authService, 'rotateRefreshToken').mockRejectedValue(new Error('db down'));
+			const findSpy = vi.spyOn(authService, 'findGuestIdBySession').mockRejectedValue(new Error('db down'));
 
 			await request(app.getHttpServer()).post('/auth/guest').set('Cookie', 'refresh_token=whatever').expect(500);
 
 			expect(createSpy).not.toHaveBeenCalled();
 			createSpy.mockRestore();
-			rotateSpy.mockRestore();
+			findSpy.mockRestore();
 		});
 	});
 
@@ -167,6 +186,22 @@ describe('게스트 모드 (e2e)', () => {
 			expect(await db.select().from(users).where(eq(users.id, guest.id))).toHaveLength(0);
 
 			await db.delete(users).where(eq(users.id, existing.id));
+		});
+
+		test('이어받으려던 게스트가 그새 정식 사용자가 됐으면 합치지 않는다', async () => {
+			const providerAccountId = crypto.randomUUID();
+			const existing = await authService.findOrCreateUser(profile(providerAccountId));
+			const claimed = await authService.findOrCreateUser(profile());
+			const [claimedFolder] = await db.insert(folders).values({ userId: claimed.id, name: '내 폴더' }).returning();
+
+			await authService.findOrCreateUser(profile(providerAccountId), claimed.id);
+
+			expect(await db.select().from(users).where(eq(users.id, claimed.id))).toHaveLength(1);
+			const [folder] = await db.select().from(folders).where(eq(folders.id, claimedFolder.id));
+			expect(folder.userId).toBe(claimed.id);
+
+			await db.delete(users).where(eq(users.id, existing.id));
+			await db.delete(users).where(eq(users.id, claimed.id));
 		});
 
 		test('기존 미분류가 휴지통에 있으면 합치지 않고 게스트 미분류를 그대로 가져간다', async () => {

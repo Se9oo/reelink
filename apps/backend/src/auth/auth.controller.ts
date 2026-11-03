@@ -76,18 +76,20 @@ export class AuthController {
 		return this.authService.findUserById(sub);
 	}
 
-	/** 게스트 세션 시작. 이미 유효한 refresh 쿠키가 있으면 새 게스트를 만들지 않고 그 세션을 이어 쓴다(기존 게스트 데이터가 고아가 되지 않게). */
+	/** 게스트 세션 시작. 유효한 게스트 refresh 쿠키가 있으면 새 게스트를 만들지 않고 그 세션을 이어 쓴다(기존 게스트 데이터가 고아가 되지 않게). 정식 사용자의 쿠키는 이어 쓰지 않는다. */
 	@Post('guest')
 	async guest(@Req() req: Request, @Res() res: Response) {
 		const refreshToken: string | undefined = req.cookies?.[REFRESH_TOKEN_COOKIE];
-		const rotated = refreshToken
-			? await this.authService.rotateRefreshToken(refreshToken).catch((err: unknown) => {
-					if (err instanceof UnauthorizedException) {
-						return null;
-					}
-					throw err;
-				})
-			: null;
+		const guestUserId = await this.authService.findGuestIdBySession(refreshToken);
+		const rotated =
+			guestUserId && refreshToken
+				? await this.authService.rotateRefreshToken(refreshToken).catch((err: unknown) => {
+						if (err instanceof UnauthorizedException) {
+							return null;
+						}
+						throw err;
+					})
+				: null;
 		const tokens = rotated ?? (await this.authService.issueTokens((await this.authService.createGuest()).id));
 		this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 		res.sendStatus(204);

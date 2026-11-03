@@ -118,6 +118,17 @@ export class AuthService {
 			await lockUserFolders(tx, userId);
 			await lockUserFolders(tx, guestUserId);
 
+			// 동시에 다른 콜백이 이 게스트를 정식 사용자로 바꿨을 수 있어서, 행을 잠그고 아직 게스트인지 다시 확인한다
+			const [guest] = await tx
+				.select({ id: users.id })
+				.from(users)
+				.where(and(eq(users.id, guestUserId), eq(users.isGuest, true)))
+				.for('update');
+
+			if (!guest) {
+				return;
+			}
+
 			const guestUncategorized = await findLiveSystemFolder(guestUserId, '미분류', tx);
 			const uncategorized = await findLiveSystemFolder(userId, '미분류', tx);
 
