@@ -27,15 +27,21 @@ function renderLogin() {
 }
 
 describe('LoginScreen', () => {
+	test('카카오 로그인 링크를 올바른 주소로 렌더링한다', () => {
+		renderLogin();
+		const link = screen.getByRole('link', { name: '카카오 로그인' });
+		expect(link).toHaveAttribute('href', `${API_URL}/auth/kakao`);
+	});
+
 	test('구글 로그인 링크를 올바른 주소로 렌더링한다', () => {
 		renderLogin();
-		const link = screen.getByRole('link', { name: 'Google로 시작하기' });
+		const link = screen.getByRole('link', { name: 'Google 로그인' });
 		expect(link).toHaveAttribute('href', `${API_URL}/auth/google`);
 	});
 
 	test('깃허브 로그인 링크를 올바른 주소로 렌더링한다', () => {
 		renderLogin();
-		const link = screen.getByRole('link', { name: 'GitHub로 시작하기' });
+		const link = screen.getByRole('link', { name: 'GitHub 로그인' });
 		expect(link).toHaveAttribute('href', `${API_URL}/auth/github`);
 	});
 

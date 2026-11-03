@@ -25,3 +25,11 @@ export function GithubIcon() {
 		</svg>
 	);
 }
+
+export function KakaoIcon() {
+	return (
+		<svg viewBox="0 0 24 24" className="h-5 w-5" fill="#000000" aria-hidden="true">
+			<path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.86 5.32 4.66 6.73l-.95 3.49c-.08.31.27.56.54.38l4.16-2.76c.52.06 1.05.09 1.59.09 5.52 0 10-3.58 10-8S17.52 3 12 3Z" />
+		</svg>
+	);
+}
