@@ -8,12 +8,14 @@ import { DrizzleModule } from './db/drizzle.module.js';
 import { FoldersModule } from './folders/folders.module.js';
 import { LinksModule } from './links/links.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { RedisModule } from './redis/redis.module.js';
 import { TrashModule } from './trash/trash.module.js';
 
 @Module({
 	imports: [
 		ScheduleModule.forRoot(),
 		DrizzleModule,
+		RedisModule,
 		AuthModule,
 		FoldersModule,
 		LinksModule,

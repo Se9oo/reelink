@@ -1,0 +1,1 @@
+DROP TABLE "kakao_bot_link_codes" CASCADE;

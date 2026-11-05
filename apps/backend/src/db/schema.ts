@@ -78,14 +78,6 @@ export const kakaoBotLinks = pgTable('kakao_bot_links', {
 	linkedAt: timestamp('linked_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const kakaoBotLinkCodes = pgTable('kakao_bot_link_codes', {
-	code: text('code').primaryKey(),
-	userId: uuid('user_id')
-		.notNull()
-		.references(() => users.id, { onDelete: 'cascade' }),
-	expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-});
-
 export const folders = pgTable(
 	'folders',
 	{

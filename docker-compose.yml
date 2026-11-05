@@ -13,6 +13,14 @@ services:
     networks:
       - reelink-network
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - reelink-network
+
   backend:
     build:
       context: ./apps/backend
@@ -21,6 +29,7 @@ services:
       - ./apps/backend/.env
     depends_on:
       - postgres
+      - redis
     networks:
       - reelink-network
 
