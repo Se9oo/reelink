@@ -95,7 +95,7 @@ function LinkCodePanel({ onClose }: { onClose: () => void }) {
 		);
 	}
 
-	const remaining = Math.ceil((deadline - now) / 1000);
+	const remaining = Math.ceil(Math.min(deadline - now, CODE_TTL_MS) / 1000);
 	const { code } = issue.data;
 
 	return (
