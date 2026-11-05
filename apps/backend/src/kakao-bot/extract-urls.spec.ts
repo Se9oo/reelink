@@ -11,10 +11,24 @@ describe('extractUrls', () => {
 		expect(extractUrls('https://a.com https://b.com https://a.com')).toEqual(['https://a.com', 'https://b.com']);
 	});
 
-	test('URL 바로 뒤에 붙은 괄호·문장부호와 그 뒤 글자는 빼고 뽑는다', () => {
-		expect(extractUrls('(https://a.com/x). 그리고 https://b.com/y,다음')).toEqual([
+	test('URL을 감싼 괄호와 끝에 붙은 문장부호는 빼고 뽑는다', () => {
+		expect(extractUrls('(https://a.com/x). 그리고 https://b.com/y, 다음')).toEqual([
 			'https://a.com/x',
 			'https://b.com/y',
+		]);
+	});
+
+	test('URL 안의 괄호와 쉼표는 자르지 않는다', () => {
+		expect(extractUrls('https://en.wikipedia.org/wiki/Foo_(bar)')).toEqual(['https://en.wikipedia.org/wiki/Foo_(bar)']);
+		expect(extractUrls('https://m.search.naver.com/search?q=a,b')).toEqual(['https://m.search.naver.com/search?q=a,b']);
+		expect(extractUrls('https://www.google.com/maps/@37.5,127.0,15z')).toEqual([
+			'https://www.google.com/maps/@37.5,127.0,15z',
+		]);
+	});
+
+	test('괄호 안의 괄호 URL은 바깥 괄호만 뺀다', () => {
+		expect(extractUrls('(https://en.wikipedia.org/wiki/Foo_(bar))')).toEqual([
+			'https://en.wikipedia.org/wiki/Foo_(bar)',
 		]);
 	});
 
