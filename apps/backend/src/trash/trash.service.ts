@@ -198,7 +198,7 @@ export class TrashService {
 			const folderAlive = await this.isFolderAlive(userId, link.folderId, tx);
 			const restoredFolderId = folderAlive
 				? link.folderId
-				: (await this.foldersService.getOrCreateUncategorizedFolder(userId, tx)).id;
+				: (await this.foldersService.getOrCreateSystemFolder(userId, '미분류', tx)).id;
 
 			const [restored] = await tx
 				.update(links)

@@ -7,6 +7,7 @@ import { countGraphemes } from '../common/count-graphemes.js';
 import { isValidHttpUrl } from '../common/is-valid-http-url.js';
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { folders, links } from '../db/schema.js';
+import { FoldersService } from '../folders/folders.service.js';
 import { lockUserFolders } from '../folders/lock-user-folders.js';
 
 import { fetchOgTags } from './fetch-og-tags.js';
@@ -52,7 +53,10 @@ function normalizeOptionalText(key: string, value: unknown): string | null | und
 
 @Injectable()
 export class LinksService {
-	constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
+	constructor(
+		@Inject(DRIZZLE) private readonly db: DrizzleDb,
+		private readonly foldersService: FoldersService,
+	) {}
 
 	/**
 	 * 웹에서 링크를 등록한다. OG 태그(제목·썸네일) 추출은 별도로 처리하고, 여기서는 null로 둔다.
@@ -98,6 +102,31 @@ export class LinksService {
 		void this.applyOgTags(link.id, url);
 
 		return link;
+	}
+
+	/**
+	 * 카카오톡 봇으로 받은 링크들을 "카카오톡으로 등록" 시스템 폴더(없으면 지연 생성)에 저장한다. OG 태그 추출은 별도로 처리한다.
+	 * @param userId string
+	 * @param urls string[] http/https 형식이어야 함, 순서대로 저장
+	 * @returns Link[]
+	 */
+	async createBotLinks(userId: string, urls: string[]): Promise<Link[]> {
+		const created = await this.db.transaction(async (tx) => {
+			await lockUserFolders(tx, userId);
+
+			const folder = await this.foldersService.getOrCreateSystemFolder(userId, '카카오톡으로 등록', tx);
+
+			return await tx
+				.insert(links)
+				.values(urls.map((url) => ({ userId, folderId: folder.id, url, folderSource: 'kakao_bot' })))
+				.returning();
+		});
+
+		for (const link of created) {
+			void this.applyOgTags(link.id, link.url);
+		}
+
+		return created;
 	}
 
 	/**

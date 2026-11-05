@@ -152,13 +152,14 @@ export class FoldersService {
 	}
 
 	/**
-	 * "미분류" 시스템 폴더를 반환한다. 없으면 최상위에 지연 생성한다.
+	 * 휴지통에 없는 시스템 폴더를 이름으로 찾아 반환한다. 없으면 최상위에 지연 생성한다.
 	 * @param userId string
+	 * @param name string 시스템 폴더 이름(예: "미분류", "카카오톡으로 등록")
 	 * @param tx DrizzleTx lockUserFolders를 잡은 트랜잭션
 	 * @returns Folder
 	 */
-	async getOrCreateUncategorizedFolder(userId: string, tx: DrizzleTx): Promise<Folder> {
-		const existing = await findLiveSystemFolder(userId, '미분류', tx);
+	async getOrCreateSystemFolder(userId: string, name: string, tx: DrizzleTx): Promise<Folder> {
+		const existing = await findLiveSystemFolder(userId, name, tx);
 
 		if (existing) {
 			return existing;
@@ -166,10 +167,7 @@ export class FoldersService {
 
 		const sortOrder = await this.nextSortOrder(userId, null, tx);
 
-		const [created] = await tx
-			.insert(folders)
-			.values({ userId, name: '미분류', isSystem: true, sortOrder })
-			.returning();
+		const [created] = await tx.insert(folders).values({ userId, name, isSystem: true, sortOrder }).returning();
 
 		return created;
 	}

@@ -1,11 +1,12 @@
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import request from 'supertest';
 
 import { DrizzleDb } from '../src/db/drizzle.module.js';
 import { folders, links, users } from '../src/db/schema.js';
+import { LinksService } from '../src/links/links.service.js';
 
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
@@ -942,6 +943,56 @@ describe('LinksController (e2e)', () => {
 
 		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
 			await request(app.getHttpServer()).get('/links/home').expect(401);
+		});
+	});
+
+	describe('createBotLinks', () => {
+		let botUserId: string;
+
+		beforeEach(async () => {
+			const [user] = await db.insert(users).values({ email: 'bot-links@test.com', nickname: '봇링크' }).returning();
+			botUserId = user.id;
+		});
+
+		afterEach(async () => {
+			await db.delete(users).where(eq(users.id, botUserId));
+		});
+
+		function systemFolders() {
+			return db
+				.select()
+				.from(folders)
+				.where(and(eq(folders.userId, botUserId), eq(folders.name, '카카오톡으로 등록'), eq(folders.isSystem, true)));
+		}
+
+		test('시스템 폴더가 없으면 카카오톡으로 등록 폴더를 만들어 그 안에 kakao_bot으로 저장한다.', async () => {
+			const created = await app.get(LinksService).createBotLinks(botUserId, ['https://a.com', 'https://b.com']);
+
+			const [folder] = await systemFolders();
+			expect(created).toHaveLength(2);
+			expect(created.map((link) => link.url)).toEqual(['https://a.com', 'https://b.com']);
+			expect(created.every((link) => link.folderId === folder.id && link.folderSource === 'kakao_bot')).toBe(true);
+		});
+
+		test('카카오톡으로 등록 폴더가 이미 있으면 재사용한다.', async () => {
+			const linksService = app.get(LinksService);
+			await linksService.createBotLinks(botUserId, ['https://a.com']);
+			await linksService.createBotLinks(botUserId, ['https://b.com']);
+
+			expect(await systemFolders()).toHaveLength(1);
+		});
+
+		test('카카오톡으로 등록 폴더가 휴지통에 있으면 새로 만들어 저장한다.', async () => {
+			const [trashed] = await db
+				.insert(folders)
+				.values({ userId: botUserId, name: '카카오톡으로 등록', isSystem: true, deletedAt: new Date() })
+				.returning();
+
+			const [link] = await app.get(LinksService).createBotLinks(botUserId, ['https://a.com']);
+
+			expect(link.folderId).not.toBe(trashed.id);
+			const [live] = (await systemFolders()).filter((folder) => folder.deletedAt === null);
+			expect(link.folderId).toBe(live.id);
 		});
 	});
 });
