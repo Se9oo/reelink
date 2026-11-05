@@ -1,5 +1,5 @@
 # 로컬 개발용 추가 설정. 백엔드·프론트는 호스트에서 pnpm으로 띄우고, DB와 Redis만 컨테이너로 띄운다.
-#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis
+#   make db-up  (= docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis)
 # 운영(docker compose up)은 백엔드가 내부 네트워크로 붙으므로 호스트 포트를 열지 않는다.
 # 여기서도 외부에 열리지 않게 127.0.0.1에만 연다.
 services:
