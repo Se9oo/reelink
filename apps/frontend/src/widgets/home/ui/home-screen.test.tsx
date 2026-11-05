@@ -19,6 +19,7 @@ const { mockPush } = vi.hoisted(() => ({ mockPush: vi.fn() }));
 
 vi.mock('next/navigation', () => ({
 	useRouter: () => ({ push: mockPush }),
+	useSearchParams: () => new URLSearchParams(),
 }));
 
 function link(overrides: Partial<Link> & Pick<Link, 'id'>): Link {

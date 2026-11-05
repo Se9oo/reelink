@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import type { ReactNode } from 'react';
 
 import { useRouter } from 'next/navigation';
@@ -14,6 +15,7 @@ import { HomeLinkCard } from '@/widgets/home/ui/home-link-card';
 import { RemindPreviewStack } from '@/widgets/home/ui/remind-preview-stack';
 
 import { KakaoRevokedBanner } from '@/features/connect-kakao-notification/ui/kakao-revoked-banner';
+import { KakaoOnboardingCard } from '@/features/kakao-onboarding/ui/kakao-onboarding-card';
 import { RegisterLinkModal } from '@/features/register-link/ui/register-link-modal';
 
 import { homeKeys, homeQueryOptions } from '@/entities/link/api/get-home';
@@ -66,6 +68,9 @@ export function HomeScreen() {
 				</header>
 
 				<KakaoRevokedBanner />
+				<Suspense>
+					<KakaoOnboardingCard />
+				</Suspense>
 
 				{isEmpty ? (
 					<EmptyHome onRegister={openRegisterModal} />
