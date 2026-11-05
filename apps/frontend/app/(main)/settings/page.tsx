@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { KakaoBotConnect } from '@/features/connect-kakao-bot/ui/kakao-bot-connect';
 import { KakaoNotificationConnect } from '@/features/connect-kakao-notification/ui/kakao-notification-connect';
 import { ThemeSwitch } from '@/features/toggle-theme/ui/theme-switch';
 
@@ -27,7 +28,7 @@ export default function SettingsPage() {
 
 				<SettingsGroup label="링크 등록">
 					<SettingsRow label="카카오톡 봇 연동" description="봇 채팅방에 링크를 보내면 바로 저장돼요">
-						<span className="text-sm text-[var(--seed-color-fg-neutral-muted)]">준비 중</span>
+						<KakaoBotConnect />
 					</SettingsRow>
 				</SettingsGroup>
 			</div>
