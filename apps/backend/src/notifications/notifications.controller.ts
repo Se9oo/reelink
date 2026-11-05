@@ -12,6 +12,7 @@ import { NotificationsService } from './notifications.service.js';
 
 const KAKAO_STATE_COOKIE = 'kakao_notify_state';
 const SETTINGS_PATH = '/settings';
+const ONBOARDING_BOT_PATH = '/home?onboarding=bot';
 
 @Controller('notifications')
 export class NotificationsController {
@@ -38,10 +39,17 @@ export class NotificationsController {
 
 	@Get('kakao/connect')
 	@UseGuards(JwtAuthGuard, NotGuestGuard)
-	async connectKakao(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+	async connectKakao(
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+		@Query('from') from: string | undefined,
+	) {
 		const { sub: userId } = req.user as JwtPayload;
 		const nonce = randomUUID();
-		const stateToken = await this.jwt.signAsync({ sub: userId, nonce }, { expiresIn: '10m' });
+		const stateToken = await this.jwt.signAsync(
+			{ sub: userId, nonce, onboarding: from === 'onboarding' },
+			{ expiresIn: '10m' },
+		);
 
 		res.cookie(KAKAO_STATE_COOKIE, stateToken, {
 			httpOnly: true,
@@ -71,15 +79,19 @@ export class NotificationsController {
 		res.clearCookie(KAKAO_STATE_COOKIE);
 
 		const payload = stateToken
-			? await this.jwt.verifyAsync<{ sub: string; nonce: string }>(stateToken).catch(() => null)
+			? await this.jwt.verifyAsync<{ sub: string; nonce: string; onboarding?: boolean }>(stateToken).catch(() => null)
 			: null;
 
 		if (!payload || payload.nonce !== state) {
 			throw new BadRequestException('Invalid state');
 		}
 
+		const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+		// 온보딩에서 시작했으면 결과와 상관없이 홈으로 돌아가 봇 연동 단계를 이어간다
 		const redirectTo = (result: 'connected' | 'cancelled' | 'failed') =>
-			res.redirect(`${process.env.FRONTEND_URL ?? 'http://localhost:3000'}${SETTINGS_PATH}?kakao=${result}`);
+			res.redirect(
+				payload.onboarding ? `${frontendUrl}${ONBOARDING_BOT_PATH}` : `${frontendUrl}${SETTINGS_PATH}?kakao=${result}`,
+			);
 
 		if (!code) {
 			return redirectTo('cancelled');

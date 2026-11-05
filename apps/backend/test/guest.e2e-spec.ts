@@ -5,7 +5,15 @@ import request from 'supertest';
 
 import { AuthService } from '../src/auth/auth.service.js';
 import { type DrizzleDb } from '../src/db/drizzle.module.js';
-import { accounts, folders, links, refreshTokens, users } from '../src/db/schema.js';
+import {
+	accounts,
+	folders,
+	kakaoBotLinks,
+	links,
+	notificationChannels,
+	refreshTokens,
+	users,
+} from '../src/db/schema.js';
 
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
@@ -30,7 +38,7 @@ describe('게스트 모드 (e2e)', () => {
 		return cookie?.split(';')[0].slice(name.length + 1);
 	}
 
-	function profile(providerAccountId = crypto.randomUUID()) {
+	function profile(providerAccountId: string = crypto.randomUUID()) {
 		return { provider: 'github', providerAccountId, email: 'claim@test.com', nickname: '이어받기' };
 	}
 
@@ -96,6 +104,61 @@ describe('게스트 모드 (e2e)', () => {
 			expect(createSpy).not.toHaveBeenCalled();
 			createSpy.mockRestore();
 			findSpy.mockRestore();
+		});
+	});
+
+	describe('온보딩 카드 대상(welcome)', () => {
+		async function connectKakaoAndBot(userId: string, { kakao = true, bot = true } = {}) {
+			if (kakao) {
+				await db.insert(notificationChannels).values({ userId, provider: 'kakao', externalId: '1', status: 'active' });
+			}
+			if (bot) {
+				await db.insert(kakaoBotLinks).values({ userId, botUserKey: crypto.randomUUID() });
+			}
+		}
+
+		test('새로 가입하면 true, 같은 계정으로 다시 로그인하면 false', async () => {
+			const providerAccountId = crypto.randomUUID();
+
+			const first = await authService.findOrCreateUser(profile(providerAccountId));
+			const second = await authService.findOrCreateUser(profile(providerAccountId));
+
+			expect(first.welcome).toBe(true);
+			expect(second.welcome).toBe(false);
+			await db.delete(users).where(eq(users.id, first.id));
+		});
+
+		test('게스트가 처음 보는 계정으로 로그인하면 true', async () => {
+			const guest = await authService.createGuest();
+
+			const user = await authService.findOrCreateUser(profile(), guest.id);
+
+			expect(user.welcome).toBe(true);
+			await db.delete(users).where(eq(users.id, guest.id));
+		});
+
+		test('게스트가 기존 계정으로 로그인하면, 그 계정이 알림과 봇을 둘 다 연동했을 때만 false', async () => {
+			const both = await authService.findOrCreateUser(profile(crypto.randomUUID()));
+			const kakaoOnly = await authService.findOrCreateUser(profile(crypto.randomUUID()));
+			await connectKakaoAndBot(both.id);
+			await connectKakaoAndBot(kakaoOnly.id, { bot: false });
+
+			const [bothAccount] = await db.select().from(accounts).where(eq(accounts.userId, both.id));
+			const [kakaoOnlyAccount] = await db.select().from(accounts).where(eq(accounts.userId, kakaoOnly.id));
+
+			const mergedIntoBoth = await authService.findOrCreateUser(
+				profile(bothAccount.providerAccountId),
+				(await authService.createGuest()).id,
+			);
+			const mergedIntoKakaoOnly = await authService.findOrCreateUser(
+				profile(kakaoOnlyAccount.providerAccountId),
+				(await authService.createGuest()).id,
+			);
+
+			expect(mergedIntoBoth.welcome).toBe(false);
+			expect(mergedIntoKakaoOnly.welcome).toBe(true);
+			await db.delete(users).where(eq(users.id, both.id));
+			await db.delete(users).where(eq(users.id, kakaoOnly.id));
 		});
 	});
 

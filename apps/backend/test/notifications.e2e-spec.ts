@@ -36,9 +36,9 @@ describe('NotificationsController (e2e)', () => {
 		await teardownE2EApp(context);
 	});
 
-	async function startConnect() {
+	async function startConnect(query = '') {
 		const res = await request(app.getHttpServer())
-			.get('/notifications/kakao/connect')
+			.get(`/notifications/kakao/connect${query}`)
 			.set('Cookie', `access_token=${accessToken}`)
 			.expect(200);
 		const state = new URL(res.body.url).searchParams.get('state');
@@ -46,6 +46,29 @@ describe('NotificationsController (e2e)', () => {
 
 		return { state, stateCookie, url: res.body.url as string };
 	}
+
+	test('온보딩에서 시작한 연동은 취소해도 홈의 봇 단계로 돌아간다.', async () => {
+		const { state, stateCookie } = await startConnect('?from=onboarding');
+
+		const res = await request(app.getHttpServer())
+			.get(`/notifications/kakao/callback?error=access_denied&state=${state}`)
+			.set('Cookie', stateCookie)
+			.expect(302);
+
+		expect(res.headers.location).toMatch(/\/home\?onboarding=bot$/);
+	});
+
+	test('온보딩에서 시작한 연동이 성공해도 홈의 봇 단계로 돌아간다.', async () => {
+		const { state, stateCookie } = await startConnect('?from=onboarding');
+
+		const res = await request(app.getHttpServer())
+			.get(`/notifications/kakao/callback?code=abc&state=${state}`)
+			.set('Cookie', stateCookie)
+			.expect(302);
+
+		expect(res.headers.location).toMatch(/\/home\?onboarding=bot$/);
+		await db.delete(notificationChannels).where(eq(notificationChannels.userId, testUserId));
+	});
 
 	test('연동 시작 시 talk_message 권한을 요청하는 카카오 동의 URL을 반환한다.', async () => {
 		const { url } = await startConnect();
