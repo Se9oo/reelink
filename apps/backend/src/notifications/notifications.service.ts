@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 
 import { and, eq } from 'drizzle-orm';
 
@@ -10,19 +10,6 @@ import { exchangeKakaoCode, fetchKakaoUserId } from './kakao-api.js';
 @Injectable()
 export class NotificationsService {
 	constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
-
-	/**
-	 * 게스트는 알림을 연동하거나 바꿀 수 없다(쿠키가 사라지면 연동만 남은 고아가 되므로).
-	 * @param userId string
-	 * @throws ForbiddenException 게스트인 경우
-	 */
-	async assertNotGuest(userId: string): Promise<void> {
-		const [user] = await this.db.select({ isGuest: users.isGuest }).from(users).where(eq(users.id, userId));
-
-		if (user?.isGuest) {
-			throw new ForbiddenException('Guest cannot use notifications');
-		}
-	}
 
 	/**
 	 * 사용자의 알림 방법과 카카오 알림 연동 상태를 반환한다.

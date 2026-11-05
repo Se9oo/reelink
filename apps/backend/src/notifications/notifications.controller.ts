@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 
 import { JwtPayload } from '../auth/auth.types.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { NotGuestGuard } from '../auth/guards/not-guest.guard.js';
 
 import { NotificationsService } from './notifications.service.js';
 
@@ -28,19 +29,17 @@ export class NotificationsController {
 	}
 
 	@Patch('settings')
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, NotGuestGuard)
 	async updateSettings(@Req() req: Request, @Body('notificationMethod') notificationMethod: unknown) {
 		const { sub: userId } = req.user as JwtPayload;
-		await this.notificationsService.assertNotGuest(userId);
 
 		return await this.notificationsService.updateNotificationMethod(userId, notificationMethod);
 	}
 
 	@Get('kakao/connect')
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, NotGuestGuard)
 	async connectKakao(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
 		const { sub: userId } = req.user as JwtPayload;
-		await this.notificationsService.assertNotGuest(userId);
 		const nonce = randomUUID();
 		const stateToken = await this.jwt.signAsync({ sub: userId, nonce }, { expiresIn: '10m' });
 

@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
+import { NotGuestGuard } from './guards/not-guest.guard.js';
 import { GithubStrategy } from './strategies/github.strategy.js';
 import { GoogleStrategy } from './strategies/google.strategy.js';
 import { KakaoStrategy } from './strategies/kakao.strategy.js';
@@ -24,10 +25,10 @@ import { KakaoStrategy } from './strategies/kakao.strategy.js';
 		}),
 	],
 	controllers: [AuthController],
-	providers: [AuthService, KakaoStrategy, GoogleStrategy, GithubStrategy, JwtAuthGuard],
+	providers: [AuthService, KakaoStrategy, GoogleStrategy, GithubStrategy, JwtAuthGuard, NotGuestGuard],
 	// JwtAuthGuard를 다른 모듈(폴더/링크 등)에서도 라우트 보호에 쓸 수 있게 내보냅니다.
 	// JwtAuthGuard 내부가 JwtService를 필요로 해서, JwtModule도 같이 내보내야 그 모듈들의
 	// DI 컨테이너에서 JwtService를 찾을 수 있음.
-	exports: [JwtAuthGuard, JwtModule],
+	exports: [JwtAuthGuard, NotGuestGuard, JwtModule],
 })
 export class AuthModule {}
