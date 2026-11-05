@@ -16,11 +16,16 @@ async function query(sql: string, params: unknown[]) {
 	}
 }
 
-export async function signIn(context: BrowserContext): Promise<string> {
+export async function startGuest(context: BrowserContext): Promise<string> {
 	await context.request.post(`${API_URL}/auth/guest`);
 	const me = await (await context.request.get(`${API_URL}/auth/me`)).json();
-	await query("update users set is_guest = false, nickname = 'E2E' where id = $1", [me.id]);
 	return me.id;
+}
+
+export async function signIn(context: BrowserContext): Promise<string> {
+	const userId = await startGuest(context);
+	await query("update users set is_guest = false, nickname = 'E2E' where id = $1", [userId]);
+	return userId;
 }
 
 export async function deleteUser(userId: string) {
