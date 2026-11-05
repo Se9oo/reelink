@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-
 import Link from 'next/link';
 
 import { useQuery } from '@tanstack/react-query';
+import { overlay } from 'overlay-kit';
 import { ActionButton } from 'seed-design/ui/action-button';
 
 import { KakaoBotLinkDialog } from '@/features/connect-kakao-bot/ui/kakao-bot-link-dialog';
@@ -17,7 +16,10 @@ import { ROUTES } from '@/shared/config/routes';
 export function KakaoBotConnect() {
 	const { data: me } = useQuery(meQueryOptions());
 	const { data: status } = useQuery({ ...linkStatusQueryOptions(), enabled: me?.isGuest === false });
-	const [open, setOpen] = useState(false);
+
+	function openLinkDialog() {
+		overlay.open(({ isOpen, close }) => <KakaoBotLinkDialog open={isOpen} onOpenChange={(open) => !open && close()} />);
+	}
 
 	if (me?.isGuest) {
 		return (
@@ -34,10 +36,9 @@ export function KakaoBotConnect() {
 	return (
 		<div className="flex items-center gap-2">
 			{status.linked && <span className="text-sm text-[var(--seed-color-fg-neutral-muted)]">연동됨</span>}
-			<ActionButton size="small" variant="neutralWeak" onClick={() => setOpen(true)}>
+			<ActionButton size="small" variant="neutralWeak" onClick={openLinkDialog}>
 				{status.linked ? '다시 연동하기' : '연동하기'}
 			</ActionButton>
-			<KakaoBotLinkDialog open={open} onOpenChange={setOpen} />
 		</div>
 	);
 }

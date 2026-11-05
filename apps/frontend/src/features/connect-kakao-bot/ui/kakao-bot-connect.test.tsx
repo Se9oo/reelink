@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { OverlayProvider } from 'overlay-kit';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { KakaoBotConnect } from '@/features/connect-kakao-bot/ui/kakao-bot-connect';
@@ -27,7 +28,9 @@ function mockApi({ isGuest = false, status }: { isGuest?: boolean; status: LinkS
 function renderConnect() {
 	render(
 		<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-			<KakaoBotConnect />
+			<OverlayProvider>
+				<KakaoBotConnect />
+			</OverlayProvider>
 		</QueryClientProvider>,
 	);
 }
