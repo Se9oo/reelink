@@ -22,9 +22,11 @@ interface KakaoBotLinkDialogProps {
 
 export function KakaoBotLinkDialog({ open, onOpenChange }: KakaoBotLinkDialogProps) {
 	return (
-		<DialogRoot open={open} onOpenChange={onOpenChange}>
+		<DialogRoot open={open} onOpenChange={onOpenChange} lazyMount unmountOnExit>
 			<DialogContent title="카카오톡 봇 연동">
-				<DialogBody>{open && <LinkCodePanel onClose={() => onOpenChange(false)} />}</DialogBody>
+				<DialogBody>
+					<LinkCodePanel onClose={() => onOpenChange(false)} />
+				</DialogBody>
 			</DialogContent>
 		</DialogRoot>
 	);
