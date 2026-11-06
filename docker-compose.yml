@@ -18,6 +18,7 @@ services:
       - reelink-network
 
   backend:
+    image: ghcr.io/se9oo/reelink-backend:${IMAGE_TAG:-latest}
     build:
       context: ./apps/backend
     restart: unless-stopped
@@ -30,6 +31,7 @@ services:
       - reelink-network
 
   frontend:
+    image: ghcr.io/se9oo/reelink-frontend:${IMAGE_TAG:-latest}
     build:
       context: ./apps/frontend
     restart: unless-stopped
@@ -43,8 +45,10 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - frontend
       - backend
