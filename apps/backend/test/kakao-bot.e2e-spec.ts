@@ -208,7 +208,23 @@ describe('KakaoBot (e2e)', () => {
 		});
 
 		test('미연동 채팅방이 URL을 보내면 저장하지 않고 연동을 안내한다', async () => {
-			expect(await send(crypto.randomUUID(), 'https://a.com')).toBe('설정에서 발급한 연동 코드를 먼저 보내주세요');
+			expect(await send(crypto.randomUUID(), 'https://a.com')).toBe(
+				'아직 연동되지 않은 채팅방이라 링크를 저장하지 못했어요.\n설정 > 카카오톡 봇 연동에서 6자리 코드를 받아 여기로 보내주세요.\n👉 http://localhost:3000/settings',
+			);
+		});
+
+		test('미연동 채팅방이 URL 없이 보내면 인사와 함께 연동을 안내한다', async () => {
+			expect(await send(crypto.randomUUID(), '안녕')).toBe(
+				'안녕하세요! 이 채팅방에 링크를 보내면 바로 저장해 드려요.\n먼저 설정 > 카카오톡 봇 연동에서 6자리 코드를 받아 여기로 보내주세요.\n👉 http://localhost:3000/settings',
+			);
+		});
+	});
+
+	describe('장애', () => {
+		test('Redis가 실패해도 200과 다시 보내달라는 안내를 준다', async () => {
+			vi.spyOn(redis, 'get').mockRejectedValueOnce(new Error('Connection is closed.'));
+
+			expect(await send(crypto.randomUUID(), '123456')).toBe('잠시 문제가 생겼어요. 조금 뒤에 다시 보내주세요.');
 		});
 	});
 

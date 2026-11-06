@@ -5,6 +5,7 @@ import {
 	Get,
 	Headers,
 	HttpCode,
+	Logger,
 	Post,
 	Req,
 	UnauthorizedException,
@@ -42,6 +43,8 @@ function isValidWebhookSecret(secret: string | undefined): boolean {
 
 @Controller()
 export class KakaoBotController {
+	private readonly logger = new Logger(KakaoBotController.name);
+
 	constructor(private readonly kakaoBotService: KakaoBotService) {}
 
 	@Post('notifications/kakao-bot/link-code')
@@ -75,7 +78,14 @@ export class KakaoBotController {
 			throw new BadRequestException();
 		}
 
-		const text = await this.kakaoBotService.handleMessage(botUserKey, utterance);
+		let text: string;
+
+		try {
+			text = await this.kakaoBotService.handleMessage(botUserKey, utterance);
+		} catch (error) {
+			this.logger.error(error);
+			text = '잠시 문제가 생겼어요. 조금 뒤에 다시 보내주세요.';
+		}
 
 		return { version: '2.0', template: { outputs: [{ simpleText: { text } }] } };
 	}

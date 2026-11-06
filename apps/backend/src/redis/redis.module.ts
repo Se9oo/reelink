@@ -12,7 +12,12 @@ export type RedisClient = Redis;
 		{
 			provide: REDIS,
 			// useFactory는 앱 부팅 시점(env 로드 이후)에 호출된다
-			useFactory: (): RedisClient => new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379'),
+			// 기본값이면 Redis가 죽었을 때 명령이 수십 초 매달려 오픈빌더 5초 타임아웃을 넘긴다
+			useFactory: (): RedisClient =>
+				new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+					maxRetriesPerRequest: 3,
+					commandTimeout: 1000,
+				}),
 		},
 	],
 	exports: [REDIS],

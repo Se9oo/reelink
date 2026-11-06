@@ -18,9 +18,14 @@ const MAX_FAILS = 5;
 const MAX_URLS = 20;
 const CODE_PATTERN = /^\d{6}$/;
 
+const settingsUrl = () => `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/settings`;
+
 const MESSAGES = {
 	linked: '연동됐어요! 이제 링크를 보내면 저장해 드려요',
-	notLinked: '설정에서 발급한 연동 코드를 먼저 보내주세요',
+	notLinked: () =>
+		`아직 연동되지 않은 채팅방이라 링크를 저장하지 못했어요.\n설정 > 카카오톡 봇 연동에서 6자리 코드를 받아 여기로 보내주세요.\n👉 ${settingsUrl()}`,
+	greeting: () =>
+		`안녕하세요! 이 채팅방에 링크를 보내면 바로 저장해 드려요.\n먼저 설정 > 카카오톡 봇 연동에서 6자리 코드를 받아 여기로 보내주세요.\n👉 ${settingsUrl()}`,
 	sendLink: '링크를 보내주시면 저장해 드려요',
 	wrongCode: (remaining: number) =>
 		`코드가 맞지 않아요. 설정 > 카카오톡 봇 연동에서 받은 6자리 코드를 확인해 주세요. 코드는 발급 후 5분 동안만 쓸 수 있어요. (남은 시도 ${remaining}번)`,
@@ -94,11 +99,11 @@ export class KakaoBotService {
 			.from(kakaoBotLinks)
 			.where(eq(kakaoBotLinks.botUserKey, botUserKey));
 
-		if (!link) {
-			return MESSAGES.notLinked;
-		}
-
 		const urls = extractUrls(utterance);
+
+		if (!link) {
+			return urls.length > 0 ? MESSAGES.notLinked() : MESSAGES.greeting();
+		}
 
 		if (urls.length === 0) {
 			return MESSAGES.sendLink;
