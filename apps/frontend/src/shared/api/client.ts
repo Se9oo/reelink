@@ -24,7 +24,7 @@ function refreshAccessToken() {
 }
 
 export const apiClient = ky.create({
-	baseUrl: API_URL,
+	prefix: API_URL,
 	credentials: 'include',
 	hooks: {
 		afterResponse: [
