@@ -121,6 +121,7 @@ export class AuthController {
 	private setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
 		res.cookie(ACCESS_TOKEN_COOKIE, accessToken, {
 			httpOnly: true,
+			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'lax',
 			maxAge: 15 * 60 * 1000,
 			path: '/',
@@ -128,12 +129,14 @@ export class AuthController {
 		// refresh 쿠키는 /auth 경로에만 실려가게 제한 — 매 요청마다 브라우저가 이 쿠키를 보낼 필요가 없어서(access token만 있으면 충분)
 		res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
 			httpOnly: true,
+			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'lax',
 			maxAge: 30 * 24 * 60 * 60 * 1000,
 			path: refreshCookiePath(),
 		});
 		res.cookie(SESSION_HINT_COOKIE, '1', {
 			httpOnly: true,
+			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'lax',
 			maxAge: 30 * 24 * 60 * 60 * 1000,
 			path: '/',

@@ -47,6 +47,22 @@ describe('NotificationsController (e2e)', () => {
 		return { state, stateCookie, url: res.body.url as string };
 	}
 
+	test('운영(NODE_ENV=production)에서는 state 쿠키를 Secure로 굽는다.', async () => {
+		const original = process.env.NODE_ENV;
+
+		try {
+			process.env.NODE_ENV = 'production';
+			const res = await request(app.getHttpServer())
+				.get('/notifications/kakao/connect')
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+
+			expect((res.headers['set-cookie'] as unknown as string[])[0]).toContain('Secure');
+		} finally {
+			process.env.NODE_ENV = original;
+		}
+	});
+
 	test('온보딩에서 시작한 연동은 취소해도 홈의 봇 단계로 돌아간다.', async () => {
 		const { state, stateCookie } = await startConnect('?from=onboarding');
 

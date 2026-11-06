@@ -5,7 +5,11 @@ import { existsSync } from 'node:fs';
 
 import { AppModule } from './app.module.js';
 
-process.loadEnvFile(existsSync('.env.local') ? '.env.local' : '.env');
+// 컨테이너에선 env 파일 없이 compose env_file로 환경 변수가 들어온다
+const envFile = ['.env.local', '.env'].find((file) => existsSync(file));
+if (envFile) {
+	process.loadEnvFile(envFile);
+}
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);

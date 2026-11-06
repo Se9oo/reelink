@@ -3,7 +3,10 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { existsSync } from 'node:fs';
 import { Pool } from 'pg';
 
-process.loadEnvFile(existsSync('.env.local') ? '.env.local' : '.env');
+const envFile = ['.env.local', '.env'].find((file) => existsSync(file));
+if (envFile) {
+	process.loadEnvFile(envFile);
+}
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(pool);

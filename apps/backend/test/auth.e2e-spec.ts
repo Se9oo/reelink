@@ -171,6 +171,23 @@ describe('AuthService / AuthController (e2e)', () => {
 			expect(refreshCookieOf(await refresh())).toContain('Path=/api/auth;');
 		});
 
+		test('운영(NODE_ENV=production)에서는 인증 쿠키를 모두 Secure로 굽고, 그 외엔 Secure를 붙이지 않는다', async () => {
+			const original = process.env.NODE_ENV;
+
+			try {
+				process.env.NODE_ENV = 'production';
+				const prodCookies = (await refresh()).headers['set-cookie'] as unknown as string[];
+				process.env.NODE_ENV = original;
+				const devCookies = (await refresh()).headers['set-cookie'] as unknown as string[];
+
+				expect(prodCookies).toHaveLength(3);
+				expect(prodCookies.every((cookie) => cookie.includes('Secure'))).toBe(true);
+				expect(devCookies.some((cookie) => cookie.includes('Secure'))).toBe(false);
+			} finally {
+				process.env.NODE_ENV = original;
+			}
+		});
+
 		test('로그아웃은 refresh 쿠키를 구운 것과 같은 경로로 지운다', async () => {
 			process.env.REFRESH_COOKIE_PATH = '/api/auth';
 
