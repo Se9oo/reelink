@@ -226,6 +226,16 @@ describe('KakaoBot (e2e)', () => {
 
 			expect(await send(crypto.randomUUID(), '123456')).toBe('잠시 문제가 생겼어요. 조금 뒤에 다시 보내주세요.');
 		});
+
+		test('코드 발급 중 Redis가 실패하면 503', async () => {
+			const user = await createUser();
+			vi.spyOn(redis, 'set').mockRejectedValueOnce(new Error('Connection is closed.'));
+
+			await request(app.getHttpServer())
+				.post('/notifications/kakao-bot/link-code')
+				.set('Cookie', user.cookie)
+				.expect(503);
+		});
 	});
 
 	describe('웹훅 요청 검증', () => {

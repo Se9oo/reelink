@@ -1,4 +1,4 @@
-import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 
 import { randomInt } from 'crypto';
 import { and, eq, ne } from 'drizzle-orm';
@@ -41,6 +41,8 @@ const failKey = (botUserKey: string) => `botfail:${botUserKey}`;
 
 @Injectable()
 export class KakaoBotService {
+	private readonly logger = new Logger(KakaoBotService.name);
+
 	constructor(
 		@Inject(DRIZZLE) private readonly db: DrizzleDb,
 		@Inject(REDIS) private readonly redis: RedisClient,
@@ -52,13 +54,21 @@ export class KakaoBotService {
 	 * 이미 쓰이고 있는 코드와 겹치면 다시 뽑는다.
 	 * @param userId string
 	 * @returns LinkCode
-	 * @throws ServiceUnavailableException 10번 연속 겹쳐서 발급하지 못한 경우
+	 * @throws ServiceUnavailableException 10번 연속 겹쳐서 발급하지 못했거나 Redis가 응답하지 않는 경우
 	 */
 	async issueLinkCode(userId: string): Promise<LinkCode> {
 		for (let attempt = 0; attempt < MAX_ISSUE_ATTEMPTS; attempt++) {
 			const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+			let saved: string | null;
 
-			if (await this.redis.set(codeKey(code), userId, 'EX', CODE_TTL_SECONDS, 'NX')) {
+			try {
+				saved = await this.redis.set(codeKey(code), userId, 'EX', CODE_TTL_SECONDS, 'NX');
+			} catch (error) {
+				this.logger.error(error);
+				break;
+			}
+
+			if (saved) {
 				return { code, expiresAt: new Date(Date.now() + CODE_TTL_SECONDS * 1000) };
 			}
 		}
