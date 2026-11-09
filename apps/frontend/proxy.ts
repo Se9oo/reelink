@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 import { ROUTES } from '@/shared/config/routes';
 
-const PUBLIC_ROUTES = [ROUTES.LOGIN, '/'];
+const PUBLIC_ROUTES = [ROUTES.LOGIN, ROUTES.PRIVACY, '/'];
 
 export function proxy(request: NextRequest) {
 	const { pathname } = request.nextUrl;

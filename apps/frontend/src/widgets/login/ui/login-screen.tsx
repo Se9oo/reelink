@@ -1,11 +1,14 @@
 import type { CSSProperties } from 'react';
 
+import Link from 'next/link';
+
 import { PrefixIcon } from '@seed-design/react';
 import { ActionButton } from 'seed-design/ui/action-button';
 
 import { GuestStartButton } from '@/widgets/login/ui/guest-start-button';
 
 import { API_URL } from '@/shared/config/env';
+import { ROUTES } from '@/shared/config/routes';
 import { ReelinkSymbol, ReelinkWordmark } from '@/shared/ui/logo/reelink-logo';
 
 import { GithubIcon, GoogleIcon, KakaoIcon } from './provider-icons';
@@ -55,6 +58,10 @@ export function LoginScreen() {
 
 					<GuestStartButton />
 				</div>
+
+				<Link href={ROUTES.PRIVACY} className="text-xs text-[var(--seed-color-fg-neutral-subtle)] underline">
+					개인정보 처리방침
+				</Link>
 			</div>
 		</main>
 	);

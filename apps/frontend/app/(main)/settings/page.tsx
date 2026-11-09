@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react';
 
+import Link from 'next/link';
+
 import { KakaoBotConnect } from '@/features/connect-kakao-bot/ui/kakao-bot-connect';
 import { KakaoNotificationConnect } from '@/features/connect-kakao-notification/ui/kakao-notification-connect';
 import { ThemeSwitch } from '@/features/toggle-theme/ui/theme-switch';
 
 import { GuestDataNotice } from '@/entities/user/ui/guest-data-notice';
+
+import { ROUTES } from '@/shared/config/routes';
 
 export default function SettingsPage() {
 	return (
@@ -31,6 +35,13 @@ export default function SettingsPage() {
 						<KakaoBotConnect />
 					</SettingsRow>
 				</SettingsGroup>
+
+				<Link
+					href={ROUTES.PRIVACY}
+					className="self-center text-[13px] text-[var(--seed-color-fg-neutral-muted)] underline"
+				>
+					개인정보 처리방침
+				</Link>
 			</div>
 		</div>
 	);
