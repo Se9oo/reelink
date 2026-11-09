@@ -1,11 +1,21 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: ghcr.io/se9oo/reelink-postgres:${IMAGE_TAG:-latest}
+    build:
+      context: ./postgres
     restart: unless-stopped
+    # WAL을 5분마다 R2로 올린다(손실 상한 5분). 전체 백업·정리는 서버 crontab이 매일 돌린다
+    command: >
+      postgres
+      -c archive_mode=on
+      -c archive_command='wal-g wal-push %p'
+      -c archive_timeout=300
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+    env_file:
+      - ./postgres-backup.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -44,8 +54,8 @@ services:
     image: nginx:alpine
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /etc/ssl/reelink:/etc/ssl/reelink:ro

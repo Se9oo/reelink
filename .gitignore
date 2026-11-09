@@ -30,3 +30,6 @@ coverage/
 .idea/
 
 CLAUDE.md
+
+# 서버의 R2 백업 키(wal-g)
+postgres-backup.env
