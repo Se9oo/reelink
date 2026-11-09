@@ -7,8 +7,14 @@ import request from 'supertest';
 import { AuthService } from '../src/auth/auth.service.js';
 
 import { type DrizzleDb } from './../src/db/drizzle.module.js';
-import { users } from './../src/db/schema.js';
+import { accounts, folders, links, notificationChannels, users } from './../src/db/schema.js';
+import { unlinkKakaoUser } from './../src/notifications/kakao-api.js';
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
+
+vi.mock('../src/notifications/kakao-api.js', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../src/notifications/kakao-api.js')>()),
+	unlinkKakaoUser: vi.fn(async () => {}),
+}));
 
 describe('AuthService / AuthController (e2e)', () => {
 	let context: E2ETestContext;
@@ -140,6 +146,68 @@ describe('AuthService / AuthController (e2e)', () => {
 			expect(res.body).toMatchObject({ id: testUser.id, avatarUrl: 'https://img.test/me.png' });
 
 			await db.delete(users).where(eq(users.id, testUser.id));
+		});
+	});
+
+	describe('DELETE /auth/me', () => {
+		async function createMember() {
+			const [user] = await db.insert(users).values({ email: 'withdraw@test.com', nickname: '탈퇴' }).returning();
+			const accessToken = await app.get(JwtService).signAsync({ sub: user.id });
+			return { id: user.id, cookie: `access_token=${accessToken}` };
+		}
+
+		function withdraw(cookie: string) {
+			return request(app.getHttpServer()).delete('/auth/me').set('Cookie', cookie);
+		}
+
+		afterEach(() => {
+			vi.mocked(unlinkKakaoUser).mockReset();
+		});
+
+		test('인증 쿠키가 없으면 401을 반환한다', async () => {
+			await request(app.getHttpServer()).delete('/auth/me').expect(401);
+		});
+
+		test('사용자와 폴더·링크를 지우고 인증 쿠키를 모두 지운다', async () => {
+			const user = await createMember();
+			const [folder] = await db.insert(folders).values({ userId: user.id, name: '폴더', sortOrder: 0 }).returning();
+			await db.insert(links).values({ userId: user.id, folderId: folder.id, url: 'https://a.test' });
+
+			const res = await withdraw(user.cookie).expect(204);
+
+			expect(await db.select().from(users).where(eq(users.id, user.id))).toHaveLength(0);
+			expect(await db.select().from(links).where(eq(links.userId, user.id))).toHaveLength(0);
+			const cookies = res.headers['set-cookie'] as unknown as string[];
+			expect(cookies.map((cookie) => cookie.split('=')[0]).sort()).toEqual([
+				'access_token',
+				'has_session',
+				'refresh_token',
+			]);
+			expect(unlinkKakaoUser).not.toHaveBeenCalled();
+		});
+
+		test('카카오 로그인·알림 연동이 있으면 그 회원번호로 카카오 연결을 한 번 끊는다', async () => {
+			const user = await createMember();
+			const kakaoId = crypto.randomUUID();
+			await db.insert(accounts).values({ userId: user.id, provider: 'kakao', providerAccountId: kakaoId });
+			await db.insert(notificationChannels).values({ userId: user.id, provider: 'kakao', externalId: kakaoId });
+
+			await withdraw(user.cookie).expect(204);
+
+			expect(unlinkKakaoUser).toHaveBeenCalledTimes(1);
+			expect(unlinkKakaoUser).toHaveBeenCalledWith(kakaoId);
+		});
+
+		test('카카오 연결 끊기가 실패해도 탈퇴는 된다', async () => {
+			const user = await createMember();
+			await db
+				.insert(notificationChannels)
+				.values({ userId: user.id, provider: 'kakao', externalId: crypto.randomUUID() });
+			vi.mocked(unlinkKakaoUser).mockRejectedValueOnce(new Error('kakao down'));
+
+			await withdraw(user.cookie).expect(204);
+
+			expect(await db.select().from(users).where(eq(users.id, user.id))).toHaveLength(0);
 		});
 	});
 

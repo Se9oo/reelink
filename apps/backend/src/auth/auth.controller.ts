@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 import type { Request, Response } from 'express';
@@ -74,6 +74,17 @@ export class AuthController {
 	me(@Req() req: Request) {
 		const { sub } = req.user as JwtPayload;
 		return this.authService.findUserById(sub);
+	}
+
+	@Delete('me')
+	@UseGuards(JwtAuthGuard)
+	async withdraw(@Req() req: Request, @Res() res: Response) {
+		const { sub } = req.user as JwtPayload;
+		await this.authService.deleteUser(sub);
+		res.clearCookie(ACCESS_TOKEN_COOKIE);
+		res.clearCookie(REFRESH_TOKEN_COOKIE, { path: refreshCookiePath() });
+		res.clearCookie(SESSION_HINT_COOKIE);
+		res.sendStatus(204);
 	}
 
 	/** 게스트 세션 시작. 유효한 게스트 refresh 쿠키가 있으면 새 게스트를 만들지 않고 그 세션을 이어 쓴다(기존 게스트 데이터가 고아가 되지 않게). 정식 사용자의 쿠키는 이어 쓰지 않는다. */

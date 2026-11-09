@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Cron } from '@nestjs/schedule';
 
@@ -9,11 +9,14 @@ import { DRIZZLE, type DrizzleDb, type DrizzleTx } from '../db/drizzle.module.js
 import { accounts, folders, kakaoBotLinks, links, notificationChannels, refreshTokens, users } from '../db/schema.js';
 import { findLiveSystemFolder } from '../folders/find-live-system-folder.js';
 import { lockUserFolders } from '../folders/lock-user-folders.js';
+import { unlinkKakaoUser } from '../notifications/kakao-api.js';
 
 import { type AuthUser, type LoginUser, type OAuthProfile, type TokenPair } from './auth.types.js';
 
 @Injectable()
 export class AuthService {
+	private readonly logger = new Logger(AuthService.name);
+
 	constructor(
 		@Inject(DRIZZLE) private readonly db: DrizzleDb,
 		private readonly jwt: JwtService,
@@ -271,6 +274,32 @@ export class AuthService {
 		const tokenHash = this.tokenToHash(refreshToken);
 
 		await this.db.delete(refreshTokens).where(eq(refreshTokens.tokenHash, tokenHash));
+	}
+
+	/**
+	 * 회원 탈퇴. 카카오 로그인·알림 연동이 있으면 카카오 앱 연결을 먼저 끊고, users 행을 지운다(나머지 데이터는 FK cascade).
+	 * 카카오 연결 끊기가 실패해도 개인정보가 남지 않도록 삭제는 그대로 진행하고 로그만 남긴다.
+	 * @param userId string
+	 */
+	async deleteUser(userId: string): Promise<void> {
+		const kakaoIds = await this.db
+			.select({ id: accounts.providerAccountId })
+			.from(accounts)
+			.where(and(eq(accounts.userId, userId), eq(accounts.provider, 'kakao')))
+			.union(
+				this.db
+					.select({ id: notificationChannels.externalId })
+					.from(notificationChannels)
+					.where(and(eq(notificationChannels.userId, userId), eq(notificationChannels.provider, 'kakao'))),
+			);
+
+		for (const { id } of kakaoIds) {
+			await unlinkKakaoUser(id).catch((error: unknown) => {
+				this.logger.error(`카카오 연결 끊기 실패 (userId=${userId})`, error instanceof Error ? error.stack : error);
+			});
+		}
+
+		await this.db.delete(users).where(eq(users.id, userId));
 	}
 
 	/**

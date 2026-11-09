@@ -116,6 +116,32 @@ export async function fetchKakaoUserId(accessToken: string): Promise<string> {
 }
 
 /**
+ * 어드민 키로 카카오 회원의 앱 연결을 끊는다. 그 회원의 이 앱 토큰(로그인·알림)과 동의 내역이 모두 사라진다.
+ * 이미 연결이 끊긴 회원(-101)이면 성공으로 본다.
+ * @param kakaoUserId string 카카오 회원번호
+ * @throws KakaoApiError 그 외 실패면 status와 카카오 code 값을 담아서
+ */
+export async function unlinkKakaoUser(kakaoUserId: string): Promise<void> {
+	const res = await fetch('https://kapi.kakao.com/v1/user/unlink', {
+		method: 'POST',
+		headers: {
+			Authorization: `KakaoAK ${process.env.KAKAO_ADMIN_KEY ?? ''}`,
+			'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+		},
+		body: new URLSearchParams({ target_id_type: 'user_id', target_id: kakaoUserId }),
+		signal: AbortSignal.timeout(KAKAO_TIMEOUT_MS),
+	});
+
+	if (!res.ok) {
+		const body = await res.json().catch(() => null);
+		if (body?.code === -101) {
+			return;
+		}
+		throw new KakaoApiError(res.status, 'unlink', body?.code != null ? String(body.code) : null);
+	}
+}
+
+/**
  * 카카오 '나에게 보내기' 기본 텍스트 템플릿으로 메시지를 보낸다.
  * @param accessToken string
  * @param text string 최대 200자
