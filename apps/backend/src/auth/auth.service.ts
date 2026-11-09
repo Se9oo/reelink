@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Cron } from '@nestjs/schedule';
 
 import { createHash, randomBytes } from 'crypto';
-import { and, eq, gt, notExists, sql } from 'drizzle-orm';
+import { and, eq, gt, lte, notExists, sql } from 'drizzle-orm';
 
 import { DRIZZLE, type DrizzleDb, type DrizzleTx } from '../db/drizzle.module.js';
 import { accounts, folders, kakaoBotLinks, links, notificationChannels, refreshTokens, users } from '../db/schema.js';
@@ -226,6 +226,15 @@ export class AuthService {
 				),
 			),
 		);
+	}
+
+	/**
+	 * 매일 KST 00:00, 만료된 refresh token 행을 지운다. 회전·로그아웃 없이 버려진 기기의 토큰이 쌓이지 않게 한다.
+	 * @param now Date
+	 */
+	@Cron('0 0 * * *', { timeZone: 'Asia/Seoul' })
+	async deleteExpiredRefreshTokens(now = new Date()): Promise<void> {
+		await this.db.delete(refreshTokens).where(lte(refreshTokens.expiresAt, now));
 	}
 
 	/**

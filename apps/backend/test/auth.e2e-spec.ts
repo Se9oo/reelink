@@ -1,13 +1,14 @@
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
+import { createHash } from 'crypto';
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
 
 import { AuthService } from '../src/auth/auth.service.js';
 
 import { type DrizzleDb } from './../src/db/drizzle.module.js';
-import { accounts, folders, links, notificationChannels, users } from './../src/db/schema.js';
+import { accounts, folders, links, notificationChannels, refreshTokens, users } from './../src/db/schema.js';
 import { unlinkKakaoUser } from './../src/notifications/kakao-api.js';
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
@@ -146,6 +147,24 @@ describe('AuthService / AuthController (e2e)', () => {
 			expect(res.body).toMatchObject({ id: testUser.id, avatarUrl: 'https://img.test/me.png' });
 
 			await db.delete(users).where(eq(users.id, testUser.id));
+		});
+	});
+
+	describe('deleteExpiredRefreshTokens', () => {
+		test('만료된 refresh token만 지운다', async () => {
+			await authService.issueTokens(context.testUserId);
+			const { refreshToken: alive } = await authService.issueTokens(context.testUserId);
+			const aliveHash = createHash('sha256').update(alive).digest('hex');
+			const now = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000);
+			await db
+				.update(refreshTokens)
+				.set({ expiresAt: new Date(now.getTime() + 60_000) })
+				.where(eq(refreshTokens.tokenHash, aliveHash));
+
+			await authService.deleteExpiredRefreshTokens(now);
+
+			const remaining = await db.select().from(refreshTokens).where(eq(refreshTokens.userId, context.testUserId));
+			expect(remaining.map((row) => row.tokenHash)).toEqual([aliveHash]);
 		});
 	});
 
