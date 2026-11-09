@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { KakaoBotConnect } from '@/features/connect-kakao-bot/ui/kakao-bot-connect';
 import { KakaoNotificationConnect } from '@/features/connect-kakao-notification/ui/kakao-notification-connect';
 import { ThemeSwitch } from '@/features/toggle-theme/ui/theme-switch';
+import { WithdrawButton } from '@/features/withdraw-account/ui/withdraw-button';
 
 import { GuestDataNotice } from '@/entities/user/ui/guest-data-notice';
 
@@ -36,12 +37,12 @@ export default function SettingsPage() {
 					</SettingsRow>
 				</SettingsGroup>
 
-				<Link
-					href={ROUTES.PRIVACY}
-					className="self-center text-[13px] text-[var(--seed-color-fg-neutral-muted)] underline"
-				>
-					개인정보 처리방침
-				</Link>
+				<div className="flex justify-center gap-4">
+					<Link href={ROUTES.PRIVACY} className="text-[13px] text-[var(--seed-color-fg-neutral-muted)] underline">
+						개인정보 처리방침
+					</Link>
+					<WithdrawButton />
+				</div>
 			</div>
 		</div>
 	);
