@@ -84,6 +84,7 @@ jobs:
             ghcr.io/se9oo/reelink-frontend:${{ github.sha }}
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.PUBLIC_URL }}/api
+            NEXT_PUBLIC_SITE_URL=${{ vars.PUBLIC_URL }}
             NEXT_PUBLIC_KAKAO_CHANNEL_CHAT_URL=${{ vars.KAKAO_CHANNEL_CHAT_URL }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend

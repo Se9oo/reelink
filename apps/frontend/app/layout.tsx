@@ -6,6 +6,8 @@ import { QueryProvider } from '@/app/providers/query-provider';
 import { OverlayProvider } from 'overlay-kit';
 import { SnackbarProvider } from 'seed-design/ui/snackbar';
 
+import { SITE_URL } from '@/shared/config/env';
+
 import './globals.css';
 
 const pretendard = localFont({
@@ -16,9 +18,18 @@ const pretendard = localFont({
 });
 
 export const metadata: Metadata = {
+	metadataBase: new URL(SITE_URL),
 	title: 'Reelink',
 	description: '나중에 볼 링크, 잊기 전에 다시 떠오르게',
 	appleWebApp: { title: 'Reelink' },
+	openGraph: {
+		title: 'Reelink',
+		description: '나중에 볼 링크, 잊기 전에 다시 떠오르게',
+		siteName: 'Reelink',
+		locale: 'ko_KR',
+		type: 'website',
+	},
+	twitter: { card: 'summary_large_image' },
 };
 
 export const viewport: Viewport = {
