@@ -4,7 +4,7 @@ import { randomInt } from 'crypto';
 import { and, eq, ne } from 'drizzle-orm';
 
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
-import { kakaoBotLinks } from '../db/schema.js';
+import { kakaoBotLinks, users } from '../db/schema.js';
 import { LinksService } from '../links/links.service.js';
 import { REDIS, type RedisClient } from '../redis/redis.module.js';
 
@@ -29,6 +29,7 @@ const MESSAGES = {
 	sendLink: '링크를 보내주시면 저장해 드려요',
 	wrongCode: (remaining: number) =>
 		`코드가 맞지 않아요. 설정 > 카카오톡 봇 연동에서 받은 6자리 코드를 확인해 주세요. 코드는 발급 후 5분 동안만 쓸 수 있어요. (남은 시도 ${remaining}번)`,
+	withdrawn: '이 코드를 받은 계정이 탈퇴해서 연동할 수 없어요. 다시 가입한 뒤 설정에서 새 코드를 받아 주세요.',
 	locked: (minutes: number) =>
 		`코드를 여러 번 잘못 입력해서 잠시 연동을 막아뒀어요. ${minutes}분 뒤에 설정에서 새 코드를 받아 다시 보내주세요.`,
 	saved: (count: number) => (count === 1 ? '저장했어요 ✅' : `링크 ${count}개를 저장했어요 ✅`),
@@ -145,6 +146,12 @@ export class KakaoBotService {
 			await this.redis.expire(failKey(botUserKey), FAIL_WINDOW_SECONDS, 'NX');
 
 			return count >= MAX_FAILS ? await this.lockedMessage(botUserKey) : MESSAGES.wrongCode(MAX_FAILS - count);
+		}
+
+		const [user] = await this.db.select({ id: users.id }).from(users).where(eq(users.id, userId));
+
+		if (!user) {
+			return MESSAGES.withdrawn;
 		}
 
 		await this.db.transaction(async (tx) => {

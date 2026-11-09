@@ -153,6 +153,18 @@ describe('KakaoBot (e2e)', () => {
 			);
 		});
 
+		test('코드를 발급한 사용자가 탈퇴했으면 탈퇴 안내를 주고 실패 횟수는 올리지 않는다', async () => {
+			const user = await createUser();
+			const botUserKey = crypto.randomUUID();
+			const { code } = await issueCode(user.cookie);
+			await db.delete(users).where(eq(users.id, user.id));
+
+			expect(await send(botUserKey, code)).toBe(
+				'이 코드를 받은 계정이 탈퇴해서 연동할 수 없어요. 다시 가입한 뒤 설정에서 새 코드를 받아 주세요.',
+			);
+			expect(await redis.get(`botfail:${botUserKey}`)).toBeNull();
+		});
+
 		test('틀린 코드는 남은 시도를 알려주고, 5번 틀리면 맞는 코드도 잠금 안내만 준다', async () => {
 			const user = await createUser();
 			const botUserKey = crypto.randomUUID();
