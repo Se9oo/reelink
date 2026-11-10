@@ -45,13 +45,23 @@ describe('LoginScreen', () => {
 		expect(link).toHaveAttribute('href', `${API_URL}/auth/github`);
 	});
 
-	test('Guest로 시작하기를 누르면 게스트 세션을 만들고 홈으로 이동한다', async () => {
-		vi.mocked(apiClient.post).mockResolvedValue(new Response(null, { status: 204 }) as never);
+	test('로그인 없이 시작하기 아래에 데이터가 이어진다는 안내를 보여준다', () => {
 		renderLogin();
 
-		await userEvent.click(screen.getByRole('button', { name: 'Guest로 시작하기' }));
+		expect(screen.getByText('나중에 로그인하면 저장한 링크가 그대로 이어져요')).toBeInTheDocument();
+	});
+
+	test('로그인 없이 시작하기를 누르면 시작하는 중으로 바뀌고 게스트 세션을 만들어 홈으로 이동한다', async () => {
+		let resolve: (value: Response) => void = () => {};
+		vi.mocked(apiClient.post).mockReturnValue(new Promise((r) => (resolve = r)) as never);
+		renderLogin();
+
+		await userEvent.click(screen.getByRole('button', { name: '로그인 없이 시작하기' }));
 
 		expect(apiClient.post).toHaveBeenCalledWith('auth/guest');
+		expect(await screen.findByRole('button', { name: '시작하는 중…' })).toBeDisabled();
+
+		resolve(new Response(null, { status: 204 }));
 		await vi.waitFor(() => expect(mockPush).toHaveBeenCalledWith('/home'));
 	});
 });
