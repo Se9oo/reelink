@@ -88,14 +88,14 @@ describe('KakaoOnboardingCard', () => {
 
 		await userEvent.click(await screen.findByRole('button', { name: '시작하기' }));
 
-		expect(await screen.findByText('482913')).toBeInTheDocument();
+		expect(await screen.findAllByText('482913')).not.toHaveLength(0);
 	});
 
 	test('알림 동의에서 돌아오면(onboarding=bot) 봇이 미연동일 때 모달을 바로 연다', async () => {
 		mockApi({ kakaoActive: true });
 		renderCard('?onboarding=bot');
 
-		expect(await screen.findByText('482913')).toBeInTheDocument();
+		expect(await screen.findAllByText('482913')).not.toHaveLength(0);
 		expect(window.location.search).toBe('');
 	});
 

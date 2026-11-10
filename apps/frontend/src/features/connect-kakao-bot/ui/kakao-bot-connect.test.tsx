@@ -54,7 +54,7 @@ describe('KakaoBotConnect', () => {
 
 		await userEvent.click(await screen.findByRole('button', { name: '연동하기' }));
 
-		expect(await screen.findByText('482913')).toBeInTheDocument();
+		expect(await screen.findAllByText('482913')).not.toHaveLength(0);
 	});
 
 	test('연동돼 있으면 연동됨과 다시 연동하기를 보여준다', async () => {

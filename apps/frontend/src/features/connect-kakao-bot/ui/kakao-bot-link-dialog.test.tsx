@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
@@ -51,12 +51,24 @@ describe('KakaoBotLinkDialog', () => {
 		mockApi({ status: notLinked });
 		renderDialog();
 
-		expect(await screen.findByText('482913')).toBeInTheDocument();
+		expect(await screen.findAllByText('482913')).not.toHaveLength(0);
 		expect(apiClient.post).toHaveBeenCalledWith('notifications/kakao-bot/link-code');
-		expect(screen.getByRole('link', { name: '카카오톡에서 열기' })).toHaveAttribute(
+		expect(screen.getByRole('link', { name: 'Reelink 채팅방 열기' })).toHaveAttribute(
 			'href',
 			'https://pf.kakao.com/_test/chat',
 		);
+	});
+
+	test('코드를 어디에 보내야 하는지 단계별로 안내한다', async () => {
+		mockApi({ status: notLinked });
+		renderDialog();
+
+		const steps = within(await screen.findByRole('list')).getAllByRole('listitem');
+
+		expect(steps).toHaveLength(4);
+		expect(steps[1]).toHaveTextContent('Reelink 채널');
+		expect(within(steps[2]).getByText('482913')).toBeInTheDocument();
+		expect(steps[2]).toHaveTextContent('연동됐어요! 이제 링크를 보내면 저장해 드려요');
 	});
 
 	test('복사를 누르면 코드를 클립보드에 복사한다', async () => {
@@ -75,7 +87,7 @@ describe('KakaoBotLinkDialog', () => {
 		mockApi({ status: notLinked });
 		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 		renderDialog();
-		await screen.findByText('482913');
+		await screen.findAllByText('482913');
 
 		await act(async () => {
 			vi.advanceTimersByTime(CODE_TTL_MS + 1000);
@@ -91,13 +103,16 @@ describe('KakaoBotLinkDialog', () => {
 		renderDialog();
 
 		expect(await screen.findByText('연동 완료!')).toBeInTheDocument();
+		const shareSteps = within(screen.getByRole('list')).getAllByRole('listitem');
+		expect(shareSteps[0]).toHaveTextContent('카카오톡 선택');
+		expect(shareSteps[1]).toHaveTextContent('Reelink 채팅방 선택');
 	});
 
 	test('이미 연동돼 있어도 이번 코드로 연동되기 전이면 코드를 계속 보여준다', async () => {
 		mockApi({ status: (issuedAt) => ({ linked: true, linkedAt: new Date(issuedAt - 60_000).toISOString() }) });
 		renderDialog();
 
-		expect(await screen.findByText('482913')).toBeInTheDocument();
+		expect(await screen.findAllByText('482913')).not.toHaveLength(0);
 		await vi.waitFor(() => expect(apiClient.get).toHaveBeenCalled());
 		expect(screen.queryByText('연동 완료!')).not.toBeInTheDocument();
 	});
