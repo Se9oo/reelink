@@ -17,10 +17,10 @@ import { RootDropZone } from '@/widgets/folder-list/ui/root-drop-zone';
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { CreateFolderModal } from '@/entities/folder/ui/create-folder-modal';
 import { DeleteFolderDialog } from '@/entities/folder/ui/delete-folder-dialog';
+import { FolderIcon } from '@/entities/folder/ui/folder-icon';
 import { RenameFolderModal } from '@/entities/folder/ui/rename-folder-modal';
 
 import { usePersistedToggleSet } from '@/shared/lib/use-toggle-set';
-import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
 
 export function FolderList() {
 	const { data } = useQuery(foldersQueryOptions());
@@ -124,7 +124,11 @@ export function FolderList() {
 								style={{ paddingLeft: `${(projected?.depth ?? activeItem.depth) * VISUAL_INDENT_WIDTH}px` }}
 							>
 								<span className="mx-1 h-6 w-6 shrink-0" />
-								<IconFolderLine size={16} className="mr-1.5 shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
+								<FolderIcon
+									isSystem={activeItem.isSystem}
+									size={16}
+									className="mr-1.5 shrink-0 text-[var(--seed-color-fg-neutral-muted)]"
+								/>
 								<span className="min-w-0 flex-1 truncate">{activeItem.name}</span>
 							</div>
 						)}

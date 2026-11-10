@@ -16,10 +16,10 @@ import { MOBILE_INDENT_WIDTH, MobileFolderRow } from '@/widgets/folder-tree-scre
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { CreateFolderModal } from '@/entities/folder/ui/create-folder-modal';
 import { DeleteFolderDialog } from '@/entities/folder/ui/delete-folder-dialog';
+import { FolderIcon } from '@/entities/folder/ui/folder-icon';
 import { RenameFolderModal } from '@/entities/folder/ui/rename-folder-modal';
 
 import { usePersistedToggleSet } from '@/shared/lib/use-toggle-set';
-import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
 
 export function FolderTreeScreen() {
 	const { data } = useQuery(foldersQueryOptions());
@@ -126,7 +126,11 @@ export function FolderTreeScreen() {
 							>
 								<span className="h-8 w-8 shrink-0" />
 								<span className="flex min-w-0 flex-1 items-center gap-2">
-									<IconFolderLine size={18} className="shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
+									<FolderIcon
+										isSystem={activeItem.isSystem}
+										size={18}
+										className="shrink-0 text-[var(--seed-color-fg-neutral-muted)]"
+									/>
 									<span className="truncate">{activeItem.name}</span>
 								</span>
 							</div>

@@ -8,9 +8,9 @@ import { IconChevronRightSmallLine } from '@karrotmarket/react-monochrome-icon';
 import { type FlattenedFolder } from '@/widgets/folder-list/model/flatten-tree';
 
 import { FolderActionsMenu } from '@/entities/folder/ui/folder-actions-menu';
+import { FolderIcon } from '@/entities/folder/ui/folder-icon';
 
 import { folderDetailPath } from '@/shared/config/routes';
-import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
 
 export const MOBILE_INDENT_WIDTH = 16;
 
@@ -86,7 +86,11 @@ export function MobileFolderRow({
 					draggable={false}
 					className="flex h-11 min-w-0 flex-1 items-center gap-2 after:absolute after:inset-0 after:rounded-lg"
 				>
-					<IconFolderLine size={18} className="shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
+					<FolderIcon
+						isSystem={item.isSystem}
+						size={18}
+						className="shrink-0 text-[var(--seed-color-fg-neutral-muted)]"
+					/>
 					<span className="truncate text-[15px] text-[var(--seed-color-fg-neutral)]">{item.name}</span>
 					{hasChildren && (
 						<span className="ml-auto shrink-0 pl-2 text-xs text-[var(--seed-color-fg-neutral-muted)]">
