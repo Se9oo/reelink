@@ -114,5 +114,7 @@ jobs:
             docker compose pull postgres backend frontend
             docker compose run --rm backend node dist/db/migrate.js
             docker compose up -d
+            # nginx는 upstream IP를 시작할 때 한 번만 조회하므로, 새로 뜬 backend·frontend IP와 바뀐 nginx.conf를 반영한다
+            docker compose exec -T nginx nginx -s reload
             docker image prune -f
           "
