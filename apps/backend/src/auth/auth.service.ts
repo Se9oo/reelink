@@ -6,12 +6,12 @@ import { createHash, randomBytes } from 'crypto';
 import { and, eq, gt, lte, notExists, sql } from 'drizzle-orm';
 
 import { DRIZZLE, type DrizzleDb, type DrizzleTx } from '../db/drizzle.module.js';
-import { accounts, folders, kakaoBotLinks, links, notificationChannels, refreshTokens, users } from '../db/schema.js';
+import { accounts, folders, links, notificationChannels, refreshTokens, users } from '../db/schema.js';
 import { findLiveSystemFolder } from '../folders/find-live-system-folder.js';
 import { lockUserFolders } from '../folders/lock-user-folders.js';
 import { unlinkKakaoUser } from '../notifications/kakao-api.js';
 
-import { type AuthUser, type LoginUser, type OAuthProfile, type TokenPair } from './auth.types.js';
+import { type AuthUser, type OAuthProfile, type TokenPair } from './auth.types.js';
 
 @Injectable()
 export class AuthService {
@@ -30,16 +30,14 @@ export class AuthService {
 	 * 소셜 계정으로 사용자를 찾거나 만든다. guestUserId가 있으면 게스트 데이터를 그 계정으로 이어받는다.
 	 * - 처음 보는 계정: 게스트 행에 계정을 붙이고 프로필로 채워 정식 사용자로 바꾼다.
 	 * - 이미 가입된 계정: 게스트의 폴더·링크를 기존 사용자로 옮기고 게스트 행을 지운다.
-	 * welcome은 가입 직후 온보딩 카드를 띄울지 여부다. 새로 가입했거나 게스트가 처음 보는 계정으로 로그인하면 true,
-	 * 게스트가 기존 계정으로 로그인하면 그 계정이 카카오 알림(active)과 봇을 둘 다 연동했을 때만 false, 일반 재로그인은 false.
 	 * @param profile OAuthProfile
 	 * @param guestUserId string | undefined 현재 세션이 게스트일 때 그 users.id
-	 * @returns LoginUser
+	 * @returns AuthUser
 	 */
 	async findOrCreateUser(
 		{ provider, providerAccountId, email, nickname, avatarUrl }: OAuthProfile,
 		guestUserId?: string,
-	): Promise<LoginUser> {
+	): Promise<AuthUser> {
 		const [account] = await this.db
 			.select()
 			.from(accounts)
@@ -50,15 +48,14 @@ export class AuthService {
 				await this.mergeGuestInto(guestUserId, account.userId);
 			}
 
-			const welcome = guestUserId ? !(await this.hasKakaoSetup(account.userId)) : false;
 			const [user] = await this.db.select().from(users).where(eq(users.id, account.userId));
 
 			if (avatarUrl && avatarUrl !== user.avatarUrl) {
 				const [updated] = await this.db.update(users).set({ avatarUrl }).where(eq(users.id, user.id)).returning();
-				return { ...updated, welcome };
+				return updated;
 			}
 
-			return { ...user, welcome };
+			return user;
 		}
 
 		const created = await this.db.transaction(async (tx) => {
@@ -78,31 +75,7 @@ export class AuthService {
 			return user;
 		});
 
-		return { ...created, welcome: true };
-	}
-
-	/**
-	 * 카카오 알림 채널이 active이고 카카오톡 봇도 연동돼 있는지 확인한다.
-	 * @param userId string
-	 * @returns boolean
-	 */
-	private async hasKakaoSetup(userId: string): Promise<boolean> {
-		const [kakaoChannel] = await this.db
-			.select({ id: notificationChannels.id })
-			.from(notificationChannels)
-			.where(
-				and(
-					eq(notificationChannels.userId, userId),
-					eq(notificationChannels.provider, 'kakao'),
-					eq(notificationChannels.status, 'active'),
-				),
-			);
-		const [botLink] = await this.db
-			.select({ id: kakaoBotLinks.id })
-			.from(kakaoBotLinks)
-			.where(eq(kakaoBotLinks.userId, userId));
-
-		return !!kakaoChannel && !!botLink;
+		return created;
 	}
 
 	/**
