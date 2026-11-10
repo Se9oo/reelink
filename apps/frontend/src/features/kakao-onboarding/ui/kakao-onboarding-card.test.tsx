@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OverlayProvider } from 'overlay-kit';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -16,10 +16,12 @@ vi.mock('next/navigation', () => ({
 	useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
-const TITLE = '💬 카카오톡으로 더 편하게 쓰기';
+const TITLE = '공유 버튼으로 바로 저장하기';
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-function mockApi({ kakaoActive = false, botLinked = false } = {}) {
+function mockApi({ kakaoActive = false, botLinked = false, isGuest = false } = {}) {
 	const responses: Record<string, unknown> = {
+		'auth/me': { id: 'u', email: '', nickname: '테스터', avatarUrl: null, isGuest },
 		'notifications/settings': { notificationMethod: 'manual', kakaoStatus: kakaoActive ? 'active' : null },
 		'notifications/kakao-bot/link-status': {
 			linked: botLinked,
@@ -47,28 +49,38 @@ function renderCard(search: string) {
 describe('KakaoOnboardingCard', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+		vi.useRealTimers();
+		window.localStorage.clear();
 		window.history.replaceState(null, '', '/home');
 	});
 
-	test('welcome 파라미터가 없으면 카드를 보여주지 않는다', async () => {
+	test('봇이 연동돼 있지 않으면 카드를 보여준다', async () => {
 		mockApi();
 		renderCard('');
 
-		await vi.waitFor(() => expect(screen.queryByText(TITLE)).not.toBeInTheDocument());
-	});
-
-	test('welcome=1이면 카드를 보여주고 주소에서 파라미터를 지운다', async () => {
-		mockApi();
-		renderCard('?welcome=1');
-
 		expect(await screen.findByText(TITLE)).toBeInTheDocument();
-		expect(window.location.search).toBe('');
 	});
 
-	test('카카오 알림이 연동돼 있지 않으면 시작하기가 온보딩용 알림 연동을 시작한다', async () => {
+	test('봇이 연동돼 있으면 카드를 보여주지 않는다', async () => {
+		mockApi({ botLinked: true });
+		renderCard('');
+
+		await vi.waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('notifications/kakao-bot/link-status'));
+		expect(screen.queryByText(TITLE)).not.toBeInTheDocument();
+	});
+
+	test('게스트면 카드를 보여주지 않는다', async () => {
+		mockApi({ isGuest: true });
+		renderCard('');
+
+		await vi.waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('auth/me'));
+		expect(screen.queryByText(TITLE)).not.toBeInTheDocument();
+	});
+
+	test('카카오 알림이 연동돼 있지 않으면 연동하기가 온보딩용 알림 연동을 시작한다', async () => {
 		mockApi();
-		renderCard('?welcome=1');
-		const startButton = await screen.findByRole('button', { name: '시작하기' });
+		renderCard('');
+		const startButton = await screen.findByRole('button', { name: '연동하기' });
 		await vi.waitFor(() => expect(startButton).not.toHaveAttribute('aria-busy', 'true'));
 		const location = { href: 'http://localhost/home' };
 		vi.spyOn(window, 'location', 'get').mockReturnValue(location as Location);
@@ -82,11 +94,11 @@ describe('KakaoOnboardingCard', () => {
 		);
 	});
 
-	test('알림은 연동돼 있고 봇이 아니면 시작하기가 봇 코드 모달을 연다', async () => {
+	test('알림은 연동돼 있고 봇이 아니면 연동하기가 봇 코드 모달을 연다', async () => {
 		mockApi({ kakaoActive: true });
-		renderCard('?welcome=1');
+		renderCard('');
 
-		await userEvent.click(await screen.findByRole('button', { name: '시작하기' }));
+		await userEvent.click(await screen.findByRole('button', { name: '연동하기' }));
 
 		expect(await screen.findAllByText('482913')).not.toHaveLength(0);
 	});
@@ -107,12 +119,23 @@ describe('KakaoOnboardingCard', () => {
 		expect(apiClient.post).not.toHaveBeenCalled();
 	});
 
-	test('나중에를 누르면 카드가 사라진다', async () => {
+	test('나중에를 누르면 카드가 사라지고 7일 동안 다시 뜨지 않는다', async () => {
 		mockApi();
-		renderCard('?welcome=1');
+		renderCard('');
 
 		await userEvent.click(await screen.findByRole('button', { name: '나중에' }));
-
 		expect(screen.queryByText(TITLE)).not.toBeInTheDocument();
+
+		cleanup();
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		vi.setSystemTime(Date.now() + 6 * DAY_MS);
+		renderCard('');
+		await vi.waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('notifications/kakao-bot/link-status'));
+		expect(screen.queryByText(TITLE)).not.toBeInTheDocument();
+
+		cleanup();
+		vi.setSystemTime(Date.now() + 2 * DAY_MS);
+		renderCard('');
+		expect(await screen.findByText(TITLE)).toBeInTheDocument();
 	});
 });

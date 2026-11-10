@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useSearchParams } from 'next/navigation';
 
+import { IconAndroidshareLine } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
 import { overlay } from 'overlay-kit';
 import { ActionButton } from 'seed-design/ui/action-button';
@@ -13,44 +14,48 @@ import { useConnectKakaoNotification } from '@/features/connect-kakao-notificati
 
 import { linkStatusQueryOptions } from '@/entities/kakao-bot/api/get-link-status';
 import { notificationSettingsQueryOptions } from '@/entities/notification/api/get-notification-settings';
+import { meQueryOptions } from '@/entities/user/api/get-me';
 
-type Mode = 'none' | 'card' | 'resumeBot';
+const DISMISS_KEY = 'kakao-onboarding-dismissed-at';
+const HIDE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function openLinkDialog() {
 	overlay.open(({ isOpen, close }) => <KakaoBotLinkDialog open={isOpen} onOpenChange={(open) => !open && close()} />);
 }
 
-function modeFrom(searchParams: URLSearchParams | null): Mode {
-	if (searchParams?.get('welcome') === '1') {
-		return 'card';
+function isDismissedRecently() {
+	try {
+		return Date.now() - Number(window.localStorage.getItem(DISMISS_KEY)) < HIDE_MS;
+	} catch {
+		return false;
 	}
-
-	return searchParams?.get('onboarding') === 'bot' ? 'resumeBot' : 'none';
 }
 
 export function KakaoOnboardingCard() {
 	const searchParams = useSearchParams();
-	const [mode, setMode] = useState<Mode>(() => modeFrom(searchParams));
+	const [resumeBot] = useState(() => searchParams?.get('onboarding') === 'bot');
+	const [hidden, setHidden] = useState(isDismissedRecently);
 	const resumed = useRef(false);
 	const connect = useConnectKakaoNotification();
 
-	const { data: settings } = useQuery({ ...notificationSettingsQueryOptions(), enabled: mode !== 'none' });
-	const { data: botStatus } = useQuery({ ...linkStatusQueryOptions(), enabled: mode !== 'none' });
+	const { data: me } = useQuery(meQueryOptions());
+	const loggedIn = me?.isGuest === false;
+	const { data: settings } = useQuery({ ...notificationSettingsQueryOptions(), enabled: loggedIn });
+	const { data: botStatus } = useQuery({ ...linkStatusQueryOptions(), enabled: loggedIn });
 
 	useEffect(() => {
 		const url = new URL(window.location.href);
 
-		if (!url.searchParams.has('welcome') && !url.searchParams.has('onboarding')) {
+		if (!url.searchParams.has('onboarding')) {
 			return;
 		}
 
-		url.searchParams.delete('welcome');
 		url.searchParams.delete('onboarding');
 		window.history.replaceState(null, '', url);
 	}, []);
 
 	useEffect(() => {
-		if (mode !== 'resumeBot' || !botStatus || resumed.current) {
+		if (!resumeBot || !botStatus || resumed.current) {
 			return;
 		}
 
@@ -59,7 +64,7 @@ export function KakaoOnboardingCard() {
 		if (!botStatus.linked) {
 			openLinkDialog();
 		}
-	}, [mode, botStatus]);
+	}, [resumeBot, botStatus]);
 
 	function start() {
 		if (settings?.kakaoStatus !== 'active') {
@@ -67,40 +72,43 @@ export function KakaoOnboardingCard() {
 			return;
 		}
 
-		setMode('none');
-
-		if (!botStatus?.linked) {
-			openLinkDialog();
-		}
+		openLinkDialog();
 	}
 
-	if (mode !== 'card') {
+	function dismiss() {
+		try {
+			window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
+		} catch {}
+
+		setHidden(true);
+	}
+
+	if (hidden || !settings || !botStatus || botStatus.linked) {
 		return null;
 	}
 
 	return (
 		<section
 			aria-label="카카오톡 연동 안내"
-			className="flex flex-col gap-3 rounded-[20px] bg-[var(--seed-color-bg-layer-default)] p-4 md:flex-row
-				md:items-center md:justify-between md:p-5"
+			className="flex flex-col gap-3.5 rounded-[20px] bg-[var(--seed-color-bg-layer-default)] p-4 md:flex-row
+				md:items-center md:justify-between md:gap-5 md:p-5"
 		>
 			<div className="min-w-0">
-				<p className="text-[15px] font-bold text-[var(--seed-color-fg-neutral)]">💬 카카오톡으로 더 편하게 쓰기</p>
-				<p className="mt-0.5 text-sm break-keep text-[var(--seed-color-fg-neutral-subtle)]">
-					링크는 봇에게, 리마인드는 나에게 보내기로
+				<p className="flex items-center gap-1.5 text-[15px] font-bold text-[var(--seed-color-fg-neutral)]">
+					<IconAndroidshareLine size={18} aria-hidden />
+					공유 버튼으로 바로 저장하기
+				</p>
+				<p className="mt-1.5 text-sm break-keep text-[var(--seed-color-fg-neutral-muted)]">
+					카카오톡을 연동하면 유튜브, 인스타에서 공유 버튼만 눌러도 링크가 저장되고, 안 본 링크는 카톡으로 다시
+					알려드려요
 				</p>
 			</div>
 			<div className="flex shrink-0 justify-end gap-2">
-				<ActionButton size="small" variant="neutralWeak" onClick={() => setMode('none')}>
+				<ActionButton size="medium" variant="neutralWeak" onClick={dismiss}>
 					나중에
 				</ActionButton>
-				<ActionButton
-					size="small"
-					variant="brandSolid"
-					loading={!settings || !botStatus || connect.isPending}
-					onClick={start}
-				>
-					시작하기
+				<ActionButton size="medium" variant="brandSolid" loading={connect.isPending} onClick={start}>
+					연동하기
 				</ActionButton>
 			</div>
 		</section>
