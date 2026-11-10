@@ -48,11 +48,11 @@ export function MobileFolderRow({
 	}
 
 	return (
-		<li className="relative" style={{ opacity: isDragging ? 0.4 : 1 }}>
+		<li data-folder-id={item.id} className="relative" style={{ opacity: isDragging ? 0.4 : 1 }}>
 			<div
 				aria-hidden="true"
 				className="absolute inset-x-0 top-0 z-10 h-[3px] -translate-y-1/2 rounded-full
-					bg-[var(--seed-color-bg-brand-solid)]"
+					bg-[var(--seed-color-stroke-brand-weak)]"
 				style={{ marginLeft: `${item.depth * MOBILE_INDENT_WIDTH}px`, opacity: insertLinePosition === 'top' ? 1 : 0 }}
 			/>
 			<div
@@ -106,7 +106,7 @@ export function MobileFolderRow({
 			<div
 				aria-hidden="true"
 				className="absolute inset-x-0 bottom-0 z-10 h-[3px] translate-y-1/2 rounded-full
-					bg-[var(--seed-color-bg-brand-solid)]"
+					bg-[var(--seed-color-stroke-brand-weak)]"
 				style={{
 					marginLeft: `${item.depth * MOBILE_INDENT_WIDTH}px`,
 					opacity: insertLinePosition === 'bottom' ? 1 : 0,

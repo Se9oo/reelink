@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import {
 	type DragMoveEvent,
@@ -11,6 +11,8 @@ import {
 	useSensors,
 } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
+import { useQueryClient } from '@tanstack/react-query';
+import { Snackbar, useSnackbarAdapter } from 'seed-design/ui/snackbar';
 
 import {
 	computeInsertIndex,
@@ -25,6 +27,7 @@ import {
 } from '@/widgets/folder-list/model/flatten-tree';
 import { getActivatorClientY } from '@/widgets/folder-list/model/get-activator-client-y';
 
+import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { useMoveFolder } from '@/entities/folder/api/move-folder';
 import { useReorderFolders } from '@/entities/folder/api/reorder-folders';
 import { buildFolderTree } from '@/entities/folder/model/build-folder-tree';
@@ -40,18 +43,28 @@ interface InsertLine {
  * 내준 값만 가지고 조합/렌더링만 하면 되게 분리했다.
  */
 export function useFolderDrag({
-	folders,
+	folders: serverFolders,
 	expandedIds,
 	onFolderMoved,
+	onBeforeCommit,
 }: {
 	folders: Folder[];
 	expandedIds: Set<string>;
 	onFolderMoved: (newParentFolderId: string | null) => void;
+	onBeforeCommit: (folderId: string) => void;
 }) {
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [overId, setOverId] = useState<string | null>(null);
 	const [dropZone, setDropZone] = useState<DropZone | null>(null);
+	// setQueryData 결과는 TanStack Query가 setTimeout(0) 뒤에 컴포넌트로 흘려보내서, 드롭과 같은
+	// 렌더에 새 순서가 안 그려진다(그 사이 dnd-kit drop animation이 옛 위치를 재버림) — 그래서
+	// 캐시가 실제로 바뀌기 전까지는 여기 들고 있는 새 순서를 대신 쓴다
+	const [optimistic, setOptimistic] = useState<{ base: Folder[]; next: Folder[] } | null>(null);
+	const folders = optimistic?.base === serverFolders ? optimistic.next : serverFolders;
+	const pendingCommitCount = useRef(0);
 
+	const queryClient = useQueryClient();
+	const snackbar = useSnackbarAdapter();
 	const moveFolder = useMoveFolder();
 	const reorderFolders = useReorderFolders();
 
@@ -200,10 +213,7 @@ export function useFolderDrag({
 		const parentChanged = draggedItem.parentFolderId !== result.parentFolderId;
 
 		if (parentChanged) {
-			moveFolder.mutate(
-				{ folderId: draggedItem.id, parentFolderId: result.parentFolderId },
-				{ onSuccess: () => reorderFolders.mutate(newSiblingIds) },
-			);
+			void commitOrder(draggedItem.id, result.parentFolderId, newSiblingIds, true);
 
 			onFolderMoved(result.parentFolderId);
 
@@ -220,7 +230,51 @@ export function useFolderDrag({
 			currentSiblingIds.every((id, index) => id === newSiblingIds[index]);
 
 		if (!orderUnchanged) {
-			reorderFolders.mutate(newSiblingIds);
+			void commitOrder(draggedItem.id, result.parentFolderId, newSiblingIds, false);
+		}
+	}
+
+	/**
+	 * 서버 응답을 기다리면 드롭한 폴더가 원래 자리로 돌아갔다가 다시 이동하므로, 캐시에 새 순서를
+	 * 먼저 반영하고 서버에 보낸다. 성공·실패 상관없이 끝나면 다시 불러와 서버 상태로 맞추되, 연달아
+	 * 드롭해서 아직 처리 중인 요청이 남아 있으면 그게 끝날 때까지 미룬다(안 그러면 먼저 끝난 쪽의
+	 * 재조회가 뒤 드롭의 새 순서를 덮어써서 잠깐 되돌아간다).
+	 */
+	async function commitOrder(
+		folderId: string,
+		parentFolderId: string | null,
+		siblingIds: string[],
+		parentChanged: boolean,
+	) {
+		const { queryKey } = foldersQueryOptions();
+		const next = folders.map((folder) => {
+			const index = siblingIds.indexOf(folder.id);
+			return index === -1 ? folder : { ...folder, parentFolderId, sortOrder: index };
+		});
+
+		onBeforeCommit(folderId);
+		setOptimistic({ base: serverFolders, next });
+		void queryClient.cancelQueries({ queryKey });
+		queryClient.setQueryData(queryKey, next);
+		pendingCommitCount.current += 1;
+		let moved = false;
+
+		try {
+			if (parentChanged) {
+				await moveFolder.mutateAsync({ folderId, parentFolderId });
+				moved = true;
+			}
+
+			await reorderFolders.mutateAsync(siblingIds);
+		} catch {
+			const message = moved ? '폴더는 옮겼지만 순서는 바꾸지 못했어요' : '폴더를 옮기지 못했어요';
+			snackbar.create({ render: () => <Snackbar variant="critical" message={message} /> });
+		} finally {
+			pendingCommitCount.current -= 1;
+
+			if (pendingCommitCount.current === 0) {
+				void queryClient.invalidateQueries({ queryKey });
+			}
 		}
 	}
 
@@ -235,10 +289,7 @@ export function useFolderDrag({
 		const newSiblingIds = [...rootSiblingIds, draggedItem.id];
 
 		if (parentChanged) {
-			moveFolder.mutate(
-				{ folderId: draggedItem.id, parentFolderId: null },
-				{ onSuccess: () => reorderFolders.mutate(newSiblingIds) },
-			);
+			void commitOrder(draggedItem.id, null, newSiblingIds, true);
 
 			onFolderMoved(null);
 
@@ -255,7 +306,7 @@ export function useFolderDrag({
 			currentRootIds.every((id, index) => id === newSiblingIds[index]);
 
 		if (!orderUnchanged) {
-			reorderFolders.mutate(newSiblingIds);
+			void commitOrder(draggedItem.id, null, newSiblingIds, false);
 		}
 	}
 

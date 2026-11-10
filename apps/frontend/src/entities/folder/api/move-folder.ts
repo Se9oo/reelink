@@ -1,6 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 
-import { folderKeys } from '@/entities/folder/api/folder-keys';
 import { Folder } from '@/entities/folder/model/types';
 
 import { apiClient } from '@/shared/api/client';
@@ -15,12 +14,5 @@ function moveFolder({ folderId, parentFolderId }: MoveFolderParams) {
 }
 
 export function useMoveFolder() {
-	const queryClient = useQueryClient();
-
-	return useMutation({
-		mutationFn: moveFolder,
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: folderKeys.all });
-		},
-	});
+	return useMutation({ mutationFn: moveFolder });
 }

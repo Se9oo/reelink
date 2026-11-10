@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef } from 'react';
+
 import { closestCenter, DndContext, DragOverlay } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { IconPlusSmallLine } from '@karrotmarket/react-monochrome-icon';
@@ -7,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { overlay } from 'overlay-kit';
 
 import { VISUAL_INDENT_WIDTH } from '@/widgets/folder-list/model/flatten-tree';
+import { DROP_ANIMATION_DURATION, useDropFlip } from '@/widgets/folder-list/model/use-drop-flip';
 import { useFolderDrag } from '@/widgets/folder-list/model/use-folder-drag';
 import { FolderRow } from '@/widgets/folder-list/ui/folder-row';
 import { RootDropZone } from '@/widgets/folder-list/ui/root-drop-zone';
@@ -17,12 +20,15 @@ import { DeleteFolderDialog } from '@/entities/folder/ui/delete-folder-dialog';
 import { RenameFolderModal } from '@/entities/folder/ui/rename-folder-modal';
 
 import { usePersistedToggleSet } from '@/shared/lib/use-toggle-set';
+import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
 
 export function FolderList() {
 	const { data } = useQuery(foldersQueryOptions());
 	const { ids: expandedIds, toggle, add: expand } = usePersistedToggleSet('sidebar-folder-expanded');
 	const folders = data ?? [];
 
+	const listRef = useRef<HTMLUListElement>(null);
+	const captureFlip = useDropFlip(listRef);
 	const { sensors, sortableItems, activeItem, projected, nestTargetId, insertLine, ...dragHandlers } = useFolderDrag({
 		folders,
 		expandedIds,
@@ -31,6 +37,7 @@ export function FolderList() {
 				expand(parentId);
 			}
 		},
+		onBeforeCommit: captureFlip,
 	});
 
 	if (!data) {
@@ -92,7 +99,7 @@ export function FolderList() {
 					modifiers={[restrictToVerticalAxis]}
 					{...dragHandlers}
 				>
-					<ul className="flex flex-col gap-px">
+					<ul ref={listRef} className="flex flex-col gap-px">
 						{sortableItems.map((item) => (
 							<FolderRow
 								key={item.id}
@@ -110,14 +117,15 @@ export function FolderList() {
 						))}
 					</ul>
 					{activeItem && <RootDropZone />}
-					<DragOverlay dropAnimation={null}>
+					<DragOverlay dropAnimation={{ duration: DROP_ANIMATION_DURATION }}>
 						{activeItem && (
 							<div
-								className="flex h-8 items-center rounded-lg bg-[var(--seed-color-bg-layer-floating)] px-2 text-sm
-									text-[var(--seed-color-fg-neutral)] opacity-20"
+								className="flex h-8 items-center rounded-lg pr-1 text-sm text-[var(--seed-color-fg-neutral)] opacity-60"
 								style={{ paddingLeft: `${(projected?.depth ?? activeItem.depth) * VISUAL_INDENT_WIDTH}px` }}
 							>
-								{activeItem.name}
+								<span className="mx-1 h-6 w-6 shrink-0" />
+								<IconFolderLine size={16} className="mr-1.5 shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
+								<span className="min-w-0 flex-1 truncate">{activeItem.name}</span>
 							</div>
 						)}
 					</DragOverlay>

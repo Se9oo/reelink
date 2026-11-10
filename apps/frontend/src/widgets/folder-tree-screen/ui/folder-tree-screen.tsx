@@ -1,11 +1,14 @@
 'use client';
 
+import { useRef } from 'react';
+
 import { closestCenter, DndContext, DragOverlay } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { IconPlusSmallLine } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
 import { overlay } from 'overlay-kit';
 
+import { DROP_ANIMATION_DURATION, useDropFlip } from '@/widgets/folder-list/model/use-drop-flip';
 import { useFolderDrag } from '@/widgets/folder-list/model/use-folder-drag';
 import { RootDropZone } from '@/widgets/folder-list/ui/root-drop-zone';
 import { MOBILE_INDENT_WIDTH, MobileFolderRow } from '@/widgets/folder-tree-screen/ui/mobile-folder-row';
@@ -16,12 +19,15 @@ import { DeleteFolderDialog } from '@/entities/folder/ui/delete-folder-dialog';
 import { RenameFolderModal } from '@/entities/folder/ui/rename-folder-modal';
 
 import { usePersistedToggleSet } from '@/shared/lib/use-toggle-set';
+import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
 
 export function FolderTreeScreen() {
 	const { data } = useQuery(foldersQueryOptions());
 	const { ids: expandedIds, toggle, add: expand } = usePersistedToggleSet('mobile-folder-expanded');
 	const folders = data ?? [];
 
+	const listRef = useRef<HTMLUListElement>(null);
+	const captureFlip = useDropFlip(listRef);
 	const { sensors, sortableItems, activeItem, projected, nestTargetId, insertLine, ...dragHandlers } = useFolderDrag({
 		folders,
 		expandedIds,
@@ -30,6 +36,7 @@ export function FolderTreeScreen() {
 				expand(parentId);
 			}
 		},
+		onBeforeCommit: captureFlip,
 	});
 
 	if (!data) {
@@ -92,7 +99,7 @@ export function FolderTreeScreen() {
 					modifiers={[restrictToVerticalAxis]}
 					{...dragHandlers}
 				>
-					<ul className="isolate">
+					<ul ref={listRef} className="isolate">
 						{sortableItems.map((item) => (
 							<MobileFolderRow
 								key={item.id}
@@ -110,14 +117,18 @@ export function FolderTreeScreen() {
 						))}
 					</ul>
 					{activeItem && <RootDropZone />}
-					<DragOverlay dropAnimation={null}>
+					<DragOverlay dropAnimation={{ duration: DROP_ANIMATION_DURATION }}>
 						{activeItem && (
 							<div
-								className="flex h-11 items-center rounded-lg bg-[var(--seed-color-bg-layer-floating)] px-2 text-[15px]
-									text-[var(--seed-color-fg-neutral)] opacity-60 shadow-md"
+								className="flex h-11 items-center rounded-lg pr-1 text-[15px] text-[var(--seed-color-fg-neutral)]
+									opacity-60"
 								style={{ paddingLeft: `${(projected?.depth ?? activeItem.depth) * MOBILE_INDENT_WIDTH}px` }}
 							>
-								{activeItem.name}
+								<span className="h-8 w-8 shrink-0" />
+								<span className="flex min-w-0 flex-1 items-center gap-2">
+									<IconFolderLine size={18} className="shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
+									<span className="truncate">{activeItem.name}</span>
+								</span>
 							</div>
 						)}
 					</DragOverlay>
