@@ -1,9 +1,16 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
 services:
   postgres:
     image: ghcr.io/se9oo/reelink-postgres:${IMAGE_TAG:-latest}
     build:
       context: ./postgres
     restart: unless-stopped
+    logging: *default-logging
     # WAL을 5분마다 R2로 올린다(손실 상한 5분). 전체 백업·정리는 서버 crontab이 매일 돌린다
     command: >
       postgres
@@ -18,12 +25,23 @@ services:
       - ./postgres-backup.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - reelink-network
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - reelink-network
 
@@ -32,11 +50,14 @@ services:
     build:
       context: ./apps/backend
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - ./apps/backend/.env
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - reelink-network
 
@@ -45,6 +66,7 @@ services:
     build:
       context: ./apps/frontend
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       - backend
     networks:
@@ -53,6 +75,7 @@ services:
   nginx:
     image: nginx:alpine
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - '80:80'
       - '443:443'
