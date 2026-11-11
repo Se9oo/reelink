@@ -781,6 +781,9 @@ describe('LinksController (e2e)', () => {
 			await request(app.getHttpServer()).get(`/links/${linkId}/go`).expect(404);
 			await request(app.getHttpServer()).get(`/links/${linkId}/go?sig=${otherSig}`).expect(404);
 			await request(app.getHttpServer()).get(`/links/${linkId}/go?sig=abc`).expect(404);
+			await request(app.getHttpServer())
+				.get(`/links/${linkId}/go?sig=${encodeURIComponent(`${'a'.repeat(63)}é`)}`)
+				.expect(404);
 		});
 	});
 

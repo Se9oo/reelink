@@ -91,6 +91,7 @@ export class RemindersService implements OnModuleInit {
 	/**
 	 * remind_at이 지난 링크를 켜진 채널 전부(카카오, 웹 푸시)로 보내고 remind_at을 비운다. 열람 여부와 3일 간격 제한은 보지 않는다.
 	 * 일시적 실패는 remind_at을 남겨 다음 분에 다시 시도하고, 지정 시각에서 1시간이 지난 알림은 보내지 않고 비운다.
+	 * 보낼 채널이 없는 사용자의 링크도 골라야 그 자리에서 비워진다(남겨두면 1시간 안에 다시 연동했을 때 늦은 알림이 간다).
 	 * 같은 사용자의 링크는 차례로 보내 토큰 갱신이 동시에 일어나지 않게 한다.
 	 * @param now Date
 	 */
@@ -110,14 +111,7 @@ export class RemindersService implements OnModuleInit {
 			.from(links)
 			.innerJoin(users, eq(users.id, links.userId))
 			.leftJoin(notificationChannels, activeKakaoChannelOf(users.id))
-			.where(
-				and(
-					lte(links.remindAt, now),
-					gt(links.remindAt, giveUpBefore),
-					isNull(links.deletedAt),
-					or(kakaoNotificationOn(), this.hasPushSubscription()),
-				),
-			)
+			.where(and(lte(links.remindAt, now), gt(links.remindAt, giveUpBefore), isNull(links.deletedAt)))
 			.orderBy(asc(links.remindAt));
 
 		const byUser = new Map<string, typeof due>();
@@ -207,6 +201,7 @@ export class RemindersService implements OnModuleInit {
 	/**
 	 * 켜진 채널 전부로 보낸다. 카카오는 kakaoChannel이 active일 때만(앞선 발송에서 revoke됐으면 건너뜀), 웹 푸시는 VAPID 키가 설정돼 있을 때
 	 * 구독 전부로 동시에 보내고, 만료된 구독(404/410)은 DB와 subscriptions 배열에서 뺀다. 한 채널이 실패해도 나머지 채널은 계속 보낸다.
+	 * 구독이 있는데 VAPID 키가 없으면 서버 설정 실수라 일시적 실패로 쳐서, 링크별 알림이 지워지지 않고 다시 시도되게 한다.
 	 * @param userId string
 	 * @param now Date
 	 * @param message { kakaoChannel, subscriptions, kakao: { message, buttons? }, push: { payload, options } }
@@ -240,7 +235,7 @@ export class RemindersService implements OnModuleInit {
 		}
 
 		if (!isWebPushConfigured()) {
-			return { sent, failed };
+			return { sent, failed: failed || subscriptions.length > 0 };
 		}
 
 		const results = await Promise.all(
@@ -447,7 +442,7 @@ export class RemindersService implements OnModuleInit {
 	 * @param channel Channel
 	 * @param now Date
 	 * @param force boolean 만료 시각과 상관없이 갱신
-	 * @returns string | null 갱신이 invalid_grant(refresh token 무효)로 거부되면 채널을 revoked로 바꾸고 null
+	 * @returns string | null 갱신이 invalid_grant(refresh token 무효)로 거부되면 채널을 revoked로 바꾸고 null. 단 그 사이 DB의 refresh token이 바뀌었으면(다른 작업이 갱신) 새 값으로 다시 시도한다
 	 * @throws KakaoApiError invalid_client 같은 서버 설정 오류나 5xx — revoke하지 않는다
 	 */
 	private async getValidAccessToken(channel: Channel, now: Date, { force = false } = {}): Promise<string | null> {
@@ -478,6 +473,17 @@ export class RemindersService implements OnModuleInit {
 			return tokens.accessToken;
 		} catch (err) {
 			if (err instanceof KakaoApiError && err.error === 'invalid_grant') {
+				// 매분 크론과 09:00 갱신이 같은 채널을 동시에 다룰 수 있다 — 다른 작업이 먼저 갱신해 refresh token이 바뀌었으면 끊지 않고 그걸로 이어간다
+				const [latest] = await this.db
+					.select()
+					.from(notificationChannels)
+					.where(eq(notificationChannels.id, channel.id));
+
+				if (latest?.refreshToken && latest.refreshToken !== channel.refreshToken) {
+					Object.assign(channel, latest);
+					return await this.getValidAccessToken(channel, now, { force });
+				}
+
 				await this.revoke(channel);
 				return null;
 			}

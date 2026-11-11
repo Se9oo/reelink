@@ -28,6 +28,11 @@ export function linkGoUrl(linkId: string): string {
  * @returns boolean
  */
 export function isValidLinkGoSignature(linkId: string, sig: unknown): boolean {
+	if (typeof sig !== 'string') {
+		return false;
+	}
+
 	const expected = Buffer.from(signLinkId(linkId));
-	return typeof sig === 'string' && sig.length === expected.length && timingSafeEqual(Buffer.from(sig), expected);
+	const actual = Buffer.from(sig);
+	return actual.length === expected.length && timingSafeEqual(actual, expected);
 }

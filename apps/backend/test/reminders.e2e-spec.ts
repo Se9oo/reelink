@@ -216,6 +216,31 @@ describe('RemindersService (e2e)', () => {
 		expect(await getLastRemindedAt()).toBeNull();
 	});
 
+	test('갱신이 invalid_grant여도 그 사이 다른 작업이 토큰을 갱신해 뒀으면 끊지 않고 새 토큰으로 보낸다.', async () => {
+		await db.update(notificationChannels).set({ tokenExpiresAt: NOW }).where(eq(notificationChannels.id, channelId));
+		vi.mocked(refreshKakaoToken).mockImplementation(async (refreshToken) => {
+			if (refreshToken !== 'valid-refresh') {
+				throw new Error(`unexpected refresh for ${refreshToken}`);
+			}
+			await db
+				.update(notificationChannels)
+				.set({
+					accessToken: 'other-job-access',
+					refreshToken: 'other-job-refresh',
+					tokenExpiresAt: new Date(NOW.getTime() + 60 * 60 * 1000),
+				})
+				.where(eq(notificationChannels.id, channelId));
+			throw invalidGrant();
+		});
+		await insertLink();
+
+		await reminders.sendDailyReminders(NOW);
+
+		expect(sendKakaoMemo).toHaveBeenCalledWith('other-job-access', expect.any(String), expect.any(String));
+		expect((await getChannel()).status).toBe('active');
+		expect(await getLastRemindedAt()).toEqual(NOW);
+	});
+
 	test('서버 설정 오류(invalid_client)로 갱신이 실패하면 revoked로 바꾸지 않는다.', async () => {
 		await db.update(notificationChannels).set({ tokenExpiresAt: NOW }).where(eq(notificationChannels.id, channelId));
 		mockRefresh(new KakaoApiError(401, 'token refresh', 'invalid_client'));
@@ -567,17 +592,25 @@ describe('RemindersService (e2e)', () => {
 			expect(endpoints).toEqual([{ endpoint: 'https://fcm.googleapis.com/fcm/send/alive' }]);
 		});
 
-		test('VAPID 키가 설정되지 않았으면 웹 푸시는 건너뛰고, 다시 시도해도 소용없으니 remind_at을 비운다.', async () => {
+		test('보낼 채널이 하나도 없으면(카카오 끊김, 구독 없음) 1시간을 기다리지 않고 바로 remind_at을 비운다.', async () => {
+			await db.update(notificationChannels).set({ status: 'revoked' }).where(eq(notificationChannels.id, channelId));
+			await insertLink({ title: '티켓팅', remindAt: minutesAgo(1) });
+
+			await reminders.sendLinkAlarms(NOW);
+
+			expect(sendKakaoMemo).not.toHaveBeenCalled();
+			expect(await getRemindAts()).toEqual({ 티켓팅: null });
+		});
+
+		test('VAPID 키가 설정되지 않았으면 웹 푸시는 보내지 않고, 서버 설정 실수라 remind_at을 남겨 다시 시도한다.', async () => {
 			const original = process.env.VAPID_PRIVATE_KEY;
 			await db.update(users).set({ notificationMethod: 'manual' }).where(eq(users.id, testUserId));
-			await db
-				.insert(pushSubscriptions)
-				.values({
-					userId: testUserId,
-					endpoint: 'https://fcm.googleapis.com/fcm/send/x',
-					p256dhKey: 'p',
-					authKey: 'a',
-				});
+			await db.insert(pushSubscriptions).values({
+				userId: testUserId,
+				endpoint: 'https://fcm.googleapis.com/fcm/send/x',
+				p256dhKey: 'p',
+				authKey: 'a',
+			});
 			await insertLink({ title: '티켓팅', remindAt: minutesAgo(1) });
 
 			try {
@@ -588,7 +621,7 @@ describe('RemindersService (e2e)', () => {
 			}
 
 			expect(sendWebPush).not.toHaveBeenCalled();
-			expect(await getRemindAts()).toEqual({ 티켓팅: null });
+			expect(await getRemindAts()).toEqual({ 티켓팅: minutesAgo(1) });
 		});
 	});
 });
