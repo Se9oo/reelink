@@ -10,10 +10,11 @@ import {
 	Post,
 	Query,
 	Req,
+	Res,
 	UseGuards,
 } from '@nestjs/common';
 
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 import { JwtPayload } from '../auth/auth.types.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -89,6 +90,23 @@ export class LinksController {
 		const { sub: userId } = req.user as JwtPayload;
 
 		return await this.linksService.pinLink({ userId, linkId, pinned });
+	}
+
+	@Patch(':id/remind')
+	@UseGuards(JwtAuthGuard)
+	async setRemindAt(
+		@Req() req: Request,
+		@Param('id', ParseUUIDPipe) linkId: string,
+		@Body() { remindAt }: { remindAt?: unknown },
+	) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.linksService.setRemindAt({ userId, linkId, remindAt });
+	}
+
+	@Get(':id/go')
+	async goToLink(@Param('id', ParseUUIDPipe) linkId: string, @Res() res: Response) {
+		res.redirect(302, await this.linksService.getLinkUrl(linkId));
 	}
 
 	@Patch(':id/folder')

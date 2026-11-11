@@ -375,4 +375,78 @@ describe('RemindersService (e2e)', () => {
 			expect((await getChannel()).status).toBe('revoked');
 		});
 	});
+
+	describe('sendLinkAlarms', () => {
+		const minutesAgo = (minutes: number) => new Date(NOW.getTime() - minutes * 60 * 1000);
+
+		async function getRemindAts() {
+			const rows = await db
+				.select({ title: links.title, remindAt: links.remindAt })
+				.from(links)
+				.where(eq(links.userId, testUserId));
+			return Object.fromEntries(rows.map((row) => [row.title, row.remindAt]));
+		}
+
+		test('지정 시각이 지난 링크를 열람·3일 간격과 상관없이 두 버튼과 함께 보내고 remind_at을 비운다.', async () => {
+			await db.update(users).set({ lastRemindedAt: NOW }).where(eq(users.id, testUserId));
+			await insertLink({ title: '티켓팅', savedReason: '8시 오픈', status: 'viewed', remindAt: minutesAgo(0) });
+			await insertLink({ title: '나중', remindAt: new Date(NOW.getTime() + 60 * 1000) });
+
+			await reminders.sendLinkAlarms(NOW);
+
+			expect(sendKakaoMemo).toHaveBeenCalledTimes(1);
+			expect(sendKakaoMemo).toHaveBeenCalledWith(
+				'valid-access',
+				'⏰ 지정한 알림 시간이에요\n티켓팅\n8시 오픈',
+				expect.stringMatching(/\/feed$/),
+				[
+					{ title: '링크 바로가기', url: expect.stringMatching(/\/api\/links\/[0-9a-f-]+\/go$/) },
+					{ title: 'Reelink에서 보기', url: expect.stringMatching(/\/feed$/) },
+				],
+			);
+			expect(await getRemindAts()).toEqual({ 티켓팅: null, 나중: new Date(NOW.getTime() + 60 * 1000) });
+			expect(await getLastRemindedAt()).toEqual(NOW);
+		});
+
+		test('일시적으로 실패하면 remind_at을 남겨 다음 분에 다시 시도한다.', async () => {
+			await insertLink({ title: '티켓팅', remindAt: minutesAgo(1) });
+			vi.mocked(sendKakaoMemo).mockRejectedValue(new KakaoApiError(500, 'memo send'));
+
+			await reminders.sendLinkAlarms(NOW);
+
+			expect(await getRemindAts()).toEqual({ 티켓팅: minutesAgo(1) });
+		});
+
+		test('지정 시각에서 1시간이 지난 알림은 보내지 않고 비운다.', async () => {
+			await insertLink({ title: '티켓팅', remindAt: minutesAgo(61) });
+
+			await reminders.sendLinkAlarms(NOW);
+
+			expect(sendKakaoMemo).not.toHaveBeenCalled();
+			expect(await getRemindAts()).toEqual({ 티켓팅: null });
+		});
+
+		test('삭제된 링크나 알림을 꺼둔 사용자에게는 보내지 않는다.', async () => {
+			await insertLink({ title: '지운 글', remindAt: minutesAgo(1), deletedAt: minutesAgo(5) });
+
+			await reminders.sendLinkAlarms(NOW);
+			expect(sendKakaoMemo).not.toHaveBeenCalled();
+
+			await db.update(users).set({ notificationMethod: 'manual' }).where(eq(users.id, testUserId));
+			await insertLink({ title: '티켓팅', remindAt: minutesAgo(1) });
+
+			await reminders.sendLinkAlarms(NOW);
+			expect(sendKakaoMemo).not.toHaveBeenCalled();
+		});
+
+		test('메시지 권한이 철회됐으면(-402) 채널을 revoke하고 remind_at을 비운다.', async () => {
+			await insertLink({ title: '티켓팅', remindAt: minutesAgo(1) });
+			vi.mocked(sendKakaoMemo).mockRejectedValue(new KakaoApiError(403, 'memo send', '-402'));
+
+			await reminders.sendLinkAlarms(NOW);
+
+			expect((await getChannel()).status).toBe('revoked');
+			expect(await getRemindAts()).toEqual({ 티켓팅: null });
+		});
+	});
 });

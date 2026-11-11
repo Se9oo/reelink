@@ -146,14 +146,22 @@ export async function unlinkKakaoUser(kakaoUserId: string): Promise<void> {
  * @param accessToken string
  * @param text string 최대 200자
  * @param linkUrl string 메시지와 "리마인드 보기" 버튼이 여는 주소. 콘솔에 등록한 Web 사이트 도메인이어야 한다
+ * @param buttons { title: string; url: string }[] 주면 "리마인드 보기" 대신 이 버튼들(최대 2개)을 단다. url도 등록한 도메인이어야 한다
  * @throws KakaoApiError 실패면 status와 카카오 code 값(-401, -402 등)을 담아서
  */
-export async function sendKakaoMemo(accessToken: string, text: string, linkUrl: string): Promise<void> {
+export async function sendKakaoMemo(
+	accessToken: string,
+	text: string,
+	linkUrl: string,
+	buttons?: { title: string; url: string }[],
+): Promise<void> {
 	const templateObject = {
 		object_type: 'text',
 		text,
 		link: { web_url: linkUrl, mobile_web_url: linkUrl },
-		button_title: '리마인드 보기',
+		...(buttons
+			? { buttons: buttons.map(({ title, url }) => ({ title, link: { web_url: url, mobile_web_url: url } })) }
+			: { button_title: '리마인드 보기' }),
 	};
 
 	const res = await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {

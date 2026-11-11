@@ -1,17 +1,18 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 
-import { and, asc, eq, exists, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, exists, gt, isNull, lte, or, sql } from 'drizzle-orm';
 
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { links, notificationChannels, users } from '../db/schema.js';
 
-import { buildReminderMessage } from './build-reminder-message.js';
+import { buildLinkAlarmMessage, buildReminderMessage } from './build-reminder-message.js';
 import { KakaoApiError, refreshKakaoToken, sendKakaoMemo } from './kakao-api.js';
 
 const TOKEN_REFRESH_MARGIN_MS = 10 * 60 * 1000;
 const REFRESH_TOKEN_RENEW_BEFORE_MS = 14 * 24 * 60 * 60 * 1000;
 const REMIND_EVERY_DAYS = 3;
+const LINK_ALARM_GIVE_UP_MS = 60 * 60 * 1000;
 const KAKAO_SCOPE_NOT_AGREED = '-402';
 
 const CONCURRENCY = 10;
@@ -34,8 +35,106 @@ async function forEachInBatches<T>(items: T[], size: number, fn: (item: T) => Pr
 @Injectable()
 export class RemindersService {
 	private readonly logger = new Logger(RemindersService.name);
+	private linkAlarmsRunning = false;
 
 	constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
+
+	/**
+	 * 매분 링크별 알림을 보낸다. 이전 실행이 아직 안 끝났으면(카카오 응답이 느릴 때) 건너뛰어 같은 알림이 두 번 가지 않게 한다.
+	 */
+	@Cron('* * * * *')
+	async handleLinkAlarms() {
+		if (this.linkAlarmsRunning) {
+			return;
+		}
+
+		this.linkAlarmsRunning = true;
+		try {
+			await this.sendLinkAlarms(new Date());
+		} finally {
+			this.linkAlarmsRunning = false;
+		}
+	}
+
+	/**
+	 * remind_at이 지난 링크를 카카오로 보내고 remind_at을 비운다. 열람 여부와 3일 간격 제한은 보지 않는다.
+	 * 일시적 실패는 remind_at을 남겨 다음 분에 다시 시도하고, 지정 시각에서 1시간이 지난 알림은 보내지 않고 비운다.
+	 * 같은 사용자의 링크는 차례로 보내 토큰 갱신이 동시에 일어나지 않게 한다.
+	 * @param now Date
+	 */
+	async sendLinkAlarms(now: Date) {
+		const giveUpBefore = new Date(now.getTime() - LINK_ALARM_GIVE_UP_MS);
+		const due = await this.db
+			.select({
+				id: links.id,
+				url: links.url,
+				title: links.title,
+				savedReason: links.savedReason,
+				remindAt: links.remindAt,
+				channel: notificationChannels,
+			})
+			.from(links)
+			.innerJoin(users, eq(users.id, links.userId))
+			.innerJoin(
+				notificationChannels,
+				and(eq(notificationChannels.userId, links.userId), eq(notificationChannels.provider, 'kakao')),
+			)
+			.where(
+				and(
+					lte(links.remindAt, now),
+					gt(links.remindAt, giveUpBefore),
+					isNull(links.deletedAt),
+					eq(users.notificationMethod, 'kakao'),
+					eq(notificationChannels.status, 'active'),
+				),
+			)
+			.orderBy(asc(links.remindAt));
+
+		const byUser = new Map<string, typeof due>();
+		for (const link of due) {
+			byUser.set(link.channel.userId, [...(byUser.get(link.channel.userId) ?? []), link]);
+		}
+
+		await forEachInBatches([...byUser.values()], CONCURRENCY, async (userLinks) => {
+			const channel = userLinks[0].channel;
+
+			for (const link of userLinks) {
+				try {
+					await this.sendLinkAlarm(link, channel, now);
+				} catch (err) {
+					this.logger.error(`Link alarm failed for link ${link.id}: ${(err as Error).message}`);
+				}
+			}
+		});
+
+		await this.db.update(links).set({ remindAt: null }).where(lte(links.remindAt, giveUpBefore));
+	}
+
+	/**
+	 * 링크 하나의 알림을 보내고, 보냈거나 연동이 끊겨 보낼 수 없으면 remind_at을 비운다.
+	 * 보내는 사이 사용자가 시각을 바꿨으면 새 시각은 남겨둔다.
+	 * @param link { id, url, title, savedReason, remindAt }
+	 * @param channel Channel
+	 * @param now Date
+	 */
+	private async sendLinkAlarm(
+		link: { id: string; url: string; title: string | null; savedReason: string | null; remindAt: Date | null },
+		channel: Channel,
+		now: Date,
+	) {
+		const base = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+		const message = buildLinkAlarmMessage(link.title || new URL(link.url).hostname, link.savedReason);
+
+		await this.sendKakao(channel, message, now, [
+			{ title: '링크 바로가기', url: `${base}/api/links/${link.id}/go` },
+			{ title: 'Reelink에서 보기', url: `${base}/feed` },
+		]);
+
+		await this.db
+			.update(links)
+			.set({ remindAt: null })
+			.where(and(eq(links.id, link.id), eq(links.remindAt, link.remindAt!)));
+	}
 
 	/**
 	 * 매일 KST 09:00에 리마인드를 보낸 뒤, 보낼 게 없던 사용자까지 포함해 만료가 가까운 refresh token을 연장한다.
@@ -151,11 +250,19 @@ export class RemindersService {
 	 * @param channel Channel
 	 * @param message string
 	 * @param now Date
+	 * @param buttons { title: string; url: string }[] 주면 기본 "리마인드 보기" 버튼 대신 단다
 	 * @returns boolean 보냈으면 true, 연동이 끊겨 보내지 못했으면 false
 	 * @throws KakaoApiError 5xx·권한 철회가 아닌 403 등 일시적이거나 사용자 탓이 아닌 실패
 	 */
-	private async sendKakao(channel: Channel, message: string, now: Date): Promise<boolean> {
+	private async sendKakao(
+		channel: Channel,
+		message: string,
+		now: Date,
+		buttons?: { title: string; url: string }[],
+	): Promise<boolean> {
 		const feedUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/feed`;
+		const send = (token: string) =>
+			buttons ? sendKakaoMemo(token, message, feedUrl, buttons) : sendKakaoMemo(token, message, feedUrl);
 		const accessToken = await this.getValidAccessToken(channel, now);
 
 		if (!accessToken) {
@@ -163,7 +270,7 @@ export class RemindersService {
 		}
 
 		try {
-			await sendKakaoMemo(accessToken, message, feedUrl);
+			await send(accessToken);
 			return true;
 		} catch (err) {
 			if (err instanceof KakaoApiError && err.status === 403 && err.error === KAKAO_SCOPE_NOT_AGREED) {
@@ -181,7 +288,7 @@ export class RemindersService {
 			return false;
 		}
 
-		await sendKakaoMemo(refreshedToken, message, feedUrl);
+		await send(refreshedToken);
 		return true;
 	}
 

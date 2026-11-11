@@ -336,6 +336,65 @@ export class LinksService {
 	}
 
 	/**
+	 * 링크별 알림 시각을 지정하거나 해제한다. 매분 도는 크론이 이 시각에 카카오로 보낸다.
+	 * @param userId string
+	 * @param linkId string
+	 * @param remindAt unknown ISO 문자열(지금보다 미래)이면 지정, null이면 해제
+	 * @returns Link
+	 * @throws BadRequestException remindAt이 null도 날짜 문자열도 아니거나, 지금 이전 시각인 경우
+	 * @throws NotFoundException 링크가 없거나 삭제됐거나 내 링크가 아닌 경우
+	 */
+	async setRemindAt({
+		userId,
+		linkId,
+		remindAt,
+	}: {
+		userId: string;
+		linkId: string;
+		remindAt: unknown;
+	}): Promise<Link> {
+		const date = typeof remindAt === 'string' ? new Date(remindAt) : null;
+
+		if (remindAt !== null && (!date || Number.isNaN(date.getTime()))) {
+			throw new BadRequestException('remindAt은 날짜 문자열 또는 null이어야 합니다.');
+		}
+		if (date && date.getTime() <= Date.now()) {
+			throw new BadRequestException('알림 시각은 지금 이후여야 합니다.');
+		}
+
+		const [link] = await this.db
+			.update(links)
+			.set({ remindAt: date })
+			.where(and(eq(links.id, linkId), eq(links.userId, userId), isNull(links.deletedAt)))
+			.returning();
+
+		if (!link) {
+			throw new NotFoundException();
+		}
+
+		return link;
+	}
+
+	/**
+	 * 카카오 알림의 [링크 바로가기] 버튼이 거쳐 가는 원래 URL을 찾는다. 로그인 없이 부르므로 id만으로 찾는다.
+	 * @param linkId string
+	 * @returns string 원래 URL
+	 * @throws NotFoundException 링크가 없거나 삭제된 경우
+	 */
+	async getLinkUrl(linkId: string): Promise<string> {
+		const [link] = await this.db
+			.select({ url: links.url })
+			.from(links)
+			.where(and(eq(links.id, linkId), isNull(links.deletedAt)));
+
+		if (!link) {
+			throw new NotFoundException();
+		}
+
+		return link.url;
+	}
+
+	/**
 	 * 링크를 폴더 상단에 고정하거나 고정을 해제한다. 고정 시각을 pinnedAt에 기록하고, 해제하면 null로 둔다.
 	 * @param userId string
 	 * @param linkId string

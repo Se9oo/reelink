@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { buildReminderMessage } from './build-reminder-message.js';
+import { buildLinkAlarmMessage, buildReminderMessage } from './build-reminder-message.js';
 
 describe('buildReminderMessage', () => {
 	test('링크 개수와 제목을 목록으로 나열한다', () => {
@@ -34,5 +34,21 @@ describe('buildReminderMessage', () => {
 		const titles = Array.from({ length: 100000 }, () => '👨‍👩‍👧'.repeat(100));
 
 		expect(buildReminderMessage(titles).length).toBeLessThanOrEqual(200);
+	});
+});
+
+describe('buildLinkAlarmMessage', () => {
+	test('제목과 저장 이유를 담는다', () => {
+		expect(buildLinkAlarmMessage('콘서트 티켓팅', '금요일 8시 오픈')).toBe(
+			'⏰ 지정한 알림 시간이에요\n콘서트 티켓팅\n금요일 8시 오픈',
+		);
+	});
+
+	test('저장 이유가 없으면 제목만 담는다', () => {
+		expect(buildLinkAlarmMessage('콘서트 티켓팅', null)).toBe('⏰ 지정한 알림 시간이에요\n콘서트 티켓팅');
+	});
+
+	test('가장 긴 제목과 저장 이유를 넣어도 200자를 넘지 않는다', () => {
+		expect(buildLinkAlarmMessage('가'.repeat(500), '나'.repeat(500)).length).toBeLessThanOrEqual(200);
 	});
 });

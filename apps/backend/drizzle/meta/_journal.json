@@ -71,6 +71,13 @@
       "when": 1793847799753,
       "tag": "0009_fresh_bill_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794296222424,
+      "tag": "0010_fresh_amazoness",
+      "breakpoints": true
     }
   ]
 }

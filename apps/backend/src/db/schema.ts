@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { type AnyPgColumn, boolean, index, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
 
@@ -95,24 +96,33 @@ export const folders = pgTable(
 	(table) => [index('folders_parent_folder_id_idx').on(table.parentFolderId)],
 );
 
-export const links = pgTable('links', {
-	id: id(),
-	userId: uuid('user_id')
-		.notNull()
-		.references(() => users.id, { onDelete: 'cascade' }),
-	folderId: uuid('folder_id')
-		.notNull()
-		.references(() => folders.id, { onDelete: 'cascade' }),
-	url: text('url').notNull(),
-	title: text('title'),
-	thumbnailUrl: text('thumbnail_url'),
-	folderSource: text('folder_source').notNull().default('user'),
-	shelfLifeDays: integer('shelf_life_days'),
-	savedReason: text('saved_reason'),
-	status: text('status').notNull().default('unviewed'),
-	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-	lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true }),
-	pinnedAt: timestamp('pinned_at', { withTimezone: true }),
-	viewedAt: timestamp('viewed_at', { withTimezone: true }),
-	deletedAt: timestamp('deleted_at', { withTimezone: true }),
-});
+export const links = pgTable(
+	'links',
+	{
+		id: id(),
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		folderId: uuid('folder_id')
+			.notNull()
+			.references(() => folders.id, { onDelete: 'cascade' }),
+		url: text('url').notNull(),
+		title: text('title'),
+		thumbnailUrl: text('thumbnail_url'),
+		folderSource: text('folder_source').notNull().default('user'),
+		shelfLifeDays: integer('shelf_life_days'),
+		savedReason: text('saved_reason'),
+		status: text('status').notNull().default('unviewed'),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+		lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true }),
+		pinnedAt: timestamp('pinned_at', { withTimezone: true }),
+		viewedAt: timestamp('viewed_at', { withTimezone: true }),
+		remindAt: timestamp('remind_at', { withTimezone: true }),
+		deletedAt: timestamp('deleted_at', { withTimezone: true }),
+	},
+	(table) => [
+		index('links_remind_at_idx')
+			.on(table.remindAt)
+			.where(sql`${table.remindAt} is not null`),
+	],
+);

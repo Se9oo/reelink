@@ -688,6 +688,89 @@ describe('LinksController (e2e)', () => {
 		});
 	});
 
+	describe('Patch /links/:id/remind, Get /links/:id/go', () => {
+		const inOneHour = () => new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+		async function createLink() {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '알림 테스트 폴더' })
+				.expect(201);
+			const link = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://ticket.example.com/a?b=1', folderId: folder.body.id })
+				.expect(201);
+
+			return link.body.id as string;
+		}
+
+		function remind(linkId: string, body: object, token = accessToken) {
+			return request(app.getHttpServer())
+				.patch(`/links/${linkId}/remind`)
+				.set('Cookie', `access_token=${token}`)
+				.send(body);
+		}
+
+		test('미래 시각을 지정하면 remindAt이 채워지고, null로 해제하면 비워진다.', async () => {
+			const linkId = await createLink();
+			const remindAt = inOneHour();
+
+			const set = await remind(linkId, { remindAt }).expect(200);
+
+			expect(set.body.remindAt).toBe(remindAt);
+
+			const cleared = await remind(linkId, { remindAt: null }).expect(200);
+
+			expect(cleared.body.remindAt).toBeNull();
+		});
+
+		test('remindAt이 없거나 날짜가 아니거나 지난 시각이면 400 오류를 반환한다.', async () => {
+			const linkId = await createLink();
+
+			await remind(linkId, {}).expect(400);
+			await remind(linkId, { remindAt: 'tomorrow' }).expect(400);
+			await remind(linkId, { remindAt: 123 }).expect(400);
+			await remind(linkId, { remindAt: new Date(Date.now() - 60 * 1000).toISOString() }).expect(400);
+		});
+
+		test('남의 링크거나 삭제된 링크면 404, 인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
+			const [otherUser] = await db.insert(users).values({ email: '알림-다른이메일', nickname: '다른유저' }).returning();
+			const otherToken = await app.get(JwtService).signAsync({ sub: otherUser.id });
+			const linkId = await createLink();
+
+			await remind(linkId, { remindAt: inOneHour() }, otherToken).expect(404);
+			await request(app.getHttpServer()).patch(`/links/${linkId}/remind`).send({ remindAt: inOneHour() }).expect(401);
+
+			await request(app.getHttpServer())
+				.delete(`/links/${linkId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await remind(linkId, { remindAt: inOneHour() }).expect(404);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('go는 로그인 없이 원래 URL로 302 리다이렉트하고, 삭제됐거나 없는 링크면 404를 반환한다.', async () => {
+			const linkId = await createLink();
+
+			await request(app.getHttpServer())
+				.get(`/links/${linkId}/go`)
+				.expect(302)
+				.expect('Location', 'https://ticket.example.com/a?b=1');
+
+			await request(app.getHttpServer())
+				.delete(`/links/${linkId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await request(app.getHttpServer()).get(`/links/${linkId}/go`).expect(404);
+			await request(app.getHttpServer()).get(`/links/${crypto.randomUUID()}/go`).expect(404);
+		});
+	});
+
 	describe('Get /links/feed', () => {
 		test('내 링크 중 안 봤고 삭제되지 않은 링크만 오래된 등록순으로 반환한다.', async () => {
 			const [otherUser] = await db.insert(users).values({ email: '피드-다른이메일', nickname: '다른유저' }).returning();

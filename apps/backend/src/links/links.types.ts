@@ -13,6 +13,7 @@ export interface Link {
 	lastRemindedAt: Date | null;
 	pinnedAt: Date | null;
 	viewedAt: Date | null;
+	remindAt: Date | null;
 	deletedAt: Date | null;
 }
 
