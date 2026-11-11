@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 
 import { DrizzleDb } from '../src/db/drizzle.module.js';
-import { folders, links, notificationChannels, users } from '../src/db/schema.js';
+import { folders, links, notificationChannels, pushSubscriptions, users } from '../src/db/schema.js';
 import {
 	KakaoApiError,
 	type RefreshedKakaoTokens,
@@ -9,6 +9,7 @@ import {
 	sendKakaoMemo,
 } from '../src/notifications/kakao-api.js';
 import { RemindersService } from '../src/notifications/reminders.service.js';
+import { sendWebPush } from '../src/notifications/web-push-api.js';
 
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
@@ -17,6 +18,8 @@ vi.mock('../src/notifications/kakao-api.js', async (importOriginal) => ({
 	refreshKakaoToken: vi.fn(),
 	sendKakaoMemo: vi.fn(),
 }));
+
+vi.mock('../src/notifications/web-push-api.js', () => ({ sendWebPush: vi.fn() }));
 
 const NOW = new Date('2001-01-10T00:00:00Z');
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 24 * 60 * 60 * 1000);
@@ -56,7 +59,9 @@ describe('RemindersService (e2e)', () => {
 
 	beforeEach(async () => {
 		vi.mocked(sendKakaoMemo).mockReset().mockResolvedValue();
+		vi.mocked(sendWebPush).mockReset().mockResolvedValue(true);
 		vi.mocked(refreshKakaoToken).mockReset();
+		await db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, testUserId));
 		await db.update(users).set({ notificationMethod: 'kakao', lastRemindedAt: null }).where(eq(users.id, testUserId));
 		await db.delete(links).where(eq(links.userId, testUserId));
 		await db.delete(notificationChannels).where(eq(notificationChannels.userId, testUserId));
@@ -373,6 +378,94 @@ describe('RemindersService (e2e)', () => {
 			await reminders.refreshExpiringTokens(NOW);
 
 			expect((await getChannel()).status).toBe('revoked');
+		});
+	});
+
+	describe('웹 푸시', () => {
+		async function subscribe(endpoint = 'https://fcm.googleapis.com/fcm/send/a') {
+			await db.insert(pushSubscriptions).values({ userId: testUserId, endpoint, p256dhKey: 'p', authKey: 'a' });
+		}
+
+		async function getEndpoints() {
+			const rows = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, testUserId));
+			return rows.map((row) => row.endpoint);
+		}
+
+		test('카카오 알림을 꺼도 구독한 기기 전부로 묶음 알림을 보내고 발송 시각을 남긴다.', async () => {
+			await db.update(users).set({ notificationMethod: 'manual' }).where(eq(users.id, testUserId));
+			await subscribe('https://fcm.googleapis.com/fcm/send/phone');
+			await subscribe('https://web.push.apple.com/desktop');
+			await insertLink({ title: '오래된 글' });
+
+			await reminders.sendDailyReminders(NOW);
+
+			expect(sendKakaoMemo).not.toHaveBeenCalled();
+			expect(sendWebPush).toHaveBeenCalledTimes(2);
+			expect(sendWebPush).toHaveBeenCalledWith(
+				expect.objectContaining({ endpoint: 'https://fcm.googleapis.com/fcm/send/phone' }),
+				{
+					title: 'Reelink',
+					body: '안 본 링크 1개가 기다려요\n· 오래된 글',
+					url: expect.stringMatching(/\/feed$/),
+					tag: 'daily',
+				},
+				{ ttlSeconds: 12 * 60 * 60, urgency: 'normal' },
+			);
+			expect(await getLastRemindedAt()).toEqual(NOW);
+		});
+
+		test('카카오가 실패해도 웹 푸시가 성공하면 보낸 걸로 친다.', async () => {
+			await subscribe();
+			await insertLink();
+			vi.mocked(sendKakaoMemo).mockRejectedValue(new KakaoApiError(500, 'memo send'));
+
+			await reminders.sendDailyReminders(NOW);
+
+			expect(await getLastRemindedAt()).toEqual(NOW);
+		});
+
+		test('만료된 구독(404/410)은 지우고, 나머지 구독으로는 보낸다.', async () => {
+			await subscribe('https://fcm.googleapis.com/fcm/send/gone');
+			await subscribe('https://fcm.googleapis.com/fcm/send/alive');
+			await insertLink();
+			vi.mocked(sendWebPush).mockImplementation(async ({ endpoint }) => !endpoint.endsWith('gone'));
+
+			await reminders.sendDailyReminders(NOW);
+
+			expect(await getEndpoints()).toEqual(['https://fcm.googleapis.com/fcm/send/alive']);
+		});
+
+		test('링크별 알림도 웹 푸시로 보내고, 링크를 바로 여는 주소와 링크별 tag를 담는다.', async () => {
+			await db.update(users).set({ notificationMethod: 'manual' }).where(eq(users.id, testUserId));
+			await subscribe();
+			await insertLink({ title: '티켓팅', savedReason: '8시 오픈', remindAt: NOW });
+
+			await reminders.sendLinkAlarms(NOW);
+
+			expect(sendWebPush).toHaveBeenCalledWith(
+				expect.anything(),
+				{
+					title: '⏰ 티켓팅',
+					body: '8시 오픈',
+					url: expect.stringMatching(/\/api\/links\/[0-9a-f-]+\/go$/),
+					tag: expect.stringMatching(/^link-[0-9a-f-]+$/),
+				},
+				{ ttlSeconds: 60 * 60, urgency: 'high' },
+			);
+			const [link] = await db.select().from(links).where(eq(links.userId, testUserId));
+			expect(link.remindAt).toBeNull();
+		});
+
+		test('웹 푸시가 일시적으로 실패하면 링크별 알림의 remind_at을 남겨 다시 시도한다.', async () => {
+			await db.update(users).set({ notificationMethod: 'manual' }).where(eq(users.id, testUserId));
+			await subscribe();
+			await insertLink({ remindAt: NOW });
+			vi.mocked(sendWebPush).mockRejectedValue(new Error('503'));
+
+			await reminders.sendLinkAlarms(NOW);
+
+			const [link] = await db.select().from(links).where(eq(links.userId, testUserId));
+			expect(link.remindAt).toEqual(NOW);
 		});
 	});
 

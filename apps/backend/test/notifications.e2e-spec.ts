@@ -1,10 +1,11 @@
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 
 import { and, eq } from 'drizzle-orm';
 import request from 'supertest';
 
 import { DrizzleDb } from '../src/db/drizzle.module.js';
-import { notificationChannels, users } from '../src/db/schema.js';
+import { notificationChannels, pushSubscriptions, users } from '../src/db/schema.js';
 import { exchangeKakaoCode } from '../src/notifications/kakao-api.js';
 
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
@@ -217,6 +218,97 @@ describe('NotificationsController (e2e)', () => {
 				.patch('/notifications/settings')
 				.set('Cookie', `access_token=${accessToken}`)
 				.expect(400);
+		});
+	});
+
+	describe('PUT, DELETE /notifications/push/subscription', () => {
+		const endpoint = 'https://fcm.googleapis.com/fcm/send/abc';
+		const body = { endpoint, keys: { p256dh: 'p256dh-key', auth: 'auth-key' } };
+
+		function save(payload: object, token = accessToken) {
+			return request(app.getHttpServer())
+				.put('/notifications/push/subscription')
+				.set('Cookie', `access_token=${token}`)
+				.send(payload);
+		}
+
+		async function getRows() {
+			return await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+		}
+
+		async function createUser(values: Partial<typeof users.$inferInsert> = {}) {
+			const [user] = await db
+				.insert(users)
+				.values({ email: `push-${crypto.randomUUID()}@test.com`, nickname: '테스터', ...values })
+				.returning();
+			return { user, token: await app.get(JwtService).signAsync({ sub: user.id }) };
+		}
+
+		beforeEach(async () => {
+			await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+		});
+
+		test('구독을 저장하고, 같은 브라우저에서 다시 저장하면 키를 갱신한다.', async () => {
+			await save(body).expect(204);
+			await save({ endpoint, keys: { p256dh: 'new-p256dh', auth: 'new-auth' } }).expect(204);
+
+			expect(await getRows()).toMatchObject([{ userId: testUserId, p256dhKey: 'new-p256dh', authKey: 'new-auth' }]);
+		});
+
+		test('같은 브라우저에서 다른 계정이 구독하면 구독이 그 계정으로 넘어간다.', async () => {
+			const other = await createUser();
+
+			await save(body).expect(204);
+			await save(body, other.token).expect(204);
+
+			expect(await getRows()).toMatchObject([{ userId: other.user.id }]);
+
+			await db.delete(users).where(eq(users.id, other.user.id));
+		});
+
+		test('알려진 푸시 서비스의 https 주소가 아니거나 키가 없으면 400 오류를 반환한다.', async () => {
+			await save({ ...body, endpoint: 'https://evil.example.com/push' }).expect(400);
+			await save({ ...body, endpoint: 'https://fcm.googleapis.com.evil.com/x' }).expect(400);
+			await save({ ...body, endpoint: 'http://fcm.googleapis.com/fcm/send/abc' }).expect(400);
+			await save({ ...body, endpoint: 'not a url' }).expect(400);
+			await save({ endpoint, keys: { p256dh: 'p' } }).expect(400);
+			await save({ endpoint }).expect(400);
+
+			expect(await getRows()).toEqual([]);
+		});
+
+		test('게스트는 구독할 수 없다(403).', async () => {
+			const guest = await createUser({ isGuest: true });
+
+			await save(body, guest.token).expect(403);
+
+			await db.delete(users).where(eq(users.id, guest.user.id));
+		});
+
+		test('DELETE는 내 구독만 지운다.', async () => {
+			const other = await createUser();
+			await save(body).expect(204);
+
+			await request(app.getHttpServer())
+				.delete('/notifications/push/subscription')
+				.set('Cookie', `access_token=${other.token}`)
+				.send({ endpoint })
+				.expect(204);
+			expect(await getRows()).toHaveLength(1);
+
+			await request(app.getHttpServer())
+				.delete('/notifications/push/subscription')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ endpoint })
+				.expect(204);
+			expect(await getRows()).toEqual([]);
+
+			await db.delete(users).where(eq(users.id, other.user.id));
+		});
+
+		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
+			await request(app.getHttpServer()).put('/notifications/push/subscription').send(body).expect(401);
+			await request(app.getHttpServer()).delete('/notifications/push/subscription').send({ endpoint }).expect(401);
 		});
 	});
 });

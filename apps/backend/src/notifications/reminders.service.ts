@@ -1,23 +1,44 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 
-import { and, asc, eq, exists, gt, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, type AnyColumn, asc, eq, exists, gt, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
-import { links, notificationChannels, users } from '../db/schema.js';
+import { links, notificationChannels, pushSubscriptions, users } from '../db/schema.js';
 
 import { buildLinkAlarmMessage, buildReminderMessage } from './build-reminder-message.js';
 import { KakaoApiError, refreshKakaoToken, sendKakaoMemo } from './kakao-api.js';
+import { sendWebPush, type WebPushPayload } from './web-push-api.js';
 
 const TOKEN_REFRESH_MARGIN_MS = 10 * 60 * 1000;
 const REFRESH_TOKEN_RENEW_BEFORE_MS = 14 * 24 * 60 * 60 * 1000;
 const REMIND_EVERY_DAYS = 3;
 const LINK_ALARM_GIVE_UP_MS = 60 * 60 * 1000;
+const DAILY_PUSH_TTL_SECONDS = 12 * 60 * 60;
 const KAKAO_SCOPE_NOT_AGREED = '-402';
 
 const CONCURRENCY = 10;
 
 type Channel = typeof notificationChannels.$inferSelect;
+
+/**
+ * notification_channels를 left join할 때 쓰는 조건. 그 사용자의 active 카카오 채널만 붙는다.
+ * @param userId AnyColumn
+ */
+function activeKakaoChannelOf(userId: AnyColumn) {
+	return and(
+		eq(notificationChannels.userId, userId),
+		eq(notificationChannels.provider, 'kakao'),
+		eq(notificationChannels.status, 'active'),
+	);
+}
+
+/**
+ * 카카오 알림이 켜져 있고(notification_method = kakao) active 채널이 붙었는지 보는 조건. activeKakaoChannelOf로 left join한 쿼리에서 쓴다.
+ */
+function kakaoNotificationOn() {
+	return and(eq(users.notificationMethod, 'kakao'), isNotNull(notificationChannels.id));
+}
 
 /**
  * items를 size개씩 묶어, 묶음 안에서는 동시에, 묶음끼리는 차례로 fn을 실행한다.
@@ -57,7 +78,7 @@ export class RemindersService {
 	}
 
 	/**
-	 * remind_at이 지난 링크를 카카오로 보내고 remind_at을 비운다. 열람 여부와 3일 간격 제한은 보지 않는다.
+	 * remind_at이 지난 링크를 켜진 채널 전부(카카오, 웹 푸시)로 보내고 remind_at을 비운다. 열람 여부와 3일 간격 제한은 보지 않는다.
 	 * 일시적 실패는 remind_at을 남겨 다음 분에 다시 시도하고, 지정 시각에서 1시간이 지난 알림은 보내지 않고 비운다.
 	 * 같은 사용자의 링크는 차례로 보내 토큰 갱신이 동시에 일어나지 않게 한다.
 	 * @param now Date
@@ -67,40 +88,39 @@ export class RemindersService {
 		const due = await this.db
 			.select({
 				id: links.id,
+				userId: links.userId,
 				url: links.url,
 				title: links.title,
 				savedReason: links.savedReason,
 				remindAt: links.remindAt,
+				notificationMethod: users.notificationMethod,
 				channel: notificationChannels,
 			})
 			.from(links)
 			.innerJoin(users, eq(users.id, links.userId))
-			.innerJoin(
-				notificationChannels,
-				and(eq(notificationChannels.userId, links.userId), eq(notificationChannels.provider, 'kakao')),
-			)
+			.leftJoin(notificationChannels, activeKakaoChannelOf(users.id))
 			.where(
 				and(
 					lte(links.remindAt, now),
 					gt(links.remindAt, giveUpBefore),
 					isNull(links.deletedAt),
-					eq(users.notificationMethod, 'kakao'),
-					eq(notificationChannels.status, 'active'),
+					or(kakaoNotificationOn(), this.hasPushSubscription()),
 				),
 			)
 			.orderBy(asc(links.remindAt));
 
 		const byUser = new Map<string, typeof due>();
 		for (const link of due) {
-			byUser.set(link.channel.userId, [...(byUser.get(link.channel.userId) ?? []), link]);
+			byUser.set(link.userId, [...(byUser.get(link.userId) ?? []), link]);
 		}
 
 		await forEachInBatches([...byUser.values()], CONCURRENCY, async (userLinks) => {
-			const channel = userLinks[0].channel;
+			const { userId, notificationMethod, channel } = userLinks[0];
+			const kakaoChannel = notificationMethod === 'kakao' ? channel : null;
 
 			for (const link of userLinks) {
 				try {
-					await this.sendLinkAlarm(link, channel, now);
+					await this.sendLinkAlarm(userId, link, kakaoChannel, now);
 				} catch (err) {
 					this.logger.error(`Link alarm failed for link ${link.id}: ${(err as Error).message}`);
 				}
@@ -111,29 +131,112 @@ export class RemindersService {
 	}
 
 	/**
-	 * 링크 하나의 알림을 보내고, 보냈거나 연동이 끊겨 보낼 수 없으면 remind_at을 비운다.
+	 * 링크 하나의 알림을 보내고, 한 채널이라도 보냈거나 일시적 실패 없이 끝났으면(연동이 끊겨 보낼 곳이 없는 경우) remind_at을 비운다.
 	 * 보내는 사이 사용자가 시각을 바꿨으면 새 시각은 남겨둔다.
+	 * @param userId string
 	 * @param link { id, url, title, savedReason, remindAt }
-	 * @param channel Channel
+	 * @param kakaoChannel Channel | null 카카오 알림이 켜져 있을 때만
 	 * @param now Date
 	 */
 	private async sendLinkAlarm(
+		userId: string,
 		link: { id: string; url: string; title: string | null; savedReason: string | null; remindAt: Date | null },
-		channel: Channel,
+		kakaoChannel: Channel | null,
 		now: Date,
 	) {
 		const base = process.env.FRONTEND_URL ?? 'http://localhost:3000';
-		const message = buildLinkAlarmMessage(link.title || new URL(link.url).hostname, link.savedReason);
+		const goUrl = `${base}/api/links/${link.id}/go`;
+		const title = link.title || new URL(link.url).hostname;
 
-		await this.sendKakao(channel, message, now, [
-			{ title: '링크 바로가기', url: `${base}/api/links/${link.id}/go` },
-			{ title: 'Reelink에서 보기', url: `${base}/feed` },
-		]);
+		const { sent, failed } = await this.notify(userId, now, {
+			kakaoChannel,
+			kakao: {
+				message: buildLinkAlarmMessage(title, link.savedReason),
+				buttons: [
+					{ title: '링크 바로가기', url: goUrl },
+					{ title: 'Reelink에서 보기', url: `${base}/feed` },
+				],
+			},
+			push: {
+				payload: {
+					title: `⏰ ${title}`,
+					body: link.savedReason ?? '지정한 알림 시간이에요',
+					url: goUrl,
+					tag: `link-${link.id}`,
+				},
+				options: { ttlSeconds: LINK_ALARM_GIVE_UP_MS / 1000, urgency: 'high' },
+			},
+		});
 
-		await this.db
-			.update(links)
-			.set({ remindAt: null })
-			.where(and(eq(links.id, link.id), eq(links.remindAt, link.remindAt!)));
+		if (sent || !failed) {
+			await this.db
+				.update(links)
+				.set({ remindAt: null })
+				.where(and(eq(links.id, link.id), eq(links.remindAt, link.remindAt!)));
+		}
+	}
+
+	/**
+	 * 켜진 채널 전부로 보낸다. 카카오는 kakaoChannel이 있을 때만, 웹 푸시는 사용자의 구독 전부로 보내고
+	 * 만료된 구독(404/410)은 지운다. 한 채널이 실패해도 나머지 채널은 계속 보낸다.
+	 * @param userId string
+	 * @param now Date
+	 * @param message { kakaoChannel, kakao: { message, buttons? }, push: { payload, options } }
+	 * @returns { sent: boolean; failed: boolean } sent는 한 채널이라도 보냈는지, failed는 일시적 실패(다시 시도할 만한)가 있었는지
+	 */
+	private async notify(
+		userId: string,
+		now: Date,
+		{
+			kakaoChannel,
+			kakao,
+			push,
+		}: {
+			kakaoChannel: Channel | null;
+			kakao: { message: string; buttons?: { title: string; url: string }[] };
+			push: { payload: WebPushPayload; options: Parameters<typeof sendWebPush>[2] };
+		},
+	): Promise<{ sent: boolean; failed: boolean }> {
+		let sent = false;
+		let failed = false;
+
+		if (kakaoChannel) {
+			try {
+				sent = await this.sendKakao(kakaoChannel, kakao.message, now, kakao.buttons);
+			} catch (err) {
+				failed = true;
+				this.logger.error(`Kakao send failed for user ${userId}: ${(err as Error).message}`);
+			}
+		}
+
+		const subscriptions = await this.db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+
+		for (const subscription of subscriptions) {
+			try {
+				if (await sendWebPush(subscription, push.payload, push.options)) {
+					sent = true;
+				} else {
+					await this.db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, subscription.id));
+				}
+			} catch (err) {
+				failed = true;
+				this.logger.error(`Web push failed for user ${userId}: ${(err as Error).message}`);
+			}
+		}
+
+		return { sent, failed };
+	}
+
+	/**
+	 * 사용자에게 웹 푸시 구독이 하나라도 있는지 보는 조건. users 테이블이 쿼리에 있어야 한다.
+	 */
+	private hasPushSubscription() {
+		return exists(
+			this.db
+				.select({ id: pushSubscriptions.id })
+				.from(pushSubscriptions)
+				.where(eq(pushSubscriptions.userId, users.id)),
+		);
 	}
 
 	/**
@@ -177,23 +280,19 @@ export class RemindersService {
 	}
 
 	/**
-	 * 알림이 켜져 있고(kakao, 채널 active), 등록 후 reminder_interval_days가 지난 안 본 링크가 있고,
+	 * 켜진 알림 채널(카카오 알림 on + 채널 active, 또는 웹 푸시 구독)이 있고, 등록 후 reminder_interval_days가 지난 안 본 링크가 있고,
 	 * 마지막 알림 후 KST 날짜 기준 3일이 지난 사용자에게 한 통씩 보낸다. 한 사용자가 실패해도 나머지는 계속 처리한다.
 	 * @param now Date
 	 */
 	async sendDailyReminders(now: Date) {
 		const nowParam = sql`${now.toISOString()}::timestamptz`;
 		const targets = await this.db
-			.select({ userId: users.id, channel: notificationChannels })
+			.select({ userId: users.id, notificationMethod: users.notificationMethod, channel: notificationChannels })
 			.from(users)
-			.innerJoin(
-				notificationChannels,
-				and(eq(notificationChannels.userId, users.id), eq(notificationChannels.provider, 'kakao')),
-			)
+			.leftJoin(notificationChannels, activeKakaoChannelOf(users.id))
 			.where(
 				and(
-					eq(users.notificationMethod, 'kakao'),
-					eq(notificationChannels.status, 'active'),
+					or(kakaoNotificationOn(), this.hasPushSubscription()),
 					or(
 						isNull(users.lastRemindedAt),
 						sql`(${users.lastRemindedAt} at time zone 'Asia/Seoul')::date <= (${nowParam} at time zone 'Asia/Seoul')::date - ${REMIND_EVERY_DAYS}::int`,
@@ -214,9 +313,9 @@ export class RemindersService {
 				),
 			);
 
-		await forEachInBatches(targets, CONCURRENCY, async ({ userId, channel }) => {
+		await forEachInBatches(targets, CONCURRENCY, async ({ userId, notificationMethod, channel }) => {
 			try {
-				await this.remindUser(userId, channel, now);
+				await this.remindUser(userId, notificationMethod === 'kakao' ? channel : null, now);
 			} catch (err) {
 				this.logger.error(`Reminder failed for user ${userId}: ${(err as Error).message}`);
 			}
@@ -224,12 +323,12 @@ export class RemindersService {
 	}
 
 	/**
-	 * 사용자의 안 본 링크 전체를 오래된 순으로 담아 보내고, 발송에 성공했을 때만 users.last_reminded_at을 채운다.
+	 * 사용자의 안 본 링크 전체를 오래된 순으로 담아 켜진 채널 전부로 보내고, 한 채널이라도 성공했을 때만 users.last_reminded_at을 채운다.
 	 * @param userId string
-	 * @param channel Channel
+	 * @param kakaoChannel Channel | null 카카오 알림이 켜져 있을 때만
 	 * @param now Date
 	 */
-	private async remindUser(userId: string, channel: Channel, now: Date) {
+	private async remindUser(userId: string, kakaoChannel: Channel | null, now: Date) {
 		const unviewed = await this.db
 			.select({ title: links.title, url: links.url })
 			.from(links)
@@ -237,7 +336,15 @@ export class RemindersService {
 			.orderBy(asc(links.createdAt));
 
 		const message = buildReminderMessage(unviewed.map((link) => link.title || new URL(link.url).hostname));
-		const sent = await this.sendKakao(channel, message, now);
+		const feedUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/feed`;
+		const { sent } = await this.notify(userId, now, {
+			kakaoChannel,
+			kakao: { message },
+			push: {
+				payload: { title: 'Reelink', body: message, url: feedUrl, tag: 'daily' },
+				options: { ttlSeconds: DAILY_PUSH_TTL_SECONDS, urgency: 'normal' },
+			},
+		});
 
 		if (sent) {
 			await this.db.update(users).set({ lastRemindedAt: now }).where(eq(users.id, userId));
