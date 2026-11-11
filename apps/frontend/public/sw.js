@@ -1,3 +1,7 @@
+self.addEventListener('install', () => self.skipWaiting());
+
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
 self.addEventListener('push', (event) => {
 	let payload = {};
 
@@ -18,7 +22,20 @@ self.addEventListener('push', (event) => {
 	);
 });
 
+async function openUrl(url) {
+	const target = new URL(url, self.location.origin);
+	const isAppPage = target.origin === self.location.origin && !target.pathname.startsWith('/api/');
+	const [client] = isAppPage ? await self.clients.matchAll({ type: 'window' }) : [];
+
+	if (client) {
+		await client.focus();
+		return client.navigate(target.href);
+	}
+
+	return self.clients.openWindow(target.href);
+}
+
 self.addEventListener('notificationclick', (event) => {
 	event.notification.close();
-	event.waitUntil(self.clients.openWindow(event.notification.data.url));
+	event.waitUntil(openUrl(event.notification.data.url));
 });
