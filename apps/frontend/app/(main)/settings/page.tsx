@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { KakaoBotConnect } from '@/features/connect-kakao-bot/ui/kakao-bot-connect';
 import { KakaoNotificationConnect } from '@/features/connect-kakao-notification/ui/kakao-notification-connect';
 import { ThemeSwitch } from '@/features/toggle-theme/ui/theme-switch';
+import { WebPushDescription, WebPushToggle } from '@/features/web-push-notification/ui/web-push-toggle';
 import { WithdrawButton } from '@/features/withdraw-account/ui/withdraw-button';
 
 import { GuestDataNotice } from '@/entities/user/ui/guest-data-notice';
@@ -28,6 +29,9 @@ export default function SettingsPage() {
 				<SettingsGroup label="알림">
 					<SettingsRow label="카카오톡 알림" description="안 본 링크가 쌓이면 3일에 한 번 카카오톡으로 알려드려요">
 						<KakaoNotificationConnect />
+					</SettingsRow>
+					<SettingsRow label="이 기기에서 알림 받기" description={<WebPushDescription />}>
+						<WebPushToggle />
 					</SettingsRow>
 				</SettingsGroup>
 
@@ -62,7 +66,15 @@ function SettingsGroup({ label, children }: { label: string; children: ReactNode
 	);
 }
 
-function SettingsRow({ label, description, children }: { label: string; description?: string; children: ReactNode }) {
+function SettingsRow({
+	label,
+	description,
+	children,
+}: {
+	label: string;
+	description?: ReactNode;
+	children: ReactNode;
+}) {
 	return (
 		<div className="flex min-h-16 items-center justify-between gap-4 px-5 py-3.5">
 			<div className="min-w-0">

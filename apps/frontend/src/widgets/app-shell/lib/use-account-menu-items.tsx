@@ -3,6 +3,11 @@
 import { useRouter } from 'next/navigation';
 
 import { IconBracketLeftArrowRightLine, IconGearLine, IconTrashcanLine } from '@karrotmarket/react-monochrome-icon';
+import { overlay } from 'overlay-kit';
+
+import { getBrowserSubscription } from '@/features/web-push-notification/lib/browser-push';
+import { readPushEnvironment } from '@/features/web-push-notification/lib/push-environment';
+import { LogoutPushDialog } from '@/features/web-push-notification/ui/logout-push-dialog';
 
 import { useLogout } from '@/entities/user/api/logout';
 
@@ -20,10 +25,21 @@ export function useAccountMenuItems(isGuest: boolean) {
 			: {
 					label: '로그아웃',
 					icon: <IconBracketLeftArrowRightLine />,
-					onClick: () => {
-						if (!logout.isPending) {
-							logout.mutate();
+					onClick: async () => {
+						if (logout.isPending) {
+							return;
 						}
+
+						const subscription = readPushEnvironment() === 'desktop' ? await getBrowserSubscription() : null;
+
+						if (!subscription) {
+							logout.mutate();
+							return;
+						}
+
+						overlay.open(({ isOpen, close }) => (
+							<LogoutPushDialog open={isOpen} onOpenChange={(open) => !open && close()} subscription={subscription} />
+						));
 					},
 				},
 	];

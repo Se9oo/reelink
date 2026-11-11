@@ -5,6 +5,8 @@ import { FloatingLinkButton } from '@/widgets/app-shell/ui/floating-link-button'
 import { MobileHeader } from '@/widgets/app-shell/ui/mobile-header';
 import { Sidebar } from '@/widgets/app-shell/ui/sidebar';
 
+import { PushSubscriptionSync } from '@/features/web-push-notification/ui/push-subscription-sync';
+
 export default function MainLayout({ children }: { children: ReactNode }) {
 	return (
 		<div className="flex h-dvh overflow-hidden">
@@ -15,6 +17,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
 				<BottomNavigation />
 			</div>
 			<FloatingLinkButton />
+			<PushSubscriptionSync />
 		</div>
 	);
 }

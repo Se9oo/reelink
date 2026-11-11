@@ -16,7 +16,7 @@ vi.mock('@/shared/api/client', () => ({
 
 function mockApi({ isGuest = false, status }: { isGuest?: boolean; status: LinkStatus }) {
 	const responses: Record<string, unknown> = {
-		'auth/me': { id: 'u', email: '', nickname: '세현', avatarUrl: null, isGuest },
+		'auth/me': { id: 'u', email: '', nickname: '테스터', avatarUrl: null, isGuest },
 		'notifications/kakao-bot/link-status': status,
 	};
 	vi.mocked(apiClient.get).mockImplementation(((url: string) => ({ json: async () => responses[url] })) as never);
