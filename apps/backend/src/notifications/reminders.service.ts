@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 
 import { and, type AnyColumn, asc, eq, exists, gt, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 
+import { frontendUrl } from '../common/frontend-url.js';
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { links, notificationChannels, pushSubscriptions, users } from '../db/schema.js';
 import { linkGoUrl } from '../links/link-go-url.js';
@@ -17,6 +18,8 @@ const REMIND_EVERY_DAYS = 3;
 const LINK_ALARM_GIVE_UP_MS = 60 * 60 * 1000;
 const DAILY_PUSH_TTL_SECONDS = 12 * 60 * 60;
 const KAKAO_SCOPE_NOT_AGREED = '-402';
+
+const FEED_PATH = '/feed';
 
 const CONCURRENCY = 10;
 
@@ -165,7 +168,6 @@ export class RemindersService implements OnModuleInit {
 		subscriptions: Subscription[],
 		now: Date,
 	) {
-		const base = process.env.FRONTEND_URL ?? 'http://localhost:3000';
 		const goUrl = linkGoUrl(link.id);
 		const title = link.title || new URL(link.url).hostname;
 
@@ -176,7 +178,7 @@ export class RemindersService implements OnModuleInit {
 				message: buildLinkAlarmMessage(title, link.savedReason),
 				buttons: [
 					{ title: '링크 바로가기', url: goUrl },
-					{ title: 'Reelink에서 보기', url: `${base}/feed` },
+					{ title: 'Reelink에서 보기', url: frontendUrl(FEED_PATH) },
 				],
 			},
 			push: {
@@ -372,7 +374,7 @@ export class RemindersService implements OnModuleInit {
 			.orderBy(asc(links.createdAt));
 
 		const message = buildReminderMessage(unviewed.map((link) => link.title || new URL(link.url).hostname));
-		const feedUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/feed`;
+		const feedUrl = frontendUrl(FEED_PATH);
 		const subscriptions = await this.db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
 		const { sent } = await this.notify(userId, now, {
 			kakaoChannel,
@@ -405,7 +407,7 @@ export class RemindersService implements OnModuleInit {
 		now: Date,
 		buttons?: { title: string; url: string }[],
 	): Promise<boolean> {
-		const feedUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/feed`;
+		const feedUrl = frontendUrl(FEED_PATH);
 		const send = (token: string) =>
 			buttons ? sendKakaoMemo(token, message, feedUrl, buttons) : sendKakaoMemo(token, message, feedUrl);
 		const accessToken = await this.getValidAccessToken(channel, now);

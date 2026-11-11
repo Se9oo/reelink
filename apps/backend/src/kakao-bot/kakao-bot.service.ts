@@ -3,6 +3,7 @@ import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs
 import { randomInt } from 'crypto';
 import { and, eq, ne } from 'drizzle-orm';
 
+import { frontendUrl } from '../common/frontend-url.js';
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { kakaoBotLinks, users } from '../db/schema.js';
 import { LinksService } from '../links/links.service.js';
@@ -18,7 +19,7 @@ const MAX_FAILS = 5;
 const MAX_URLS = 20;
 const CODE_PATTERN = /^\d{6}$/;
 
-const settingsUrl = () => `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/settings`;
+const settingsUrl = () => frontendUrl('/settings');
 
 const MESSAGES = {
 	linked: '연동됐어요! 이제 링크를 보내면 저장해 드려요',

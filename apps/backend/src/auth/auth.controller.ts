@@ -3,6 +3,8 @@ import { AuthGuard } from '@nestjs/passport';
 
 import type { Request, Response } from 'express';
 
+import { frontendUrl } from '../common/frontend-url.js';
+
 import { AuthService } from './auth.service.js';
 import { type JwtPayload, type OAuthProfile } from './auth.types.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
@@ -124,7 +126,7 @@ export class AuthController {
 		const user = await this.authService.findOrCreateUser(profile, guestUserId);
 		const tokens = await this.authService.issueTokens(user.id);
 		this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-		res.redirect(`${process.env.FRONTEND_URL ?? 'http://localhost:3000'}${LOGIN_REDIRECT_PATH}`);
+		res.redirect(frontendUrl(LOGIN_REDIRECT_PATH));
 	}
 
 	private setAuthCookies(res: Response, accessToken: string, refreshToken: string) {

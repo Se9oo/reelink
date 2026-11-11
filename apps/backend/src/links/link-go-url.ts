@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
+import { frontendUrl } from '../common/frontend-url.js';
+
 /**
  * 링크 id에 대한 서명. JWT_SECRET을 쓰되 용도 접두사를 붙여 JWT 서명과 섞이지 않게 한다.
  * @param linkId string
@@ -17,8 +19,7 @@ function signLinkId(linkId: string): string {
  * @returns string `${FRONTEND_URL}/api/links/:id/go?sig=...`
  */
 export function linkGoUrl(linkId: string): string {
-	const base = process.env.FRONTEND_URL ?? 'http://localhost:3000';
-	return `${base}/api/links/${linkId}/go?sig=${signLinkId(linkId)}`;
+	return frontendUrl(`/api/links/${linkId}/go?sig=${signLinkId(linkId)}`);
 }
 
 /**

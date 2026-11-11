@@ -20,6 +20,7 @@ import { randomUUID } from 'node:crypto';
 import { JwtPayload } from '../auth/auth.types.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { NotGuestGuard } from '../auth/guards/not-guest.guard.js';
+import { frontendUrl } from '../common/frontend-url.js';
 
 import { NotificationsService } from './notifications.service.js';
 
@@ -118,12 +119,9 @@ export class NotificationsController {
 			throw new BadRequestException('Invalid state');
 		}
 
-		const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
 		// 온보딩에서 시작했으면 결과와 상관없이 홈으로 돌아가 봇 연동 단계를 이어간다
 		const redirectTo = (result: 'connected' | 'cancelled' | 'failed') =>
-			res.redirect(
-				payload.onboarding ? `${frontendUrl}${ONBOARDING_BOT_PATH}` : `${frontendUrl}${SETTINGS_PATH}?kakao=${result}`,
-			);
+			res.redirect(frontendUrl(payload.onboarding ? ONBOARDING_BOT_PATH : `${SETTINGS_PATH}?kakao=${result}`));
 
 		if (!code) {
 			return redirectTo('cancelled');
