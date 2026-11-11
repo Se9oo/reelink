@@ -107,6 +107,7 @@ describe('AccountMenu', () => {
 			await vi.waitFor(() => expect(apiClient.post).toHaveBeenCalledWith('auth/logout'));
 			expect(apiClient.delete).not.toHaveBeenCalled();
 			expect(subscription.unsubscribe).not.toHaveBeenCalled();
+			await vi.waitFor(() => expect(screen.queryByText('이 기기로 알림이 계속 와요')).not.toBeInTheDocument());
 		});
 
 		test('알림 끄고 로그아웃을 누르면 구독을 지운 뒤 로그아웃한다', async () => {
@@ -122,6 +123,7 @@ describe('AccountMenu', () => {
 				json: { endpoint: subscription.endpoint },
 			});
 			expect(subscription.unsubscribe).toHaveBeenCalled();
+			await vi.waitFor(() => expect(screen.queryByText('이 기기로 알림이 계속 와요')).not.toBeInTheDocument());
 		});
 	});
 

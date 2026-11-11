@@ -1,11 +1,17 @@
 self.addEventListener('push', (event) => {
-	const { title, body, url, tag } = event.data.json();
+	let payload = {};
+
+	try {
+		payload = event.data?.json() ?? {};
+	} catch {}
+
+	const { title = 'Reelink', body = '새 알림이 있어요', url = '/feed', tag } = payload;
 
 	event.waitUntil(
 		self.registration.showNotification(title, {
 			body,
 			tag,
-			renotify: true,
+			renotify: Boolean(tag),
 			icon: '/web-app-manifest-192x192.png',
 			data: { url },
 		}),

@@ -29,13 +29,17 @@ export function LogoutPushDialog({ open, onOpenChange, subscription }: LogoutPus
 	const [failed, setFailed] = useState(false);
 	const busy = turningOff || logout.isPending;
 
+	function logoutAndClose() {
+		logout.mutate(undefined, { onSuccess: () => onOpenChange(false) });
+	}
+
 	async function turnOffAndLogout() {
 		setTurningOff(true);
 		setFailed(false);
 
 		try {
 			await turnOffWebPush(subscription);
-			logout.mutate();
+			logoutAndClose();
 		} catch {
 			setFailed(true);
 		} finally {
@@ -65,7 +69,7 @@ export function LogoutPushDialog({ open, onOpenChange, subscription }: LogoutPus
 								event.preventDefault();
 
 								if (!busy) {
-									logout.mutate();
+									logoutAndClose();
 								}
 							}}
 						>
