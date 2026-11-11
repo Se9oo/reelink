@@ -4,6 +4,7 @@ import {
 	Delete,
 	Get,
 	HttpCode,
+	NotFoundException,
 	Param,
 	ParseUUIDPipe,
 	Patch,
@@ -19,6 +20,7 @@ import type { Request, Response } from 'express';
 import { JwtPayload } from '../auth/auth.types.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
+import { isValidLinkGoSignature } from './link-go-url.js';
 import { LinksService } from './links.service.js';
 
 @Controller('links')
@@ -105,7 +107,11 @@ export class LinksController {
 	}
 
 	@Get(':id/go')
-	async goToLink(@Param('id', ParseUUIDPipe) linkId: string, @Res() res: Response) {
+	async goToLink(@Param('id', ParseUUIDPipe) linkId: string, @Query('sig') sig: unknown, @Res() res: Response) {
+		if (!isValidLinkGoSignature(linkId, sig)) {
+			throw new NotFoundException();
+		}
+
 		res.redirect(302, await this.linksService.getLinkUrl(linkId));
 	}
 

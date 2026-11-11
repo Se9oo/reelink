@@ -17,6 +17,14 @@ export interface WebPushPayload {
 }
 
 /**
+ * VAPID 키가 둘 다 설정돼 있는지. 없으면 보내봐야 매번 실패하므로 발송 자체를 건너뛴다.
+ * @returns boolean
+ */
+export function isWebPushConfigured(): boolean {
+	return !!process.env.VAPID_PUBLIC_KEY && !!process.env.VAPID_PRIVATE_KEY;
+}
+
+/**
  * 웹 푸시를 보낸다. 서비스 워커가 payload의 tag로 알림을 띄워 같은 tag 알림은 덮어쓴다.
  * @param subscription WebPushSubscription
  * @param payload WebPushPayload

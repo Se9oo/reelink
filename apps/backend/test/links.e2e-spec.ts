@@ -6,6 +6,7 @@ import request from 'supertest';
 
 import { DrizzleDb } from '../src/db/drizzle.module.js';
 import { folders, links, users } from '../src/db/schema.js';
+import { linkGoUrl } from '../src/links/link-go-url.js';
 import { LinksService } from '../src/links/links.service.js';
 
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
@@ -753,11 +754,14 @@ describe('LinksController (e2e)', () => {
 			await db.delete(users).where(eq(users.id, otherUser.id));
 		});
 
-		test('go는 로그인 없이 원래 URL로 302 리다이렉트하고, 삭제됐거나 없는 링크면 404를 반환한다.', async () => {
+		const goPath = (linkId: string) =>
+			new URL(linkGoUrl(linkId)).pathname.replace(/^\/api/, '') + new URL(linkGoUrl(linkId)).search;
+
+		test('go는 서버가 서명한 주소면 로그인 없이 원래 URL로 302 리다이렉트하고, 삭제됐거나 없는 링크면 404를 반환한다.', async () => {
 			const linkId = await createLink();
 
 			await request(app.getHttpServer())
-				.get(`/links/${linkId}/go`)
+				.get(goPath(linkId))
 				.expect(302)
 				.expect('Location', 'https://ticket.example.com/a?b=1');
 
@@ -766,8 +770,17 @@ describe('LinksController (e2e)', () => {
 				.set('Cookie', `access_token=${accessToken}`)
 				.expect(204);
 
+			await request(app.getHttpServer()).get(goPath(linkId)).expect(404);
+			await request(app.getHttpServer()).get(goPath(crypto.randomUUID())).expect(404);
+		});
+
+		test('go는 서명이 없거나 다른 링크의 서명이면 404를 반환한다(우리 도메인이 아무 URL로나 보내는 데 쓰이지 않게).', async () => {
+			const linkId = await createLink();
+			const otherSig = new URL(linkGoUrl(crypto.randomUUID())).searchParams.get('sig');
+
 			await request(app.getHttpServer()).get(`/links/${linkId}/go`).expect(404);
-			await request(app.getHttpServer()).get(`/links/${crypto.randomUUID()}/go`).expect(404);
+			await request(app.getHttpServer()).get(`/links/${linkId}/go?sig=${otherSig}`).expect(404);
+			await request(app.getHttpServer()).get(`/links/${linkId}/go?sig=abc`).expect(404);
 		});
 	});
 

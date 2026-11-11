@@ -19,7 +19,10 @@ vi.mock('../src/notifications/kakao-api.js', async (importOriginal) => ({
 	sendKakaoMemo: vi.fn(),
 }));
 
-vi.mock('../src/notifications/web-push-api.js', () => ({ sendWebPush: vi.fn() }));
+vi.mock('../src/notifications/web-push-api.js', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../src/notifications/web-push-api.js')>()),
+	sendWebPush: vi.fn(),
+}));
 
 const NOW = new Date('2001-01-10T00:00:00Z');
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 24 * 60 * 60 * 1000);
@@ -447,7 +450,7 @@ describe('RemindersService (e2e)', () => {
 				{
 					title: '⏰ 티켓팅',
 					body: '8시 오픈',
-					url: expect.stringMatching(/\/api\/links\/[0-9a-f-]+\/go$/),
+					url: expect.stringMatching(/\/api\/links\/[0-9a-f-]+\/go\?sig=[0-9a-f]{64}$/),
 					tag: expect.stringMatching(/^link-[0-9a-f-]+$/),
 				},
 				{ ttlSeconds: 60 * 60, urgency: 'high' },
@@ -493,7 +496,7 @@ describe('RemindersService (e2e)', () => {
 				'⏰ 지정한 알림 시간이에요\n티켓팅\n8시 오픈',
 				expect.stringMatching(/\/feed$/),
 				[
-					{ title: '링크 바로가기', url: expect.stringMatching(/\/api\/links\/[0-9a-f-]+\/go$/) },
+					{ title: '링크 바로가기', url: expect.stringMatching(/\/api\/links\/[0-9a-f-]+\/go\?sig=[0-9a-f]{64}$/) },
 					{ title: 'Reelink에서 보기', url: expect.stringMatching(/\/feed$/) },
 				],
 			);
@@ -532,13 +535,59 @@ describe('RemindersService (e2e)', () => {
 			expect(sendKakaoMemo).not.toHaveBeenCalled();
 		});
 
-		test('메시지 권한이 철회됐으면(-402) 채널을 revoke하고 remind_at을 비운다.', async () => {
-			await insertLink({ title: '티켓팅', remindAt: minutesAgo(1) });
+		test('메시지 권한이 철회됐으면(-402) 채널을 revoke하고, 같은 사용자의 남은 링크는 카카오로 다시 시도하지 않고 remind_at을 비운다.', async () => {
+			await insertLink({ title: '티켓팅', remindAt: minutesAgo(2) });
+			await insertLink({ title: '공연', remindAt: minutesAgo(1) });
 			vi.mocked(sendKakaoMemo).mockRejectedValue(new KakaoApiError(403, 'memo send', '-402'));
 
 			await reminders.sendLinkAlarms(NOW);
 
+			expect(sendKakaoMemo).toHaveBeenCalledTimes(1);
 			expect((await getChannel()).status).toBe('revoked');
+			expect(await getRemindAts()).toEqual({ 티켓팅: null, 공연: null });
+		});
+
+		test('만료된 구독(404/410)은 첫 링크에서 지우고, 같은 사용자의 남은 링크는 살아 있는 구독으로만 보낸다.', async () => {
+			await db.update(users).set({ notificationMethod: 'manual' }).where(eq(users.id, testUserId));
+			await db.insert(pushSubscriptions).values([
+				{ userId: testUserId, endpoint: 'https://fcm.googleapis.com/fcm/send/gone', p256dhKey: 'p', authKey: 'a' },
+				{ userId: testUserId, endpoint: 'https://fcm.googleapis.com/fcm/send/alive', p256dhKey: 'p', authKey: 'a' },
+			]);
+			await insertLink({ title: '티켓팅', remindAt: minutesAgo(2) });
+			await insertLink({ title: '공연', remindAt: minutesAgo(1) });
+			vi.mocked(sendWebPush).mockImplementation(async ({ endpoint }) => !endpoint.endsWith('gone'));
+
+			await reminders.sendLinkAlarms(NOW);
+
+			expect(sendWebPush).toHaveBeenCalledTimes(3);
+			const endpoints = await db
+				.select({ endpoint: pushSubscriptions.endpoint })
+				.from(pushSubscriptions)
+				.where(eq(pushSubscriptions.userId, testUserId));
+			expect(endpoints).toEqual([{ endpoint: 'https://fcm.googleapis.com/fcm/send/alive' }]);
+		});
+
+		test('VAPID 키가 설정되지 않았으면 웹 푸시는 건너뛰고, 다시 시도해도 소용없으니 remind_at을 비운다.', async () => {
+			const original = process.env.VAPID_PRIVATE_KEY;
+			await db.update(users).set({ notificationMethod: 'manual' }).where(eq(users.id, testUserId));
+			await db
+				.insert(pushSubscriptions)
+				.values({
+					userId: testUserId,
+					endpoint: 'https://fcm.googleapis.com/fcm/send/x',
+					p256dhKey: 'p',
+					authKey: 'a',
+				});
+			await insertLink({ title: '티켓팅', remindAt: minutesAgo(1) });
+
+			try {
+				process.env.VAPID_PRIVATE_KEY = '';
+				await reminders.sendLinkAlarms(NOW);
+			} finally {
+				process.env.VAPID_PRIVATE_KEY = original;
+			}
+
+			expect(sendWebPush).not.toHaveBeenCalled();
 			expect(await getRemindAts()).toEqual({ 티켓팅: null });
 		});
 	});
