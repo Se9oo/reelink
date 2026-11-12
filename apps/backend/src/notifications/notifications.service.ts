@@ -12,9 +12,9 @@ export class NotificationsService {
 	constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
 	/**
-	 * 사용자의 알림 방법과 카카오 알림 연동 상태를 반환한다.
+	 * 사용자의 알림 방법, 카카오 알림 연동 상태, 웹 푸시 구독 수를 반환한다.
 	 * @param userId string
-	 * @returns { notificationMethod: string; kakaoStatus: string | null } 카카오를 연동한 적이 없으면 kakaoStatus는 null
+	 * @returns { notificationMethod: string; kakaoStatus: string | null; pushSubscriptionCount: number } 카카오를 연동한 적이 없으면 kakaoStatus는 null, 구독 수는 모든 기기 합
 	 */
 	async getSettings(userId: string) {
 		const [user] = await this.db
@@ -25,10 +25,12 @@ export class NotificationsService {
 			.select({ status: notificationChannels.status })
 			.from(notificationChannels)
 			.where(and(eq(notificationChannels.userId, userId), eq(notificationChannels.provider, 'kakao')));
+		const pushSubscriptionCount = await this.db.$count(pushSubscriptions, eq(pushSubscriptions.userId, userId));
 
 		return {
 			notificationMethod: user.notificationMethod,
 			kakaoStatus: kakaoChannel?.status ?? null,
+			pushSubscriptionCount,
 		};
 	}
 
@@ -36,7 +38,7 @@ export class NotificationsService {
 	 * 알림 방법을 바꾼다. manual은 알림 끔, kakao는 카카오톡 알림 켬이다.
 	 * @param userId string
 	 * @param notificationMethod unknown 'manual' | 'kakao'만 허용
-	 * @returns { notificationMethod: string; kakaoStatus: string | null } 바뀐 설정
+	 * @returns { notificationMethod: string; kakaoStatus: string | null; pushSubscriptionCount: number } 바뀐 설정
 	 * @throws BadRequestException 지원하지 않는 값이거나, kakao로 바꾸는데 카카오 채널이 active가 아닌 경우
 	 */
 	async updateNotificationMethod(userId: string, notificationMethod: unknown) {

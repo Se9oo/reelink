@@ -336,7 +336,7 @@ export class LinksService {
 	}
 
 	/**
-	 * 링크별 알림 시각을 지정하거나 해제한다. 매분 도는 크론이 이 시각에 카카오로 보낸다.
+	 * 링크별 알림 시각을 지정하거나 해제한다. 매분 도는 크론이 이 시각에 켜진 채널(카카오, 웹 푸시)로 보낸다.
 	 * @param userId string
 	 * @param linkId string
 	 * @param remindAt unknown ISO 문자열(지금보다 미래)이면 지정, null이면 해제

@@ -162,7 +162,7 @@ describe('NotificationsController (e2e)', () => {
 			.get('/notifications/settings')
 			.set('Cookie', `access_token=${accessToken}`)
 			.expect(200);
-		expect(settings.body).toEqual({ notificationMethod: 'kakao', kakaoStatus: 'active' });
+		expect(settings.body).toEqual({ notificationMethod: 'kakao', kakaoStatus: 'active', pushSubscriptionCount: 0 });
 	});
 
 	test('revoked 상태에서 다시 연동하면 같은 행을 active로 갱신한다.', async () => {
@@ -190,7 +190,7 @@ describe('NotificationsController (e2e)', () => {
 		test('알림 방법을 manual로 바꾸면 바뀐 설정을 반환한다.', async () => {
 			const res = await patchSettings({ notificationMethod: 'manual' }).expect(200);
 
-			expect(res.body).toEqual({ notificationMethod: 'manual', kakaoStatus: 'active' });
+			expect(res.body).toEqual({ notificationMethod: 'manual', kakaoStatus: 'active', pushSubscriptionCount: 0 });
 		});
 
 		test('카카오 채널이 active면 kakao로 다시 바꿀 수 있다.', async () => {
@@ -304,6 +304,22 @@ describe('NotificationsController (e2e)', () => {
 			expect(await getRows()).toEqual([]);
 
 			await db.delete(users).where(eq(users.id, other.user.id));
+		});
+
+		test('알림 설정 조회에 내 웹 푸시 구독 수(다른 기기 포함)가 담긴다.', async () => {
+			const otherEndpoint = 'https://web.push.apple.com/other-device';
+			await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, otherEndpoint));
+			await save(body).expect(204);
+			await save({ ...body, endpoint: otherEndpoint }).expect(204);
+
+			const res = await request(app.getHttpServer())
+				.get('/notifications/settings')
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(200);
+
+			expect(res.body.pushSubscriptionCount).toBe(2);
+
+			await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, otherEndpoint));
 		});
 
 		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
