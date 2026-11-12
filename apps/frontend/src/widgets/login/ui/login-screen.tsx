@@ -23,10 +23,7 @@ export function LoginScreen() {
 	return (
 		<main className="flex flex-1 flex-col items-center justify-center px-6">
 			<div className="animate-fade-in-up flex w-full max-w-sm flex-col items-center gap-6 text-center">
-				<div
-					className="flex w-full flex-col items-center gap-12 rounded-3xl bg-[var(--seed-color-bg-layer-floating)] px-6
-						pt-12 pb-3"
-				>
+				<div className="flex w-full flex-col items-center gap-12 px-6 pt-12 pb-3">
 					<div className="flex flex-col items-center gap-3">
 						<ReelinkSymbol size={64} />
 						<h1 className="text-3xl text-[var(--seed-color-fg-neutral)]">
