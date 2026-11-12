@@ -99,22 +99,19 @@ export function LinkRow({
 			</div>
 
 			<div className="flex min-w-0 flex-1 flex-col gap-1.5 md:w-full md:gap-2 md:p-4 md:pb-3.5">
-				{folderPath && (
-					<div className="text-[11.5px] text-[var(--seed-color-fg-neutral-muted)]">{folderPath} 안에 있음</div>
-				)}
+				{folderPath && <div className="text-xs text-[var(--seed-color-fg-neutral-muted)]">{folderPath} 안에 있음</div>}
 				<a
 					href={link.url}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="line-clamp-2 text-[14.5px] leading-snug font-semibold text-[var(--seed-color-fg-neutral)]
-						after:absolute after:inset-0 md:line-clamp-1 md:text-base md:font-bold"
+					className="line-clamp-2 text-sm leading-snug font-semibold text-[var(--seed-color-fg-neutral)] after:absolute
+						after:inset-0 md:line-clamp-1 md:font-bold"
 				>
 					{link.title ?? host}
 				</a>
 				{link.savedReason ? (
 					<div
-						className="line-clamp-2 text-[12.5px] leading-normal text-[var(--seed-color-fg-neutral-subtle)]
-							md:line-clamp-3 md:text-[13px]"
+						className="line-clamp-2 text-xs leading-normal text-[var(--seed-color-fg-neutral-subtle)] md:line-clamp-3"
 					>
 						{link.savedReason}
 					</div>
@@ -123,23 +120,24 @@ export function LinkRow({
 						type="button"
 						onClick={onEdit}
 						aria-label="저장 이유 남기기"
-						className="relative z-10 cursor-pointer self-start truncate text-[12.5px]
+						className="relative z-10 cursor-pointer self-start truncate text-xs
 							text-[var(--seed-color-fg-neutral-muted)] underline decoration-dotted underline-offset-2"
 					>
 						+ 저장 이유 남기기
 					</button>
 				)}
-				<div
-					className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-[var(--seed-color-fg-neutral-muted)] md:pr-9"
-				>
+				<div className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--seed-color-fg-neutral-muted)] md:pr-9">
 					<span className="truncate">{host}</span>
 					<span aria-hidden="true" className="h-[3px] w-[3px] shrink-0 rounded-full bg-current opacity-60" />
 					<span className="shrink-0">{formatRelativeTime(link.createdAt)} 저장</span>
 				</div>
 				{link.remindAt && (
-					<div className="flex items-center gap-1 text-[11.5px] font-semibold text-[var(--seed-color-fg-brand)]">
-						<IconBellLine size={12} />
-						<span>{formatRemindAt(link.remindAt)} 알림</span>
+					<div
+						className="flex max-w-full items-center gap-1 self-start rounded-full bg-[var(--seed-color-bg-brand-weak)]
+							px-2 py-0.5 text-xs font-bold text-[var(--seed-color-fg-brand)]"
+					>
+						<IconBellLine size={12} className="shrink-0" />
+						<span className="truncate">{formatRemindAt(link.remindAt)} 알림</span>
 					</div>
 				)}
 			</div>
