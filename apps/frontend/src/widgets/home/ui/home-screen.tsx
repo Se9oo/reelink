@@ -23,8 +23,6 @@ import { meQueryOptions } from '@/entities/user/api/get-me';
 
 import { ROUTES } from '@/shared/config/routes';
 
-const THROWBACK_LABELS = { oneMonth: '한 달 전 오늘', threeMonths: '3개월 전 이맘때' } as const;
-
 export function HomeScreen() {
 	const { data: home } = useQuery(homeQueryOptions());
 	const { data: me } = useQuery(meQueryOptions());
@@ -35,7 +33,7 @@ export function HomeScreen() {
 		return null;
 	}
 
-	const { remind, week, recent, throwbacks } = home;
+	const { remind, week, recent } = home;
 	const isEmpty = recent.length === 0 && remind.unviewedCount === 0 && remind.revisitCount === 0;
 	const praise = praiseFor(week);
 
@@ -55,8 +53,8 @@ export function HomeScreen() {
 	return (
 		<div className="min-h-full overflow-x-hidden bg-[var(--app-bg-canvas)]">
 			<div
-				className="mx-auto flex w-full max-w-[920px] min-w-0 flex-col gap-7 px-4 pt-5 pb-24 md:px-8 md:pt-8 lg:px-10
-					lg:pb-16 xl:max-w-[1160px]"
+				className="mx-auto flex w-full max-w-[920px] min-w-0 flex-col gap-7 px-4 pt-5 pb-16 md:px-8 md:pt-8 md:pb-8
+					lg:px-10 lg:pb-16 xl:max-w-[1160px]"
 			>
 				<header>
 					<h1 className="text-xl font-extrabold text-balance break-keep text-[var(--seed-color-fg-neutral)] md:text-2xl">
@@ -135,21 +133,6 @@ export function HomeScreen() {
 								>
 									{recent.map((link) => (
 										<HomeLinkCard key={link.id} link={link} className="w-[176px] shrink-0 snap-start md:w-[200px]" />
-									))}
-								</div>
-							</Section>
-						)}
-
-						{throwbacks.length > 0 && (
-							<Section label="그때 저장한 링크">
-								<div className="grid gap-2.5 md:grid-cols-2">
-									{throwbacks.map(({ label, link }) => (
-										<div key={label} className="flex flex-col gap-1.5">
-											<span className="text-[12px] font-bold text-[var(--seed-color-fg-brand)]">
-												{THROWBACK_LABELS[label]}
-											</span>
-											<HomeLinkCard link={link} />
-										</div>
 									))}
 								</div>
 							</Section>

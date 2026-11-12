@@ -191,7 +191,7 @@ export class LinksService {
 
 	/**
 	 * 홈 화면용 요약을 한 번에 조회한다. 리마인드 요약(안 본/다시 볼 링크 수, 가장 오래된 안 본 링크, 미리보기 3장),
-	 * 이번 주·저번 주 기록(월요일 0시 KST 기준), 최근 저장 5개, 그때 저장한 링크(한 달 전·석 달 전)를 돌려준다.
+	 * 이번 주·저번 주 기록(월요일 0시 KST 기준), 최근 저장 5개를 돌려준다.
 	 * @param userId string
 	 * @returns HomeSummary
 	 */
@@ -207,21 +207,14 @@ export class LinksService {
 				.where(and(eq(links.userId, userId), gte(column, from), to ? lt(column, to) : undefined))
 				.then(([row]) => row.value);
 
-		const [feed, saved, viewed, cleaned, viewedLastWeek, recent, oneMonth, threeMonths] = await Promise.all([
+		const [feed, saved, viewed, cleaned, viewedLastWeek, recent] = await Promise.all([
 			this.getFeed({ userId }),
 			countIn(links.createdAt, thisWeekStart).then((value) => value),
 			countIn(links.viewedAt, thisWeekStart),
 			countIn(links.deletedAt, thisWeekStart),
 			countIn(links.viewedAt, lastWeekStart, thisWeekStart),
 			this.db.select().from(links).where(mine).orderBy(desc(links.createdAt)).limit(HOME_RECENT_LIMIT),
-			this.findThrowback(userId, 30, 3),
-			this.findThrowback(userId, 90, 7),
 		]);
-
-		const throwbacks = [
-			...(oneMonth ? [{ label: 'oneMonth' as const, link: oneMonth }] : []),
-			...(threeMonths ? [{ label: 'threeMonths' as const, link: threeMonths }] : []),
-		];
 
 		return {
 			remind: {
@@ -232,36 +225,7 @@ export class LinksService {
 			},
 			week: { saved, viewed, cleaned, viewedLastWeek },
 			recent,
-			throwbacks,
 		};
-	}
-
-	/**
-	 * 오늘 기준 정확히 daysAgo일 전에서 ±toleranceDays일 안에 저장한 링크 중 그 날짜에 가장 가까운 1개를 찾는다.
-	 * @param userId string
-	 * @param daysAgo number
-	 * @param toleranceDays number
-	 * @returns Link | null
-	 */
-	private async findThrowback(userId: string, daysAgo: number, toleranceDays: number): Promise<Link | null> {
-		const target = sql`now() - interval '${sql.raw(String(daysAgo))} days'`;
-		const tolerance = sql`interval '${sql.raw(String(toleranceDays))} days'`;
-
-		const [link] = await this.db
-			.select()
-			.from(links)
-			.where(
-				and(
-					eq(links.userId, userId),
-					isNull(links.deletedAt),
-					gte(links.createdAt, sql`${target} - ${tolerance}`),
-					lt(links.createdAt, sql`${target} + ${tolerance}`),
-				),
-			)
-			.orderBy(sql`abs(extract(epoch from (${links.createdAt} - ${target})))`)
-			.limit(1);
-
-		return link ?? null;
 	}
 
 	/**

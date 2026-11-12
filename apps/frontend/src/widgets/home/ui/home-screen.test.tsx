@@ -47,7 +47,6 @@ interface HomeData {
 	remind: { unviewedCount: number; revisitCount: number; oldestUnviewed: Link | null; previews: Link[] };
 	week: { saved: number; viewed: number; cleaned: number; viewedLastWeek: number };
 	recent: Link[];
-	throwbacks: { label: 'oneMonth' | 'threeMonths'; link: Link }[];
 }
 
 const oldLink = link({
@@ -65,16 +64,12 @@ const busyHome: HomeData = {
 		link({ id: 'r1', title: '방금 저장한 글', createdAt: new Date().toISOString() }),
 		link({ id: 'r2', title: '어제 저장한 글', url: 'https://yesterday.com' }),
 	],
-	throwbacks: [
-		{ label: 'oneMonth', link: link({ id: 't1', title: '한 달 전에 저장한 글', url: 'https://month.com' }) },
-	],
 };
 
 const emptyHome: HomeData = {
 	remind: { unviewedCount: 0, revisitCount: 0, oldestUnviewed: null, previews: [] },
 	week: { saved: 0, viewed: 0, cleaned: 0, viewedLastWeek: 0 },
 	recent: [],
-	throwbacks: [],
 };
 
 function mockApi(home: HomeData = busyHome) {
@@ -146,22 +141,6 @@ describe('HomeScreen', () => {
 
 		expect(within(section).getByText('방금 저장한 글')).toBeInTheDocument();
 		expect(within(section).getByText('어제 저장한 글')).toBeInTheDocument();
-	});
-
-	test('그때 저장한 링크는 시점 라벨과 제목을 보여준다', async () => {
-		renderHome();
-
-		expect(await screen.findByText('한 달 전 오늘')).toBeInTheDocument();
-		expect(screen.getByText('한 달 전에 저장한 글')).toBeInTheDocument();
-	});
-
-	test('그때 저장한 링크가 없으면 그 섹션을 보여주지 않는다', async () => {
-		mockApi({ ...busyHome, throwbacks: [] });
-		renderHome();
-
-		await screen.findByRole('region', { name: '이번 주 기록' });
-
-		expect(screen.queryByRole('region', { name: '그때 저장한 링크' })).not.toBeInTheDocument();
 	});
 
 	test('리마인드 시작을 누르면 리마인드 화면으로 이동한다', async () => {

@@ -26,5 +26,4 @@ export interface HomeSummary {
 	};
 	week: { saved: number; viewed: number; cleaned: number; viewedLastWeek: number };
 	recent: Link[];
-	throwbacks: { label: 'oneMonth' | 'threeMonths'; link: Link }[];
 }

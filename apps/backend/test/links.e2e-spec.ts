@@ -1010,12 +1010,12 @@ describe('LinksController (e2e)', () => {
 			return request(app.getHttpServer()).get('/links/home').set('Cookie', `access_token=${homeToken}`).expect(200);
 		}
 
-		test('리마인드 요약·이번 주 기록·최근 저장·그때 저장한 링크를 한 번에 돌려준다.', async () => {
+		test('리마인드 요약·이번 주 기록·최근 저장을 한 번에 돌려준다.', async () => {
 			const oldestUnviewed = await insert({ title: '가장 오래된 안 본 링크', createdAt: ago(200 * DAY) });
 			await insert({ createdAt: ago(150 * DAY) });
 			const revisit = await insert({ status: 'viewed', viewedAt: ago(14 * DAY), createdAt: ago(120 * DAY) });
-			const oneMonth = await insert({ status: 'viewed', viewedAt: new Date(), createdAt: ago(30 * DAY) });
-			const threeMonths = await insert({ status: 'viewed', viewedAt: new Date(), createdAt: ago(90 * DAY) });
+			await insert({ status: 'viewed', viewedAt: new Date(), createdAt: ago(30 * DAY) });
+			await insert({ status: 'viewed', viewedAt: new Date(), createdAt: ago(90 * DAY) });
 			await insert({ status: 'viewed', viewedAt: ago(7 * DAY), createdAt: ago(60 * DAY) });
 			await insert({ createdAt: ago(10 * DAY), deletedAt: new Date() });
 			const newest = await insert({ title: '방금 저장한 링크', createdAt: new Date() });
@@ -1033,11 +1033,7 @@ describe('LinksController (e2e)', () => {
 
 			expect(body.recent[0].id).toBe(newest.id);
 			expect(body.recent.length).toBeLessThanOrEqual(5);
-
-			expect(body.throwbacks).toEqual([
-				{ label: 'oneMonth', link: expect.objectContaining({ id: oneMonth.id }) },
-				{ label: 'threeMonths', link: expect.objectContaining({ id: threeMonths.id }) },
-			]);
+			expect(body).not.toHaveProperty('throwbacks');
 		});
 
 		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
