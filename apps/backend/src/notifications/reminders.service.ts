@@ -195,8 +195,8 @@ export class RemindersService implements OnModuleInit {
 			},
 			push: {
 				payload: {
-					title: `⏰ ${title}`,
-					body: link.savedReason || '지정한 알림 시간이에요',
+					title,
+					body: link.savedReason || '지정한 알림 시간이에요.',
 					url: goUrl,
 					tag: `link-${link.id}`,
 				},

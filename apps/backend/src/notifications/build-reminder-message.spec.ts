@@ -40,12 +40,12 @@ describe('buildReminderMessage', () => {
 describe('buildLinkAlarmMessage', () => {
 	test('제목과 저장 이유를 담는다', () => {
 		expect(buildLinkAlarmMessage('콘서트 티켓팅', '금요일 8시 오픈')).toBe(
-			'⏰ 지정한 알림 시간이에요\n콘서트 티켓팅\n금요일 8시 오픈',
+			'지정한 알림 시간이에요.\n콘서트 티켓팅\n금요일 8시 오픈',
 		);
 	});
 
 	test('저장 이유가 없으면 제목만 담는다', () => {
-		expect(buildLinkAlarmMessage('콘서트 티켓팅', null)).toBe('⏰ 지정한 알림 시간이에요\n콘서트 티켓팅');
+		expect(buildLinkAlarmMessage('콘서트 티켓팅', null)).toBe('지정한 알림 시간이에요.\n콘서트 티켓팅');
 	});
 
 	test('가장 긴 제목과 저장 이유를 넣어도 200자를 넘지 않는다', () => {

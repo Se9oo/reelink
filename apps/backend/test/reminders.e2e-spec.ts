@@ -499,7 +499,7 @@ describe('RemindersService (e2e)', () => {
 			expect(sendWebPush).toHaveBeenCalledWith(
 				expect.anything(),
 				{
-					title: '⏰ 티켓팅',
+					title: '티켓팅',
 					body: '8시 오픈',
 					url: expect.stringMatching(/\/api\/links\/[0-9a-f-]+\/go\?sig=[0-9a-f]{64}$/),
 					tag: expect.stringMatching(/^link-[0-9a-f-]+$/),
@@ -544,7 +544,7 @@ describe('RemindersService (e2e)', () => {
 			expect(sendKakaoMemo).toHaveBeenCalledTimes(1);
 			expect(sendKakaoMemo).toHaveBeenCalledWith(
 				'valid-access',
-				'⏰ 지정한 알림 시간이에요\n티켓팅\n8시 오픈',
+				'지정한 알림 시간이에요.\n티켓팅\n8시 오픈',
 				expect.stringMatching(/\/feed$/),
 				[
 					{ title: '링크 바로가기', url: expect.stringMatching(/\/api\/links\/[0-9a-f-]+\/go\?sig=[0-9a-f]{64}$/) },

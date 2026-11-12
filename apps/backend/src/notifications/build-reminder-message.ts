@@ -52,7 +52,7 @@ export function buildReminderMessage(titles: string[]): string {
  * @returns string
  */
 export function buildLinkAlarmMessage(title: string, savedReason: string | null): string {
-	const lines = ['⏰ 지정한 알림 시간이에요', truncate(title, MAX_ALARM_TITLE_LENGTH)];
+	const lines = ['지정한 알림 시간이에요.', truncate(title, MAX_ALARM_TITLE_LENGTH)];
 
 	if (savedReason) {
 		lines.push(truncate(savedReason, MAX_ALARM_REASON_LENGTH));
