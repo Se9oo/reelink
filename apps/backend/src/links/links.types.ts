@@ -24,6 +24,7 @@ export interface HomeSummary {
 		oldestUnviewed: Link | null;
 		previews: Link[];
 	};
-	week: { saved: number; viewed: number; cleaned: number; viewedLastWeek: number };
+	upcoming: Link[];
+	stale: Link[];
 	recent: Link[];
 }

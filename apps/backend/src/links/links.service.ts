@@ -1,7 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import { and, asc, count, desc, eq, gte, ilike, isNull, lt, or, type SQL, sql } from 'drizzle-orm';
-import { type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { and, asc, desc, eq, gt, ilike, isNull, lt, or, sql } from 'drizzle-orm';
 
 import { countGraphemes } from '../common/count-graphemes.js';
 import { isValidHttpUrl } from '../common/is-valid-http-url.js';
@@ -18,6 +17,9 @@ const REVISIT_AFTER_DAYS = 7;
 const REVISIT_LIMIT = 20;
 const HOME_PREVIEW_COUNT = 3;
 const HOME_RECENT_LIMIT = 5;
+const HOME_UPCOMING_LIMIT = 10;
+const HOME_STALE_AFTER_DAYS = 14;
+const HOME_STALE_LIMIT = 3;
 
 interface CreateLinkParams {
 	userId: string;
@@ -191,28 +193,23 @@ export class LinksService {
 
 	/**
 	 * 홈 화면용 요약을 한 번에 조회한다. 리마인드 요약(안 본/다시 볼 링크 수, 가장 오래된 안 본 링크, 미리보기 3장),
-	 * 이번 주·저번 주 기록(월요일 0시 KST 기준), 최근 저장 5개를 돌려준다.
+	 * 알림 예약한 링크(remindAt이 지금 이후, 가까운 순 10개), 오래 쌓인 링크(저장한 지 2주가 지난 안 본 링크, 오래된 순 3개),
+	 * 최근 저장 5개를 돌려준다.
 	 * @param userId string
 	 * @returns HomeSummary
 	 */
 	async getHome({ userId }: { userId: string }): Promise<HomeSummary> {
 		const mine = and(eq(links.userId, userId), isNull(links.deletedAt));
-		const thisWeekStart = sql`date_trunc('week', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul'`;
-		const lastWeekStart = sql`${thisWeekStart} - interval '7 days'`;
+		const staleBefore = Date.now() - HOME_STALE_AFTER_DAYS * 24 * 60 * 60 * 1000;
 
-		const countIn = (column: AnyPgColumn, from: SQL, to?: SQL) =>
-			this.db
-				.select({ value: count() })
-				.from(links)
-				.where(and(eq(links.userId, userId), gte(column, from), to ? lt(column, to) : undefined))
-				.then(([row]) => row.value);
-
-		const [feed, saved, viewed, cleaned, viewedLastWeek, recent] = await Promise.all([
+		const [feed, upcoming, recent] = await Promise.all([
 			this.getFeed({ userId }),
-			countIn(links.createdAt, thisWeekStart).then((value) => value),
-			countIn(links.viewedAt, thisWeekStart),
-			countIn(links.deletedAt, thisWeekStart),
-			countIn(links.viewedAt, lastWeekStart, thisWeekStart),
+			this.db
+				.select()
+				.from(links)
+				.where(and(mine, gt(links.remindAt, sql`now()`)))
+				.orderBy(asc(links.remindAt))
+				.limit(HOME_UPCOMING_LIMIT),
 			this.db.select().from(links).where(mine).orderBy(desc(links.createdAt)).limit(HOME_RECENT_LIMIT),
 		]);
 
@@ -223,7 +220,8 @@ export class LinksService {
 				oldestUnviewed: feed.unviewed[0] ?? null,
 				previews: [...feed.unviewed, ...feed.revisit].slice(0, HOME_PREVIEW_COUNT),
 			},
-			week: { saved, viewed, cleaned, viewedLastWeek },
+			upcoming,
+			stale: feed.unviewed.filter((link) => link.createdAt.getTime() < staleBefore).slice(0, HOME_STALE_LIMIT),
 			recent,
 		};
 	}

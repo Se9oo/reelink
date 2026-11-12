@@ -1010,26 +1010,38 @@ describe('LinksController (e2e)', () => {
 			return request(app.getHttpServer()).get('/links/home').set('Cookie', `access_token=${homeToken}`).expect(200);
 		}
 
-		test('리마인드 요약·이번 주 기록·최근 저장을 한 번에 돌려준다.', async () => {
+		test('리마인드 요약·알림 예약한 링크·오래 쌓인 링크·최근 저장을 한 번에 돌려준다.', async () => {
 			const oldestUnviewed = await insert({ title: '가장 오래된 안 본 링크', createdAt: ago(200 * DAY) });
-			await insert({ createdAt: ago(150 * DAY) });
+			const secondOldest = await insert({ createdAt: ago(150 * DAY) });
 			const revisit = await insert({ status: 'viewed', viewedAt: ago(14 * DAY), createdAt: ago(120 * DAY) });
 			await insert({ status: 'viewed', viewedAt: new Date(), createdAt: ago(30 * DAY) });
 			await insert({ status: 'viewed', viewedAt: new Date(), createdAt: ago(90 * DAY) });
 			await insert({ status: 'viewed', viewedAt: ago(7 * DAY), createdAt: ago(60 * DAY) });
 			await insert({ createdAt: ago(10 * DAY), deletedAt: new Date() });
+			await insert({ createdAt: ago(13 * DAY) });
+			const later = await insert({ remindAt: new Date(Date.now() + 2 * DAY), createdAt: ago(5 * DAY) });
+			const sooner = await insert({
+				status: 'viewed',
+				viewedAt: new Date(),
+				remindAt: new Date(Date.now() + DAY),
+				createdAt: ago(5 * DAY),
+			});
+			await insert({ remindAt: ago(DAY), createdAt: ago(5 * DAY) });
+			await insert({ remindAt: new Date(Date.now() + DAY), createdAt: ago(5 * DAY), deletedAt: new Date() });
 			const newest = await insert({ title: '방금 저장한 링크', createdAt: new Date() });
 
 			const { body } = await getHome();
-			const previewIds = body.remind.previews.map((link: { id: string }) => link.id);
+			const ids = (list: { id: string }[]) => list.map((link) => link.id);
 
-			expect(body.remind.unviewedCount).toBe(3);
+			expect(body.remind.unviewedCount).toBe(6);
 			expect(body.remind.revisitCount).toBe(2);
 			expect(body.remind.oldestUnviewed.id).toBe(oldestUnviewed.id);
-			expect(previewIds[0]).toBe(oldestUnviewed.id);
-			expect(previewIds).not.toContain(revisit.id);
+			expect(ids(body.remind.previews)[0]).toBe(oldestUnviewed.id);
+			expect(ids(body.remind.previews)).not.toContain(revisit.id);
 
-			expect(body.week).toEqual({ saved: 1, viewed: 2, cleaned: 1, viewedLastWeek: 1 });
+			expect(ids(body.stale)).toEqual([oldestUnviewed.id, secondOldest.id]);
+			expect(ids(body.upcoming)).toEqual([sooner.id, later.id]);
+			expect(body).not.toHaveProperty('week');
 
 			expect(body.recent[0].id).toBe(newest.id);
 			expect(body.recent.length).toBeLessThanOrEqual(5);
