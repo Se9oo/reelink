@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 	metadataBase: new URL(SITE_URL),
 	title: 'Reelink',
 	description: '나중에 볼 링크, 잊기 전에 다시 떠오르게',
-	appleWebApp: { title: 'Reelink' },
+	appleWebApp: { title: 'Reelink', statusBarStyle: 'black-translucent' },
 	openGraph: {
 		title: 'Reelink',
 		description: '나중에 볼 링크, 잊기 전에 다시 떠오르게',
@@ -35,6 +35,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
 	colorScheme: 'light dark',
+	viewportFit: 'cover',
 	themeColor: [
 		{ media: '(prefers-color-scheme: light)', color: THEME_COLORS.light },
 		{ media: '(prefers-color-scheme: dark)', color: THEME_COLORS.dark },
