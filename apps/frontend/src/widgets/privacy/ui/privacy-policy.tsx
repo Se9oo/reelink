@@ -14,7 +14,7 @@ export function PrivacyPolicy() {
 		>
 			<header
 				className="sticky top-0 -mx-4 mb-4 box-content flex h-14 items-center gap-1 bg-[var(--background)] px-2
-					pt-[env(safe-area-inset-top)]"
+					pt-[var(--app-safe-top)]"
 			>
 				<BackButton />
 				<h1 className="text-[17px] font-bold">개인정보 처리방침</h1>
