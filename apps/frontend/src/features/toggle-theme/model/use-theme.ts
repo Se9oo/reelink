@@ -2,6 +2,8 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 
+import { THEME_COLORS } from '@/shared/config/theme-color';
+
 const THEME_KEY = 'theme';
 
 export type Theme = 'light' | 'dark';
@@ -28,6 +30,17 @@ function subscribe(callback: () => void) {
 function applyTheme(theme: Theme) {
 	document.documentElement.dataset.seedColorMode = `${theme}-only`;
 	document.documentElement.dataset.seedUserColorScheme = theme;
+
+	let meta = document.querySelector<HTMLMetaElement>('meta#theme-color');
+
+	if (!meta) {
+		meta = document.createElement('meta');
+		meta.id = 'theme-color';
+		meta.name = 'theme-color';
+		document.head.prepend(meta);
+	}
+
+	meta.content = THEME_COLORS[theme];
 }
 
 export function useTheme() {

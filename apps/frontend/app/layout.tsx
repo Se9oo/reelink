@@ -7,6 +7,7 @@ import { OverlayProvider } from 'overlay-kit';
 import { SnackbarProvider } from 'seed-design/ui/snackbar';
 
 import { SITE_URL } from '@/shared/config/env';
+import { THEME_COLORS } from '@/shared/config/theme-color';
 
 import './globals.css';
 
@@ -35,8 +36,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
 	colorScheme: 'light dark',
 	themeColor: [
-		{ media: '(prefers-color-scheme: light)', color: '#f5f7fa' },
-		{ media: '(prefers-color-scheme: dark)', color: '#121316' },
+		{ media: '(prefers-color-scheme: light)', color: THEME_COLORS.light },
+		{ media: '(prefers-color-scheme: dark)', color: THEME_COLORS.dark },
 	],
 };
 
@@ -47,6 +48,11 @@ try {
   if (stored === 'light' || stored === 'dark') {
     root.dataset.seedColorMode = stored + '-only';
     root.dataset.seedUserColorScheme = stored;
+    var meta = document.createElement('meta');
+    meta.id = 'theme-color';
+    meta.name = 'theme-color';
+    meta.content = ${JSON.stringify(THEME_COLORS)}[stored];
+    document.head.prepend(meta);
   } else {
     var prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
     function apply() {
