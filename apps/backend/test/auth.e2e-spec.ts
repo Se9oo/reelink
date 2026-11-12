@@ -152,14 +152,14 @@ describe('AuthService / AuthController (e2e)', () => {
 
 	describe('deleteExpiredRefreshTokens', () => {
 		test('만료된 refresh token만 지운다', async () => {
-			await authService.issueTokens(context.testUserId);
+			const { refreshToken: expired } = await authService.issueTokens(context.testUserId);
 			const { refreshToken: alive } = await authService.issueTokens(context.testUserId);
 			const aliveHash = createHash('sha256').update(alive).digest('hex');
-			const now = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000);
+			const now = new Date();
 			await db
 				.update(refreshTokens)
-				.set({ expiresAt: new Date(now.getTime() + 60_000) })
-				.where(eq(refreshTokens.tokenHash, aliveHash));
+				.set({ expiresAt: new Date(now.getTime() - 60_000) })
+				.where(eq(refreshTokens.tokenHash, createHash('sha256').update(expired).digest('hex')));
 
 			await authService.deleteExpiredRefreshTokens(now);
 
