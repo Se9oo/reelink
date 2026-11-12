@@ -1,9 +1,12 @@
 'use client';
 
+import { IconBellLine } from '@karrotmarket/react-monochrome-icon';
+
 import { hostColor } from '@/entities/link/model/host-color';
 import { Link } from '@/entities/link/model/types';
 
 import { formatRelativeTime } from '@/shared/lib/format-relative-time';
+import { formatRemindAt } from '@/shared/lib/format-remind-at';
 
 interface FeedCardProps {
 	link: Link;
@@ -79,6 +82,15 @@ export function FeedCard({ link, position, total, folderPath, viewed, revisit, o
 			</div>
 
 			<div className="absolute inset-x-[18px] bottom-[22px] flex flex-col gap-2.5 pr-14 lg:pr-0">
+				{link.remindAt && (
+					<span
+						className="flex items-center gap-1 self-start rounded-full bg-[rgb(0_0_0/0.35)] px-2.5 py-1 text-xs
+							font-semibold backdrop-blur-sm"
+					>
+						<IconBellLine size={12} />
+						{formatRemindAt(link.remindAt)} 알림
+					</span>
+				)}
 				{link.savedReason ? (
 					<>
 						<p className="text-[19px] leading-snug font-bold text-balance">{link.savedReason}</p>

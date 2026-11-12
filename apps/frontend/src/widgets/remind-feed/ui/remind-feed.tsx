@@ -38,7 +38,7 @@ export function RemindFeed() {
 	const { data: folders = [] } = useQuery(foldersQueryOptions());
 	const queryClient = useQueryClient();
 	const viewLink = useViewLink();
-	const { onDelete, onCopy, onEdit, onMove } = useLinkActions();
+	const { onDelete, onCopy, onEdit, onMove, onRemind } = useLinkActions();
 	const router = useRouter();
 	const listRef = useRef<HTMLDivElement>(null);
 
@@ -222,6 +222,7 @@ export function RemindFeed() {
 									onDelete={() => remove(entry.link, entry.section)}
 									onEdit={() => onEdit(entry.link, { onUpdated: replace })}
 									onMove={() => onMove(entry.link, { onUpdated: replace })}
+									onRemind={() => onRemind(entry.link, { onUpdated: replace })}
 									onGoToFolder={() => router.push(folderDetailPath(entry.link.folderId))}
 								/>
 							</div>

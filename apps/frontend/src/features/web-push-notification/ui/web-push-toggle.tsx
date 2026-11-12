@@ -16,6 +16,7 @@ import {
 } from '@/features/web-push-notification/lib/browser-push';
 import { usePushEnvironment } from '@/features/web-push-notification/lib/push-environment';
 
+import { notificationKeys } from '@/entities/notification/api/notification-keys';
 import { meQueryOptions } from '@/entities/user/api/get-me';
 
 import { ROUTES } from '@/shared/config/routes';
@@ -47,7 +48,10 @@ export function WebPushToggle() {
 
 	const toggle = useMutation({
 		mutationFn: (on: boolean) => (on || !subscription ? turnOnWebPush() : turnOffWebPush(subscription)),
-		onSuccess: (next) => queryClient.setQueryData(browserPushSubscriptionKey, next),
+		onSuccess: (next) => {
+			queryClient.setQueryData(browserPushSubscriptionKey, next);
+			queryClient.invalidateQueries({ queryKey: notificationKeys.settings });
+		},
 		onError: (error) => {
 			const message =
 				error instanceof PushPermissionDeniedError

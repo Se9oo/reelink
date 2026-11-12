@@ -13,7 +13,7 @@ vi.mock('@/shared/api/client', () => ({
 	apiClient: { get: vi.fn(), patch: vi.fn() },
 }));
 
-function mockSettings(settings: NotificationSettings) {
+function mockSettings(settings: Omit<NotificationSettings, 'pushSubscriptionCount'>) {
 	vi.mocked(apiClient.get).mockImplementation(((url: string) => ({
 		json: async () => (url === 'notifications/kakao/connect' ? { url: 'https://kauth.kakao.com/x' } : settings),
 	})) as never);

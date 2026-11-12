@@ -16,7 +16,7 @@ vi.mock('@/shared/api/client', () => ({
 
 const AUTHORIZE_URL = 'https://kauth.kakao.com/oauth/authorize?scope=talk_message';
 
-function mockApi(settings: NotificationSettings, { isGuest = false } = {}) {
+function mockApi(settings: Omit<NotificationSettings, 'pushSubscriptionCount'>, { isGuest = false } = {}) {
 	const responses: Record<string, unknown> = {
 		'notifications/kakao/connect': { url: AUTHORIZE_URL },
 		'auth/me': { id: 'u', email: '', nickname: '게스트', avatarUrl: null, isGuest },

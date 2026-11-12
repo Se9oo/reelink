@@ -1,6 +1,7 @@
 'use client';
 
 import {
+	IconBellLine,
 	IconDot3HorizontalFill,
 	IconGlobeLine,
 	IconPencilLine,
@@ -14,6 +15,7 @@ import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-de
 import { Link } from '@/entities/link/model/types';
 
 import { formatRelativeTime } from '@/shared/lib/format-relative-time';
+import { formatRemindAt } from '@/shared/lib/format-remind-at';
 import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
 
 interface LinkRowProps {
@@ -23,6 +25,7 @@ interface LinkRowProps {
 	onEdit: () => void;
 	onDelete: () => void;
 	onTogglePin: () => void;
+	onRemind?: () => void;
 }
 
 function PinBadge({ className }: { className: string }) {
@@ -38,7 +41,7 @@ function PinBadge({ className }: { className: string }) {
 	);
 }
 
-export function LinkRow({ link, folderPath, onMove, onEdit, onDelete, onTogglePin }: LinkRowProps) {
+export function LinkRow({ link, folderPath, onMove, onEdit, onDelete, onTogglePin, onRemind }: LinkRowProps) {
 	const host = new URL(link.url).hostname;
 
 	return (
@@ -122,6 +125,12 @@ export function LinkRow({ link, folderPath, onMove, onEdit, onDelete, onTogglePi
 					<span aria-hidden="true" className="h-[3px] w-[3px] shrink-0 rounded-full bg-current opacity-60" />
 					<span className="shrink-0">{formatRelativeTime(link.createdAt)} 저장</span>
 				</div>
+				{link.remindAt && (
+					<div className="flex items-center gap-1 text-[11.5px] font-semibold text-[var(--seed-color-fg-brand)]">
+						<IconBellLine size={12} />
+						<span>{formatRemindAt(link.remindAt)} 알림</span>
+					</div>
+				)}
 			</div>
 
 			<MenuRoot size="small">
@@ -145,6 +154,7 @@ export function LinkRow({ link, folderPath, onMove, onEdit, onDelete, onTogglePi
 						)}
 						{onMove && <MenuItem label="폴더 이동" prefixIcon={<IconFolderLine />} onClick={onMove} />}
 						<MenuItem label="수정" prefixIcon={<IconPencilLine />} onClick={onEdit} />
+						{onRemind && <MenuItem label="알림 설정" prefixIcon={<IconBellLine />} onClick={onRemind} />}
 						<MenuItem label="삭제" prefixIcon={<IconTrashcanLine />} onClick={onDelete} />
 					</MenuGroup>
 				</MenuContent>

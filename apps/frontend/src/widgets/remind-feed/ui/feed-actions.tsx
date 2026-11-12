@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import {
 	IconArrowRightLine,
 	IconArrowUpRightLine,
+	IconBellLine,
 	IconDot3HorizontalFill,
 	IconPencilLine,
 	IconSquare2StackedLine,
@@ -27,10 +28,20 @@ interface FeedActionsProps {
 	onDelete: () => void;
 	onEdit: () => void;
 	onMove: () => void;
+	onRemind: () => void;
 	onGoToFolder: () => void;
 }
 
-export function FeedActions({ url, onOpen, onCopy, onDelete, onEdit, onMove, onGoToFolder }: FeedActionsProps) {
+export function FeedActions({
+	url,
+	onOpen,
+	onCopy,
+	onDelete,
+	onEdit,
+	onMove,
+	onRemind,
+	onGoToFolder,
+}: FeedActionsProps) {
 	const { open, onOpenChange, instant } = useBreakpointMenuState();
 
 	return (
@@ -59,6 +70,7 @@ export function FeedActions({ url, onOpen, onCopy, onDelete, onEdit, onMove, onG
 					<MenuGroup>
 						<MenuItem label="링크 수정" prefixIcon={<IconPencilLine />} onClick={onEdit} />
 						<MenuItem label="폴더 이동" prefixIcon={<IconFolderLine />} onClick={onMove} />
+						<MenuItem label="알림 설정" prefixIcon={<IconBellLine />} onClick={onRemind} />
 						<MenuItem label="폴더로 가기" prefixIcon={<IconArrowRightLine />} onClick={onGoToFolder} />
 					</MenuGroup>
 				</MenuContent>

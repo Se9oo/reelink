@@ -19,6 +19,7 @@ function link(overrides: Partial<Link> = {}): Link {
 		status: 'unviewed',
 		createdAt: '2026-10-16T00:00:00Z',
 		lastRemindedAt: null,
+		remindAt: null,
 		pinnedAt: null,
 		viewedAt: null,
 		deletedAt: null,
@@ -194,6 +195,31 @@ describe('LinkRow', () => {
 		await user.click(await screen.findByRole('menuitem', { name: '고정 해제' }));
 
 		expect(onTogglePin).toHaveBeenCalledTimes(1);
+	});
+
+	test('알림 시각이 있으면 언제 알려줄지 보여주고, 없으면 보여주지 않는다', () => {
+		const remindAt = new Date(2030, 0, 2, 10, 0).toISOString();
+		const { rerender } = render(
+			<LinkRow link={link({ remindAt })} onEdit={() => {}} onDelete={() => {}} onTogglePin={() => {}} />,
+		);
+
+		expect(screen.getByText('1월 2일 오전 10:00 알림')).toBeInTheDocument();
+
+		rerender(<LinkRow link={link()} onEdit={() => {}} onDelete={() => {}} onTogglePin={() => {}} />);
+
+		expect(screen.queryByText('알림', { exact: false })).not.toBeInTheDocument();
+	});
+
+	test('더보기 메뉴에서 알림 설정을 누르면 onRemind가 호출된다', async () => {
+		const user = userEvent.setup();
+		const onRemind = vi.fn();
+
+		render(<LinkRow link={link()} onEdit={() => {}} onDelete={() => {}} onTogglePin={() => {}} onRemind={onRemind} />);
+
+		await user.click(screen.getByRole('button', { name: '더보기' }));
+		await user.click(await screen.findByRole('menuitem', { name: '알림 설정' }));
+
+		expect(onRemind).toHaveBeenCalledTimes(1);
 	});
 
 	test('고정되지 않은 링크는 고정 표시가 없고, 메뉴에 상단 고정이 있다', async () => {

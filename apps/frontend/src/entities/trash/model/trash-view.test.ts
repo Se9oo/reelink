@@ -60,6 +60,7 @@ function trashLink(overrides: Partial<TrashLink> & Pick<TrashLink, 'id' | 'folde
 		status: 'unviewed',
 		createdAt: '2026-10-16T00:00:00Z',
 		lastRemindedAt: null,
+		remindAt: null,
 		pinnedAt: null,
 		viewedAt: null,
 		deletedAt: '2026-10-16T00:00:00Z',

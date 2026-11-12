@@ -43,6 +43,7 @@ function trashLink(overrides: Partial<TrashLink> & Pick<TrashLink, 'id'>): Trash
 		status: 'unviewed',
 		createdAt: deletedDaysAgo(40),
 		lastRemindedAt: null,
+		remindAt: null,
 		pinnedAt: null,
 		viewedAt: null,
 		deletedAt: deletedDaysAgo(0),

@@ -3,11 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OverlayProvider } from 'overlay-kit';
 import { SnackbarProvider } from 'seed-design/ui/snackbar';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { useLinkActions } from '@/features/link-actions/model/use-link-actions';
 
 import { Link } from '@/entities/link/model/types';
+import { NotificationSettings } from '@/entities/notification/model/types';
 
 import { apiClient } from '@/shared/api/client';
 
@@ -28,6 +29,7 @@ const link: Link = {
 	status: 'unviewed',
 	createdAt: '2026-10-16T00:00:00Z',
 	lastRemindedAt: null,
+	remindAt: null,
 	pinnedAt: null,
 	viewedAt: null,
 	deletedAt: null,
@@ -39,7 +41,7 @@ const folders = [
 ];
 
 function Harness({ target }: { target: Link }) {
-	const { onDelete, onMove, onEdit, onTogglePin } = useLinkActions();
+	const { onDelete, onMove, onEdit, onTogglePin, onRemind } = useLinkActions();
 
 	return (
 		<>
@@ -54,6 +56,9 @@ function Harness({ target }: { target: Link }) {
 			</button>
 			<button type="button" onClick={() => onTogglePin(target)}>
 				고정하기
+			</button>
+			<button type="button" onClick={() => onRemind(target)}>
+				알림 설정하기
 			</button>
 		</>
 	);
@@ -304,6 +309,111 @@ describe('useLinkActions', () => {
 			await user.click(screen.getByRole('button', { name: '고정하기' }));
 
 			expect(await screen.findByText('고정 상태를 바꾸지 못했어요')).toBeInTheDocument();
+		});
+	});
+
+	describe('링크 알림', () => {
+		const NOW = new Date(2030, 0, 1, 15, 20);
+		const NO_CHANNEL_MESSAGE = '알림을 받을 곳이 없어요';
+
+		function mockNotificationSettings(settings: NotificationSettings) {
+			vi.mocked(apiClient.get).mockImplementation(((url: string) => ({
+				json: async () => (url === 'notifications/settings' ? settings : folders),
+			})) as never);
+		}
+
+		async function openRemindDialog(user: ReturnType<typeof userEvent.setup>) {
+			await user.click(screen.getByRole('button', { name: '알림 설정하기' }));
+			await screen.findByText('알림 설정');
+		}
+
+		function expectRemindAtSent(remindAt: Date | null) {
+			return waitFor(() =>
+				expect(apiClient.patch).toHaveBeenCalledWith('links/l1/remind', {
+					json: { remindAt: remindAt?.toISOString() ?? null },
+				}),
+			);
+		}
+
+		beforeEach(() => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			vi.setSystemTime(NOW);
+			mockNotificationSettings({ notificationMethod: 'kakao', kakaoStatus: 'active', pushSubscriptionCount: 0 });
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		test('알림이 없는 링크는 다음 정각으로 열려 바로 저장할 수 있고, 해제 버튼은 없다', async () => {
+			const user = userEvent.setup();
+			renderHarness();
+
+			await openRemindDialog(user);
+
+			expect(screen.queryByRole('button', { name: '알림 해제' })).not.toBeInTheDocument();
+			await user.click(screen.getByRole('button', { name: '저장' }));
+
+			await expectRemindAtSent(new Date(2030, 0, 1, 16, 0));
+			expect(await screen.findByText('1월 1일 오후 4:00에 알려드릴게요')).toBeInTheDocument();
+		});
+
+		test('이미 알림이 있으면 그 시각으로 열리고 바꾸기 전에는 저장이 비활성이며, 해제하면 null을 보낸다', async () => {
+			const user = userEvent.setup();
+			renderHarness({ ...link, remindAt: new Date(2030, 0, 3, 10, 0).toISOString() });
+
+			await openRemindDialog(user);
+
+			expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+			await user.click(screen.getByRole('button', { name: '알림 해제' }));
+
+			await expectRemindAtSent(null);
+			expect(await screen.findByText('알림을 해제했어요')).toBeInTheDocument();
+		});
+
+		test('고른 시각이 이미 지났으면 저장할 수 없고 안내를 보여준다', async () => {
+			const user = userEvent.setup();
+			renderHarness({ ...link, remindAt: new Date(2030, 0, 1, 15, 0).toISOString() });
+
+			await openRemindDialog(user);
+
+			expect(screen.getByText('지금 이후 시각을 골라주세요')).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+		});
+
+		test('저장에 실패하면 실패 스낵바를 띄운다', async () => {
+			const user = userEvent.setup();
+			vi.mocked(apiClient.patch).mockImplementation((() => ({
+				json: async () => Promise.reject(new Error('fail')),
+			})) as never);
+			renderHarness();
+
+			await openRemindDialog(user);
+			await user.click(screen.getByRole('button', { name: '저장' }));
+
+			expect(await screen.findByText('알림 시각을 저장하지 못했어요')).toBeInTheDocument();
+		});
+
+		test('카카오톡 알림이 꺼져 있고 어느 기기에도 웹 푸시 구독이 없으면 설정으로 가는 안내를 보여준다', async () => {
+			const user = userEvent.setup();
+			mockNotificationSettings({ notificationMethod: 'manual', kakaoStatus: 'active', pushSubscriptionCount: 0 });
+			renderHarness();
+
+			await openRemindDialog(user);
+
+			expect(await screen.findByText(NO_CHANNEL_MESSAGE)).toBeInTheDocument();
+			expect(screen.getByRole('link', { name: '알림 켜러 가기' })).toHaveAttribute('href', '/settings');
+		});
+
+		test('카카오톡 알림이 꺼져 있어도 다른 기기에 웹 푸시 구독이 있으면 안내를 보여주지 않는다', async () => {
+			const user = userEvent.setup();
+			mockNotificationSettings({ notificationMethod: 'manual', kakaoStatus: null, pushSubscriptionCount: 1 });
+			renderHarness();
+
+			await openRemindDialog(user);
+			await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('notifications/settings'));
+
+			expect(screen.queryByText(NO_CHANNEL_MESSAGE)).not.toBeInTheDocument();
 		});
 	});
 });

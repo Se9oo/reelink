@@ -39,6 +39,7 @@ function link(overrides: Partial<Link> & Pick<Link, 'id'>): Link {
 		status: 'unviewed',
 		createdAt: '2026-05-01T00:00:00Z',
 		lastRemindedAt: null,
+		remindAt: null,
 		pinnedAt: null,
 		viewedAt: null,
 		deletedAt: null,
@@ -52,8 +53,12 @@ const feed = [
 ];
 
 function mockApi(unviewed: Link[], revisit: Link[] = []) {
+	const responses: Record<string, unknown> = {
+		folders,
+		'notifications/settings': { notificationMethod: 'kakao', kakaoStatus: 'active', pushSubscriptionCount: 0 },
+	};
 	vi.mocked(apiClient.get).mockImplementation(((url: string) => ({
-		json: async () => (url === 'folders' ? folders : { unviewed, revisit }),
+		json: async () => responses[url] ?? { unviewed, revisit },
 	})) as never);
 }
 
@@ -192,6 +197,21 @@ describe('RemindFeed', () => {
 
 		expect(await screen.findByText('이번 주말에 꼭 해보기')).toBeInTheDocument();
 		expect(screen.queryByText('배포 전에 따라 해보기')).not.toBeInTheDocument();
+	});
+
+	test('더보기에서 알림 시각을 저장하면 카드에 알림 표시가 바로 생긴다', async () => {
+		const user = userEvent.setup();
+		const remindAt = '2030-01-02T10:00';
+		mockApi(feed);
+		vi.mocked(apiClient.patch).mockReturnValue({
+			json: async () => ({ ...feed[0], remindAt: new Date(remindAt).toISOString() }),
+		} as never);
+		renderFeed();
+
+		await chooseMoreMenuItem(user, '알림 설정');
+		await user.click(await screen.findByRole('button', { name: '저장' }));
+
+		expect(await screen.findByText('1월 2일 오전 10:00 알림')).toBeInTheDocument();
 	});
 
 	test('더보기에서 폴더로 가기를 누르면 그 링크가 있는 폴더로 이동한다', async () => {

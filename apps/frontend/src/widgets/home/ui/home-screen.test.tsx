@@ -35,6 +35,7 @@ function link(overrides: Partial<Link> & Pick<Link, 'id'>): Link {
 		status: 'unviewed',
 		createdAt: '2026-05-01T00:00:00Z',
 		lastRemindedAt: null,
+		remindAt: null,
 		pinnedAt: null,
 		deletedAt: null,
 		viewedAt: null,
