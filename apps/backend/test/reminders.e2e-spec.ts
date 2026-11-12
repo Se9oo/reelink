@@ -241,6 +241,32 @@ describe('RemindersService (e2e)', () => {
 		expect(await getLastRemindedAt()).toEqual(NOW);
 	});
 
+	test('09:00 묶음 알림과 매분 링크 알림이 같은 채널을 동시에 갱신해도 갱신은 한 번만 나가고 연동이 끊기지 않는다.', async () => {
+		await db.update(notificationChannels).set({ tokenExpiresAt: NOW }).where(eq(notificationChannels.id, channelId));
+		vi.mocked(refreshKakaoToken).mockImplementation(async (refreshToken) => {
+			if (refreshToken !== 'valid-refresh') {
+				throw invalidGrant();
+			}
+			if (vi.mocked(refreshKakaoToken).mock.calls.length > 1) {
+				throw invalidGrant();
+			}
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return {
+				accessToken: 'new-access',
+				refreshToken: 'rotated-refresh',
+				expiresIn: 21599,
+				refreshTokenExpiresIn: 5183999,
+			};
+		});
+		await insertLink({ remindAt: NOW });
+
+		await Promise.all([reminders.sendDailyReminders(NOW), reminders.sendLinkAlarms(NOW)]);
+
+		expect(refreshKakaoToken).toHaveBeenCalledTimes(1);
+		expect((await getChannel()).status).toBe('active');
+		expect(sendKakaoMemo).toHaveBeenCalledTimes(2);
+	});
+
 	test('서버 설정 오류(invalid_client)로 갱신이 실패하면 revoked로 바꾸지 않는다.', async () => {
 		await db.update(notificationChannels).set({ tokenExpiresAt: NOW }).where(eq(notificationChannels.id, channelId));
 		mockRefresh(new KakaoApiError(401, 'token refresh', 'invalid_client'));

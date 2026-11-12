@@ -16,8 +16,12 @@ function urlBase64ToUint8Array(base64: string) {
 }
 
 export async function getBrowserSubscription() {
-	const registration = await navigator.serviceWorker.getRegistration();
-	return (await registration?.pushManager.getSubscription()) ?? null;
+	try {
+		const registration = await navigator.serviceWorker.getRegistration();
+		return (await registration?.pushManager.getSubscription()) ?? null;
+	} catch {
+		return null;
+	}
 }
 
 export async function turnOnWebPush() {
@@ -43,8 +47,8 @@ export async function turnOnWebPush() {
 }
 
 export async function turnOffWebPush(subscription: PushSubscription) {
-	await deletePushSubscription(subscription.endpoint);
 	await subscription.unsubscribe();
+	await deletePushSubscription(subscription.endpoint).catch(() => {});
 	return null;
 }
 

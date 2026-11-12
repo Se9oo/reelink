@@ -46,6 +46,17 @@ function kakaoNotificationOn() {
 }
 
 /**
+ * access token이 만료까지 10분 넘게 남았는지.
+ * @param channel Channel
+ * @param now Date
+ * @returns boolean
+ */
+function hasFreshAccessToken(channel: Channel, now: Date): channel is Channel & { accessToken: string } {
+	const expiresAt = channel.tokenExpiresAt?.getTime() ?? 0;
+	return !!channel.accessToken && expiresAt - now.getTime() > TOKEN_REFRESH_MARGIN_MS;
+}
+
+/**
  * items를 size개씩 묶어, 묶음 안에서는 동시에, 묶음끼리는 차례로 fn을 실행한다.
  * @param items T[]
  * @param size number 동시에 실행할 개수
@@ -62,6 +73,7 @@ async function forEachInBatches<T>(items: T[], size: number, fn: (item: T) => Pr
 export class RemindersService implements OnModuleInit {
 	private readonly logger = new Logger(RemindersService.name);
 	private linkAlarmsRunning = false;
+	private readonly refreshing = new Map<string, Promise<string | null>>();
 
 	constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
@@ -184,7 +196,7 @@ export class RemindersService implements OnModuleInit {
 			push: {
 				payload: {
 					title: `⏰ ${title}`,
-					body: link.savedReason ?? '지정한 알림 시간이에요',
+					body: link.savedReason || '지정한 알림 시간이에요',
 					url: goUrl,
 					tag: `link-${link.id}`,
 				},
@@ -441,19 +453,44 @@ export class RemindersService implements OnModuleInit {
 
 	/**
 	 * 쓸 수 있는 access token을 반환한다. 만료까지 10분이 안 남았거나 force면 refresh token으로 갱신해 저장하고 channel 객체도 바꾼다.
+	 * 매분 크론과 09:00 작업이 같은 채널을 동시에 갱신하면 카카오가 바꿔준 refresh token을 한쪽이 옛 값으로 덮거나 invalid_grant로 오탐 revoke할 수 있어서,
+	 * 같은 채널의 갱신은 한 번에 하나만 돌리고 뒤에 온 쪽은 그 결과를 기다려 쓴다.
 	 * @param channel Channel
 	 * @param now Date
 	 * @param force boolean 만료 시각과 상관없이 갱신
-	 * @returns string | null 갱신이 invalid_grant(refresh token 무효)로 거부되면 채널을 revoked로 바꾸고 null. 단 그 사이 DB의 refresh token이 바뀌었으면(다른 작업이 갱신) 새 값으로 다시 시도한다
+	 * @returns string | null 갱신이 invalid_grant(refresh token 무효)로 거부되면 채널을 revoked로 바꾸고 null
 	 * @throws KakaoApiError invalid_client 같은 서버 설정 오류나 5xx — revoke하지 않는다
 	 */
 	private async getValidAccessToken(channel: Channel, now: Date, { force = false } = {}): Promise<string | null> {
-		const expiresAt = channel.tokenExpiresAt?.getTime() ?? 0;
-
-		if (!force && channel.accessToken && expiresAt - now.getTime() > TOKEN_REFRESH_MARGIN_MS) {
+		if (!force && hasFreshAccessToken(channel, now)) {
 			return channel.accessToken;
 		}
 
+		// ponytail: 프로세스 메모리 잠금이라 백엔드가 한 컨테이너일 때만 맞다, 여러 대로 늘리면 pg advisory lock으로
+		const inFlight = this.refreshing.get(channel.id);
+
+		if (inFlight) {
+			const accessToken = await inFlight;
+			const [latest] = await this.db.select().from(notificationChannels).where(eq(notificationChannels.id, channel.id));
+			Object.assign(channel, latest);
+			return accessToken;
+		}
+
+		const refresh = this.refreshAccessToken(channel, now, force).finally(() => this.refreshing.delete(channel.id));
+		this.refreshing.set(channel.id, refresh);
+
+		return await refresh;
+	}
+
+	/**
+	 * refresh token으로 access token을 갱신해 저장한다. getValidAccessToken의 잠금 안에서만 부른다.
+	 * @param channel Channel
+	 * @param now Date
+	 * @param force boolean
+	 * @returns string | null invalid_grant면 revoke하고 null. 단 그 사이 DB의 refresh token이 바뀌었으면(다른 작업이 갱신) 새 값으로 이어간다
+	 * @throws KakaoApiError invalid_client 같은 서버 설정 오류나 5xx
+	 */
+	private async refreshAccessToken(channel: Channel, now: Date, force: boolean): Promise<string | null> {
 		if (!channel.refreshToken) {
 			await this.revoke(channel);
 			return null;
@@ -475,7 +512,7 @@ export class RemindersService implements OnModuleInit {
 			return tokens.accessToken;
 		} catch (err) {
 			if (err instanceof KakaoApiError && err.error === 'invalid_grant') {
-				// 매분 크론과 09:00 갱신이 같은 채널을 동시에 다룰 수 있다 — 다른 작업이 먼저 갱신해 refresh token이 바뀌었으면 끊지 않고 그걸로 이어간다
+				// 이 작업이 채널을 읽은 뒤 다른 작업이 갱신을 끝냈으면 refresh token이 바뀌어 있다 — 끊지 않고 그걸로 이어간다
 				const [latest] = await this.db
 					.select()
 					.from(notificationChannels)
@@ -483,7 +520,9 @@ export class RemindersService implements OnModuleInit {
 
 				if (latest?.refreshToken && latest.refreshToken !== channel.refreshToken) {
 					Object.assign(channel, latest);
-					return await this.getValidAccessToken(channel, now, { force });
+					return !force && hasFreshAccessToken(channel, now)
+						? channel.accessToken
+						: await this.refreshAccessToken(channel, now, force);
 				}
 
 				await this.revoke(channel);

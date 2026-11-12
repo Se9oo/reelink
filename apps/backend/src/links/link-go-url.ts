@@ -4,13 +4,18 @@ import { frontendUrl } from '../common/frontend-url.js';
 
 /**
  * 링크 id에 대한 서명. JWT_SECRET을 쓰되 용도 접두사를 붙여 JWT 서명과 섞이지 않게 한다.
+ * 키가 비어 있으면 누구나 서명을 만들 수 있어 오픈 리다이렉트가 다시 열리므로 서명하지 않고 던진다.
  * @param linkId string
  * @returns string 64자 hex
  */
 function signLinkId(linkId: string): string {
-	return createHmac('sha256', process.env.JWT_SECRET ?? '')
-		.update(`link-go:${linkId}`)
-		.digest('hex');
+	const secret = process.env.JWT_SECRET;
+
+	if (!secret) {
+		throw new Error('JWT_SECRET is not set — refusing to sign go links with an empty key');
+	}
+
+	return createHmac('sha256', secret).update(`link-go:${linkId}`).digest('hex');
 }
 
 /**

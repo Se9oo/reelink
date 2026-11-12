@@ -167,4 +167,44 @@ describe('WebPushToggle', () => {
 		});
 		expect(existing.unsubscribe).toHaveBeenCalled();
 	});
+
+	test('끌 때 브라우저 구독 해지가 실패하면 서버 구독은 지우지 않고 토글을 켜진 채로 둔다.', async () => {
+		const existing = fakeSubscription();
+		existing.unsubscribe.mockRejectedValue(new Error('unsubscribe failed'));
+		stubBrowser({ existing });
+		renderToggle();
+
+		const toggle = await screen.findByRole('switch', { name: '이 기기에서 알림 받기' });
+		await vi.waitFor(() => expect(toggle).toBeChecked());
+		await userEvent.click(toggle);
+
+		expect(await screen.findByText('알림 설정을 바꾸지 못했어요. 다시 시도해주세요')).toBeInTheDocument();
+		expect(apiClient.delete).not.toHaveBeenCalled();
+		expect(toggle).toBeChecked();
+	});
+
+	test('끌 때 서버 삭제가 실패해도 브라우저 구독은 해지됐으니 토글을 끈다.', async () => {
+		const existing = fakeSubscription();
+		stubBrowser({ existing });
+		vi.mocked(apiClient.delete).mockRejectedValue(new Error('500'));
+		renderToggle();
+
+		const toggle = await screen.findByRole('switch', { name: '이 기기에서 알림 받기' });
+		await vi.waitFor(() => expect(toggle).toBeChecked());
+		await userEvent.click(toggle);
+
+		await vi.waitFor(() => expect(toggle).not.toBeChecked());
+		expect(existing.unsubscribe).toHaveBeenCalled();
+	});
+
+	test('브라우저 구독을 확인하지 못하면 구독이 없는 것으로 보고 토글을 켤 수 있게 둔다.', async () => {
+		const { registration } = stubBrowser();
+		registration.pushManager.getSubscription.mockRejectedValue(new Error('broken registration'));
+		renderToggle();
+
+		const toggle = await screen.findByRole('switch', { name: '이 기기에서 알림 받기' });
+
+		await vi.waitFor(() => expect(toggle).toBeEnabled());
+		expect(toggle).not.toBeChecked();
+	});
 });
