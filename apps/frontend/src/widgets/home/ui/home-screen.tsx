@@ -5,37 +5,47 @@ import type { ReactNode } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { IconBookmarkFill, IconLightbulbDot5Fill, IconSparkle2Fill } from '@karrotmarket/react-monochrome-icon';
+import {
+	IconBellLine,
+	IconBookmarkFill,
+	IconCheckmarkCircleLine,
+	IconLightbulbDot5Fill,
+} from '@karrotmarket/react-monochrome-icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { overlay } from 'overlay-kit';
 import { ActionButton } from 'seed-design/ui/action-button';
 
-import { greetingFor, praiseFor, subGreetingFor } from '@/widgets/home/model/home-copy';
+import { greetingFor, subGreetingFor } from '@/widgets/home/model/home-copy';
 import { HomeLinkCard } from '@/widgets/home/ui/home-link-card';
 import { RemindPreviewStack } from '@/widgets/home/ui/remind-preview-stack';
+import { StaleLinkCard } from '@/widgets/home/ui/stale-link-card';
 
 import { KakaoRevokedBanner } from '@/features/connect-kakao-notification/ui/kakao-revoked-banner';
 import { KakaoOnboardingCard } from '@/features/kakao-onboarding/ui/kakao-onboarding-card';
+import { useLinkActions } from '@/features/link-actions/model/use-link-actions';
 import { RegisterLinkModal } from '@/features/register-link/ui/register-link-modal';
 
 import { homeKeys, homeQueryOptions } from '@/entities/link/api/get-home';
+import { useViewLink } from '@/entities/link/api/view-link';
 import { meQueryOptions } from '@/entities/user/api/get-me';
 
 import { ROUTES } from '@/shared/config/routes';
+import { formatRemindAt } from '@/shared/lib/format-remind-at';
 
 export function HomeScreen() {
 	const { data: home } = useQuery(homeQueryOptions());
 	const { data: me } = useQuery(meQueryOptions());
 	const queryClient = useQueryClient();
 	const router = useRouter();
+	const viewLink = useViewLink();
+	const { onDelete } = useLinkActions();
 
 	if (!home || !me) {
 		return null;
 	}
 
-	const { remind, week, recent } = home;
+	const { remind, upcoming, stale, recent } = home;
 	const isEmpty = recent.length === 0 && remind.unviewedCount === 0 && remind.revisitCount === 0;
-	const praise = praiseFor(week);
 
 	function openRegisterModal() {
 		overlay.open(({ isOpen, close }) => (
@@ -111,30 +121,74 @@ export function HomeScreen() {
 							<RemindPreviewStack links={remind.previews} />
 						</section>
 
-						<Section label="이번 주 기록">
-							<div className="grid grid-cols-3 gap-2.5">
-								<Stat label="저장" value={week.saved} />
-								<Stat label="봤어요" value={week.viewed} />
-								<Stat label="정리했어요" value={week.cleaned} />
-							</div>
-							{praise && (
-								<p className="flex items-center gap-2 text-[13px] text-[var(--seed-color-fg-neutral-subtle)]">
-									<IconSparkle2Fill size={16} className="shrink-0 text-[var(--seed-color-fg-brand)]" />
-									{praise}
-								</p>
+						<Section
+							label="오래 쌓인 링크"
+							description={stale.length > 0 ? '아직 볼 건지, 이제 보내줄 건지 골라주세요' : undefined}
+						>
+							{stale.length > 0 ? (
+								<ul className="grid gap-2.5 md:grid-cols-3">
+									{stale.map((link) => (
+										<StaleLinkCard
+											key={link.id}
+											link={link}
+											onView={() => viewLink.mutate(link.id)}
+											onDelete={() => onDelete(link)}
+										/>
+									))}
+								</ul>
+							) : (
+								<SectionPlaceholder
+									icon={<IconCheckmarkCircleLine size={26} />}
+									title="오래 쌓인 링크가 없어요"
+									description="2주 넘게 안 본 링크가 생기면 여기서 정리할 수 있어요"
+								/>
+							)}
+						</Section>
+
+						<Section label="알림 예약한 링크">
+							{upcoming.length > 0 ? (
+								<CardScroller>
+									{upcoming.map((link) => (
+										<HomeLinkCard
+											key={link.id}
+											link={link}
+											className={CARD_CLASS}
+											caption={
+												link.remindAt && (
+													<div className="flex flex-col gap-1.5">
+														<p className="truncate text-xs text-[var(--seed-color-fg-neutral-muted)]">
+															{new URL(link.url).hostname}
+														</p>
+														<p
+															className="flex max-w-full items-center gap-1 self-start rounded-full
+																bg-[var(--seed-color-bg-brand-weak)] px-2 py-0.5 text-xs font-bold
+																text-[var(--seed-color-fg-brand)]"
+														>
+															<IconBellLine size={12} className="shrink-0" />
+															<span className="truncate">{formatRemindAt(link.remindAt)}</span>
+														</p>
+													</div>
+												)
+											}
+										/>
+									))}
+								</CardScroller>
+							) : (
+								<SectionPlaceholder
+									icon={<IconBellLine size={26} />}
+									title="예약한 알림이 없어요"
+									description="링크 더보기에서 알림 시각을 정하면 여기에 보여요"
+								/>
 							)}
 						</Section>
 
 						{recent.length > 0 && (
 							<Section label="최근 저장한 링크">
-								<div
-									className="-mx-4 flex snap-x [scrollbar-color:transparent_transparent] gap-2.5 overflow-x-auto px-4
-										pb-1 hover:[scrollbar-color:var(--app-scrollbar-hover)_transparent] md:mx-0 md:px-0"
-								>
+								<CardScroller>
 									{recent.map((link) => (
-										<HomeLinkCard key={link.id} link={link} className="w-[176px] shrink-0 snap-start md:w-[200px]" />
+										<HomeLinkCard key={link.id} link={link} className={CARD_CLASS} />
 									))}
-								</div>
+								</CardScroller>
 							</Section>
 						)}
 					</>
@@ -144,30 +198,49 @@ export function HomeScreen() {
 	);
 }
 
+const CARD_CLASS = 'w-[224px] shrink-0 snap-start';
+
+function CardScroller({ children }: { children: ReactNode }) {
+	return (
+		<div
+			className="-mx-4 flex snap-x [scrollbar-color:transparent_transparent] gap-2.5 overflow-x-auto px-4 pb-1
+				hover:[scrollbar-color:var(--app-scrollbar-hover)_transparent] md:mx-0 md:px-0"
+		>
+			{children}
+		</div>
+	);
+}
+
 function Em({ children }: { children: ReactNode }) {
 	return <em className="text-[var(--seed-color-fg-brand)] not-italic">{children}</em>;
 }
 
-function Section({ label, children }: { label: string; children: ReactNode }) {
+function Section({ label, description, children }: { label: string; description?: string; children: ReactNode }) {
 	return (
 		<section aria-label={label} className="flex min-w-0 flex-col gap-2.5">
-			<h2 className="text-[15px] font-bold text-[var(--seed-color-fg-neutral)]">{label}</h2>
+			<div className="flex flex-col gap-1 md:flex-row md:items-baseline md:gap-2.5">
+				<h2 className="text-[15px] font-bold text-[var(--seed-color-fg-neutral)]">{label}</h2>
+				{description && <p className="text-[13px] text-[var(--seed-color-fg-neutral-muted)]">{description}</p>}
+			</div>
 			{children}
 		</section>
 	);
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function SectionPlaceholder({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
 	return (
 		<div
-			className="rounded-2xl border border-[var(--seed-color-stroke-neutral-subtle)]
-				bg-[var(--seed-color-bg-layer-default)] px-3 py-3 md:px-4 md:py-3.5"
+			className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--seed-color-stroke-neutral-subtle)]
+				bg-[var(--seed-color-bg-layer-default)] px-6 py-8 text-center"
 		>
-			<p className="truncate text-xs text-[var(--seed-color-fg-neutral-muted)] md:text-[12.5px]">{label}</p>
-			<p className="mt-1 text-xl font-extrabold text-[var(--seed-color-fg-neutral)] tabular-nums md:text-2xl">
-				{value}
-				<span className="ml-0.5 text-[13px] font-semibold text-[var(--seed-color-fg-neutral-muted)]">개</span>
-			</p>
+			<div
+				className="mb-1 flex h-14 w-14 items-center justify-center rounded-[20px] bg-[var(--seed-color-bg-brand-weak)]
+					text-[var(--seed-color-fg-brand)]"
+			>
+				{icon}
+			</div>
+			<p className="text-[15px] font-bold text-[var(--seed-color-fg-neutral)]">{title}</p>
+			<p className="text-[13px] text-balance break-keep text-[var(--seed-color-fg-neutral-muted)]">{description}</p>
 		</div>
 	);
 }

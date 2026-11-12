@@ -12,7 +12,7 @@ import { Link } from '@/entities/link/model/types';
 import { apiClient } from '@/shared/api/client';
 
 vi.mock('@/shared/api/client', () => ({
-	apiClient: { get: vi.fn() },
+	apiClient: { get: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
 const { mockPush } = vi.hoisted(() => ({ mockPush: vi.fn() }));
@@ -45,7 +45,8 @@ function link(overrides: Partial<Link> & Pick<Link, 'id'>): Link {
 
 interface HomeData {
 	remind: { unviewedCount: number; revisitCount: number; oldestUnviewed: Link | null; previews: Link[] };
-	week: { saved: number; viewed: number; cleaned: number; viewedLastWeek: number };
+	upcoming: Link[];
+	stale: Link[];
 	recent: Link[];
 }
 
@@ -59,7 +60,8 @@ const oldLink = link({
 
 const busyHome: HomeData = {
 	remind: { unviewedCount: 12, revisitCount: 5, oldestUnviewed: oldLink, previews: [oldLink] },
-	week: { saved: 6, viewed: 4, cleaned: 2, viewedLastWeek: 2 },
+	upcoming: [link({ id: 'u1', title: '콘서트 티켓 오픈', remindAt: new Date(2030, 4, 3, 20, 0).toISOString() })],
+	stale: [link({ id: 's1', title: '오래 묵힌 글', url: 'https://stale.com' })],
 	recent: [
 		link({ id: 'r1', title: '방금 저장한 글', createdAt: new Date().toISOString() }),
 		link({ id: 'r2', title: '어제 저장한 글', url: 'https://yesterday.com' }),
@@ -68,7 +70,8 @@ const busyHome: HomeData = {
 
 const emptyHome: HomeData = {
 	remind: { unviewedCount: 0, revisitCount: 0, oldestUnviewed: null, previews: [] },
-	week: { saved: 0, viewed: 0, cleaned: 0, viewedLastWeek: 0 },
+	upcoming: [],
+	stale: [],
 	recent: [],
 };
 
@@ -76,6 +79,8 @@ function mockApi(home: HomeData = busyHome) {
 	vi.mocked(apiClient.get).mockImplementation(((url: string) => ({
 		json: async () => (url === 'auth/me' ? { nickname: '유저' } : home),
 	})) as never);
+	vi.mocked(apiClient.patch).mockImplementation((() => ({ json: async () => ({}) })) as never);
+	vi.mocked(apiClient.delete).mockImplementation((async () => ({})) as never);
 }
 
 function renderHome() {
@@ -109,29 +114,62 @@ describe('HomeScreen', () => {
 		expect(within(entrance).getByRole('button', { name: /리마인드 시작/ })).toBeInTheDocument();
 	});
 
-	test('이번 주 기록의 저장·봤어요·정리했어요 숫자를 보여준다', async () => {
+	test('알림 예약한 링크의 제목, 호스트, 알림 시각을 보여준다', async () => {
 		renderHome();
 
-		const section = await screen.findByRole('region', { name: '이번 주 기록' });
+		const section = await screen.findByRole('region', { name: '알림 예약한 링크' });
 
-		expect(within(section).getByText('저장').nextElementSibling).toHaveTextContent('6');
-		expect(within(section).getByText('봤어요').nextElementSibling).toHaveTextContent('4');
-		expect(within(section).getByText('정리했어요').nextElementSibling).toHaveTextContent('2');
+		expect(within(section).getByText('콘서트 티켓 오픈')).toBeInTheDocument();
+		expect(within(section).getByText('react.dev')).toBeInTheDocument();
+		expect(within(section).getByText('2030년 5월 3일 오후 8:00')).toBeInTheDocument();
 	});
 
-	test('저번 주보다 많이 봤을 때만 칭찬 문구를 보여준다', async () => {
+	test('오래 쌓인 링크의 볼래요는 새 탭으로 원래 링크를 열고 열람 처리한다', async () => {
+		const user = userEvent.setup();
 		renderHome();
 
-		expect(await screen.findByText('저번 주보다 2개 더 봤어요.')).toBeInTheDocument();
+		const section = await screen.findByRole('region', { name: '오래 쌓인 링크' });
+		const view = within(section).getByRole('link', { name: '볼래요' });
+
+		expect(within(section).getByText('오래 묵힌 글')).toBeInTheDocument();
+		expect(view).toHaveAttribute('href', 'https://stale.com');
+		expect(view).toHaveAttribute('target', '_blank');
+
+		await user.click(view);
+
+		expect(apiClient.patch).toHaveBeenCalledWith('links/s1/view');
 	});
 
-	test('저번 주보다 적게 봤으면 칭찬 문구를 보여주지 않는다', async () => {
-		mockApi({ ...busyHome, week: { saved: 6, viewed: 1, cleaned: 2, viewedLastWeek: 3 } });
+	test('오래 쌓인 링크의 지울래요를 누르면 삭제하고 실행 취소 안내를 보여준다', async () => {
+		const user = userEvent.setup();
 		renderHome();
 
-		await screen.findByRole('region', { name: '이번 주 기록' });
+		const section = await screen.findByRole('region', { name: '오래 쌓인 링크' });
 
-		expect(screen.queryByText(/저번 주보다/)).not.toBeInTheDocument();
+		await user.click(within(section).getByRole('button', { name: '지울래요' }));
+
+		expect(apiClient.delete).toHaveBeenCalledWith('links/s1');
+		expect(await screen.findByText('링크를 삭제했어요')).toBeInTheDocument();
+	});
+
+	test('알림 예약한 링크와 오래 쌓인 링크가 없으면 섹션은 두고 빈 안내를 보여준다', async () => {
+		mockApi({ ...busyHome, upcoming: [], stale: [] });
+		renderHome();
+
+		const upcoming = await screen.findByRole('region', { name: '알림 예약한 링크' });
+		const stale = screen.getByRole('region', { name: '오래 쌓인 링크' });
+
+		expect(within(upcoming).getByText('예약한 알림이 없어요')).toBeInTheDocument();
+		expect(within(stale).getByText('오래 쌓인 링크가 없어요')).toBeInTheDocument();
+		expect(within(stale).queryByRole('button', { name: '지울래요' })).not.toBeInTheDocument();
+	});
+
+	test('이번 주 기록은 보여주지 않는다', async () => {
+		renderHome();
+
+		await screen.findByRole('region', { name: '최근 저장한 링크' });
+
+		expect(screen.queryByRole('region', { name: '이번 주 기록' })).not.toBeInTheDocument();
 	});
 
 	test('최근 저장한 링크의 제목을 보여준다', async () => {

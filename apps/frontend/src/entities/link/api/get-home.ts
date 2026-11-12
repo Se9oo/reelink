@@ -1,11 +1,12 @@
 import { queryOptions } from '@tanstack/react-query';
 
+import { linkKeys } from '@/entities/link/api/link-keys';
 import { Link } from '@/entities/link/model/types';
 
 import { apiClient } from '@/shared/api/client';
 
 export const homeKeys = {
-	all: ['home'] as const,
+	all: [...linkKeys.all, 'home'] as const,
 };
 
 export interface HomeSummary {
@@ -15,7 +16,8 @@ export interface HomeSummary {
 		oldestUnviewed: Link | null;
 		previews: Link[];
 	};
-	week: { saved: number; viewed: number; cleaned: number; viewedLastWeek: number };
+	upcoming: Link[];
+	stale: Link[];
 	recent: Link[];
 }
 

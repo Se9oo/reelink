@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 import { IconGlobeLine } from '@karrotmarket/react-monochrome-icon';
 
 import { Link } from '@/entities/link/model/types';
@@ -9,9 +11,10 @@ import { formatRelativeTime } from '@/shared/lib/format-relative-time';
 interface HomeLinkCardProps {
 	link: Link;
 	className?: string;
+	caption?: ReactNode;
 }
 
-export function HomeLinkCard({ link, className = '' }: HomeLinkCardProps) {
+export function HomeLinkCard({ link, className = '', caption }: HomeLinkCardProps) {
 	const host = new URL(link.url).hostname;
 
 	return (
@@ -34,13 +37,15 @@ export function HomeLinkCard({ link, className = '' }: HomeLinkCardProps) {
 					<IconGlobeLine size={24} />
 				)}
 			</div>
-			<div className="flex flex-col gap-1 px-3 pt-2.5 pb-3">
-				<p className="line-clamp-2 text-[13.5px] leading-snug font-bold text-[var(--seed-color-fg-neutral)]">
+			<div className="flex flex-1 flex-col justify-between gap-1 px-3 pt-2.5 pb-3">
+				<p className="line-clamp-2 min-h-[2lh] text-sm leading-snug font-bold text-[var(--seed-color-fg-neutral)]">
 					{link.title ?? host}
 				</p>
-				<p className="truncate text-[11.5px] text-[var(--seed-color-fg-neutral-muted)]">
-					{host} · {formatRelativeTime(link.createdAt)} 저장
-				</p>
+				{caption ?? (
+					<p className="truncate text-xs text-[var(--seed-color-fg-neutral-muted)]">
+						{host} · {formatRelativeTime(link.createdAt)} 저장
+					</p>
+				)}
 			</div>
 		</a>
 	);

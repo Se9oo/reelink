@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { greetingFor, praiseFor, subGreetingFor } from '@/widgets/home/model/home-copy';
+import { greetingFor, subGreetingFor } from '@/widgets/home/model/home-copy';
 
 describe('greetingFor', () => {
 	test('5~11시는 아침 인사를 한다', () => {
@@ -36,19 +36,5 @@ describe('subGreetingFor', () => {
 
 	test('안 본 링크 수가 3개를 넘으면 최대 3개로 제한한다', () => {
 		expect(subGreetingFor(12)).toBe('오늘은 오래된 링크 3개만 정리해볼까요?');
-	});
-});
-
-describe('praiseFor', () => {
-	test('이번 주에 본 링크 수가 지난 주에 본 링크 수 보다 많은 경우 "저번 주보다 N개 더 봤어요." 문구를 출력한다', () => {
-		expect(praiseFor({ viewed: 4, viewedLastWeek: 2 })).toBe('저번 주보다 2개 더 봤어요.');
-		expect(praiseFor({ viewed: 3, viewedLastWeek: 2 })).toBe('저번 주보다 1개 더 봤어요.');
-	});
-
-	test('이번 주에 본 링크 수가 지난 주에 본 링크 수와 같거나, 적은 경우 null을 리턴한다.', () => {
-		expect(praiseFor({ viewed: 3, viewedLastWeek: 3 })).toBeNull();
-		expect(praiseFor({ viewed: 2, viewedLastWeek: 3 })).toBeNull();
-		expect(praiseFor({ viewed: 1, viewedLastWeek: 3 })).toBeNull();
-		expect(praiseFor({ viewed: 0, viewedLastWeek: 0 })).toBeNull();
 	});
 });

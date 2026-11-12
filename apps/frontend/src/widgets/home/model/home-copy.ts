@@ -27,11 +27,3 @@ export function subGreetingFor(unviewedCount: number) {
 
 	return `오늘은 오래된 링크 ${count}개만 정리해볼까요?`;
 }
-
-export function praiseFor({ viewed, viewedLastWeek }: { viewed: number; viewedLastWeek: number }) {
-	if (viewed > viewedLastWeek) {
-		return `저번 주보다 ${viewed - viewedLastWeek}개 더 봤어요.`;
-	} else {
-		return null;
-	}
-}
