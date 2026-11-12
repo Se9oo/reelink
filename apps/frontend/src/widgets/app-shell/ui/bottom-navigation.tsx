@@ -22,8 +22,9 @@ export function BottomNavigation() {
 	return (
 		<SnackbarAvoidOverlap>
 			<nav
-				className="bottom-navigation fixed inset-x-0 bottom-0 z-[1] flex h-16 border-t
-					border-[var(--seed-color-stroke-neutral-subtle)] bg-[var(--seed-color-bg-layer-default)] lg:hidden"
+				className="bottom-navigation fixed inset-x-0 bottom-0 z-[1] box-content flex h-16 border-t
+					border-[var(--seed-color-stroke-neutral-subtle)] bg-[var(--seed-color-bg-layer-default)]
+					pb-[env(safe-area-inset-bottom)] lg:hidden"
 			>
 				{TABS.map(({ href, label, Icon }) => {
 					const isActive = pathname === href || pathname.startsWith(`${href}/`);

@@ -13,7 +13,12 @@ export default function MainLayout({ children }: { children: ReactNode }) {
 			<Sidebar />
 			<div className="flex h-full min-w-0 flex-1 flex-col">
 				<MobileHeader />
-				<main className="flex-1 overflow-y-auto pt-14 pb-16 lg:pt-0 lg:pb-0">{children}</main>
+				<main
+					className="flex-1 overflow-y-auto pt-[calc(3.5rem+env(safe-area-inset-top))]
+						pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pt-0 lg:pb-0"
+				>
+					{children}
+				</main>
 				<BottomNavigation />
 			</div>
 			<FloatingLinkButton />

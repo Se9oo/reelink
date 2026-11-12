@@ -12,7 +12,10 @@ export function PrivacyPolicy() {
 				[&_th]:border-[var(--seed-color-stroke-neutral-subtle)] [&_th]:bg-[var(--seed-color-bg-neutral-weak)] [&_th]:p-2
 				[&_th]:text-left [&_ul]:list-disc [&_ul]:pl-5"
 		>
-			<header className="sticky top-0 -mx-4 mb-4 flex h-14 items-center gap-1 bg-[var(--background)] px-2">
+			<header
+				className="sticky top-0 -mx-4 mb-4 box-content flex h-14 items-center gap-1 bg-[var(--background)] px-2
+					pt-[env(safe-area-inset-top)]"
+			>
 				<BackButton />
 				<h1 className="text-[17px] font-bold">개인정보 처리방침</h1>
 			</header>

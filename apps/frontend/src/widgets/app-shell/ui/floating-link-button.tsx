@@ -23,7 +23,7 @@ export function FloatingLinkButton() {
 	}
 
 	return (
-		<div className="fixed right-5 bottom-[84px] z-[1] lg:bottom-5">
+		<div className="fixed right-5 bottom-[calc(84px+env(safe-area-inset-bottom))] z-[1] lg:bottom-5">
 			<button
 				type="button"
 				aria-label="링크 등록"
