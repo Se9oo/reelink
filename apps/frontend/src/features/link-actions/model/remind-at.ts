@@ -11,6 +11,6 @@ export function partsToRemindAt(date: DatePickerDate, time: TimePickerValue) {
 	return new Date(date.year, date.month - 1, date.day, time.hour, time.minute);
 }
 
-export function nextWholeHour(now: Date) {
-	return new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1, 0);
+export function tenMinutesLater(now: Date) {
+	return new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes() + 10);
 }

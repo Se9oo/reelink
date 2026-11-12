@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { nextWholeHour, partsToRemindAt, remindAtToParts } from '@/features/link-actions/model/remind-at';
+import { partsToRemindAt, remindAtToParts, tenMinutesLater } from '@/features/link-actions/model/remind-at';
 
 describe('remindAtToParts, partsToRemindAt', () => {
 	test('Date를 달력 날짜와 24시간제 시각으로 나누고, 다시 합치면 같은 분이 된다.', () => {
@@ -12,12 +12,12 @@ describe('remindAtToParts, partsToRemindAt', () => {
 	});
 });
 
-describe('nextWholeHour', () => {
-	test('지금 다음 정각을 반환한다.', () => {
-		expect(nextWholeHour(new Date(2030, 0, 1, 15, 20, 30))).toEqual(new Date(2030, 0, 1, 16, 0));
+describe('tenMinutesLater', () => {
+	test('지금부터 10분 뒤를 초는 버리고 분 단위로 반환한다.', () => {
+		expect(tenMinutesLater(new Date(2030, 0, 1, 15, 20, 30))).toEqual(new Date(2030, 0, 1, 15, 30));
 	});
 
-	test('밤 11시 이후면 다음 날 자정이다.', () => {
-		expect(nextWholeHour(new Date(2030, 0, 31, 23, 10))).toEqual(new Date(2030, 1, 1, 0, 0));
+	test('밤 11시 55분이면 다음 날 0시 5분이다.', () => {
+		expect(tenMinutesLater(new Date(2030, 0, 31, 23, 55))).toEqual(new Date(2030, 1, 1, 0, 5));
 	});
 });

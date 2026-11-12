@@ -214,6 +214,20 @@ describe('RemindFeed', () => {
 		expect(await screen.findByText('1월 2일 오전 10:00 알림')).toBeInTheDocument();
 	});
 
+	test('알림이 있는 카드에서 더보기로 알림을 해제하면 알림 표시가 바로 사라진다', async () => {
+		const user = userEvent.setup();
+		mockApi([{ ...feed[0], remindAt: new Date('2030-01-02T10:00').toISOString() }, feed[1]]);
+		vi.mocked(apiClient.patch).mockReturnValue({ json: async () => feed[0] } as never);
+		renderFeed();
+
+		expect(await screen.findByText('1월 2일 오전 10:00 알림')).toBeInTheDocument();
+
+		await chooseMoreMenuItem(user, '알림 해제');
+
+		await waitFor(() => expect(screen.queryByText('1월 2일 오전 10:00 알림')).not.toBeInTheDocument());
+		expect(apiClient.patch).toHaveBeenCalledWith('links/l1/remind', { json: { remindAt: null } });
+	});
+
 	test('더보기에서 폴더로 가기를 누르면 그 링크가 있는 폴더로 이동한다', async () => {
 		const user = userEvent.setup();
 		mockApi(feed);

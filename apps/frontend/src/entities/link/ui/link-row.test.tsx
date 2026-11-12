@@ -220,6 +220,34 @@ describe('LinkRow', () => {
 		await user.click(await screen.findByRole('menuitem', { name: '알림 설정' }));
 
 		expect(onRemind).toHaveBeenCalledTimes(1);
+		expect(screen.queryByRole('menuitem', { name: '알림 해제' })).not.toBeInTheDocument();
+	});
+
+	test('알림이 있으면 메뉴에 알림 시각 변경과 알림 해제가 있고, 해제를 누르면 onClearRemind가 호출된다', async () => {
+		const user = userEvent.setup();
+		const onRemind = vi.fn();
+		const onClearRemind = vi.fn();
+
+		render(
+			<LinkRow
+				link={link({ remindAt: new Date(2030, 0, 2, 10, 0).toISOString() })}
+				onEdit={() => {}}
+				onDelete={() => {}}
+				onTogglePin={() => {}}
+				onRemind={onRemind}
+				onClearRemind={onClearRemind}
+			/>,
+		);
+
+		await user.click(screen.getByRole('button', { name: '더보기' }));
+		await user.click(await screen.findByRole('menuitem', { name: '알림 시각 변경' }));
+
+		expect(onRemind).toHaveBeenCalledTimes(1);
+
+		await user.click(screen.getByRole('button', { name: '더보기' }));
+		await user.click(await screen.findByRole('menuitem', { name: '알림 해제' }));
+
+		expect(onClearRemind).toHaveBeenCalledTimes(1);
 	});
 
 	test('고정되지 않은 링크는 고정 표시가 없고, 메뉴에 상단 고정이 있다', async () => {

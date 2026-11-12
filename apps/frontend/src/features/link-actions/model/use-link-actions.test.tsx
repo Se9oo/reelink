@@ -41,7 +41,7 @@ const folders = [
 ];
 
 function Harness({ target }: { target: Link }) {
-	const { onDelete, onMove, onEdit, onTogglePin, onRemind } = useLinkActions();
+	const { onDelete, onMove, onEdit, onTogglePin, onRemind, onClearRemind } = useLinkActions();
 
 	return (
 		<>
@@ -59,6 +59,9 @@ function Harness({ target }: { target: Link }) {
 			</button>
 			<button type="button" onClick={() => onRemind(target)}>
 				알림 설정하기
+			</button>
+			<button type="button" onClick={() => onClearRemind(target)}>
+				알림 해제하기
 			</button>
 		</>
 	);
@@ -345,30 +348,52 @@ describe('useLinkActions', () => {
 			vi.useRealTimers();
 		});
 
-		test('알림이 없는 링크는 다음 정각으로 열려 바로 저장할 수 있고, 해제 버튼은 없다', async () => {
+		test('알림이 없는 링크는 지금부터 10분 뒤로 열려 바로 저장할 수 있다', async () => {
 			const user = userEvent.setup();
 			renderHarness();
 
 			await openRemindDialog(user);
-
-			expect(screen.queryByRole('button', { name: '알림 해제' })).not.toBeInTheDocument();
 			await user.click(screen.getByRole('button', { name: '저장' }));
 
-			await expectRemindAtSent(new Date(2030, 0, 1, 16, 0));
-			expect(await screen.findByText('1월 1일 오후 4:00에 알려드릴게요')).toBeInTheDocument();
+			await expectRemindAtSent(new Date(2030, 0, 1, 15, 30));
+			expect(await screen.findByText('1월 1일 오후 3:30에 알려드릴게요')).toBeInTheDocument();
 		});
 
-		test('이미 알림이 있으면 그 시각으로 열리고 바꾸기 전에는 저장이 비활성이며, 해제하면 null을 보낸다', async () => {
+		test('이미 알림이 있으면 그 시각으로 열리고 바꾸기 전에는 저장이 비활성이며, 창에 해제 버튼은 없다', async () => {
 			const user = userEvent.setup();
 			renderHarness({ ...link, remindAt: new Date(2030, 0, 3, 10, 0).toISOString() });
 
 			await openRemindDialog(user);
 
 			expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-			await user.click(screen.getByRole('button', { name: '알림 해제' }));
+			expect(screen.queryByRole('button', { name: '알림 해제' })).not.toBeInTheDocument();
+		});
+
+		test('알림을 해제하면 null을 보내고, 실행 취소하면 원래 시각으로 다시 지정한다', async () => {
+			const user = userEvent.setup();
+			const remindAt = new Date(2030, 0, 3, 10, 0);
+			renderHarness({ ...link, remindAt: remindAt.toISOString() });
+
+			await user.click(screen.getByRole('button', { name: '알림 해제하기' }));
 
 			await expectRemindAtSent(null);
 			expect(await screen.findByText('알림을 해제했어요')).toBeInTheDocument();
+
+			await user.click(screen.getByRole('button', { name: '실행 취소' }));
+
+			await expectRemindAtSent(remindAt);
+		});
+
+		test('알림 해제에 실패하면 실패 스낵바를 띄운다', async () => {
+			const user = userEvent.setup();
+			vi.mocked(apiClient.patch).mockImplementation((() => ({
+				json: async () => Promise.reject(new Error('fail')),
+			})) as never);
+			renderHarness({ ...link, remindAt: new Date(2030, 0, 3, 10, 0).toISOString() });
+
+			await user.click(screen.getByRole('button', { name: '알림 해제하기' }));
+
+			expect(await screen.findByText('알림을 해제하지 못했어요')).toBeInTheDocument();
 		});
 
 		test('고른 시각이 이미 지났으면 저장할 수 없고 안내를 보여준다', async () => {

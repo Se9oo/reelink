@@ -6,6 +6,7 @@ import {
 	IconArrowRightLine,
 	IconArrowUpRightLine,
 	IconBellLine,
+	IconBellSlashLine,
 	IconDot3HorizontalFill,
 	IconPencilLine,
 	IconSquare2StackedLine,
@@ -28,7 +29,9 @@ interface FeedActionsProps {
 	onDelete: () => void;
 	onEdit: () => void;
 	onMove: () => void;
+	hasRemind: boolean;
 	onRemind: () => void;
+	onClearRemind: () => void;
 	onGoToFolder: () => void;
 }
 
@@ -39,7 +42,9 @@ export function FeedActions({
 	onDelete,
 	onEdit,
 	onMove,
+	hasRemind,
 	onRemind,
+	onClearRemind,
 	onGoToFolder,
 }: FeedActionsProps) {
 	const { open, onOpenChange, instant } = useBreakpointMenuState();
@@ -70,7 +75,12 @@ export function FeedActions({
 					<MenuGroup>
 						<MenuItem label="링크 수정" prefixIcon={<IconPencilLine />} onClick={onEdit} />
 						<MenuItem label="폴더 이동" prefixIcon={<IconFolderLine />} onClick={onMove} />
-						<MenuItem label="알림 설정" prefixIcon={<IconBellLine />} onClick={onRemind} />
+						<MenuItem
+							label={hasRemind ? '알림 시각 변경' : '알림 설정'}
+							prefixIcon={<IconBellLine />}
+							onClick={onRemind}
+						/>
+						{hasRemind && <MenuItem label="알림 해제" prefixIcon={<IconBellSlashLine />} onClick={onClearRemind} />}
 						<MenuItem label="폴더로 가기" prefixIcon={<IconArrowRightLine />} onClick={onGoToFolder} />
 					</MenuGroup>
 				</MenuContent>

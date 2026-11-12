@@ -142,8 +142,7 @@ export function useLinkActions() {
 						{
 							onSuccess: (updated) => {
 								onUpdated?.(updated);
-								const message = remindAt ? `${formatRemindAt(remindAt)}에 알려드릴게요` : '알림을 해제했어요';
-								snackbar.create({ render: () => <Snackbar message={message} /> });
+								snackbar.create({ render: () => <Snackbar message={`${formatRemindAt(remindAt)}에 알려드릴게요`} /> });
 							},
 							onError: () => showFailure('알림 시각을 저장하지 못했어요'),
 						},
@@ -151,6 +150,38 @@ export function useLinkActions() {
 				}
 			/>
 		));
+	}
+
+	function onClearRemind(link: Link, { onUpdated }: UpdatedCallback = {}) {
+		const previous = link.remindAt;
+
+		if (!previous) {
+			return;
+		}
+
+		setRemindAt.mutate(
+			{ linkId: link.id, remindAt: null },
+			{
+				onSuccess: (cleared) => {
+					onUpdated?.(cleared);
+					snackbar.create({
+						render: () => (
+							<Snackbar
+								message="알림을 해제했어요"
+								actionLabel="실행 취소"
+								onAction={() =>
+									setRemindAt.mutate(
+										{ linkId: link.id, remindAt: new Date(previous) },
+										{ onSuccess: (restored) => onUpdated?.(restored), onError: () => showFailure('되돌리지 못했어요') },
+									)
+								}
+							/>
+						),
+					});
+				},
+				onError: () => showFailure('알림을 해제하지 못했어요'),
+			},
+		);
 	}
 
 	function onTogglePin(link: Link) {
@@ -167,5 +198,5 @@ export function useLinkActions() {
 		);
 	}
 
-	return { onDelete, onMove, onEdit, onTogglePin, onCopy, onRemind };
+	return { onDelete, onMove, onEdit, onTogglePin, onCopy, onRemind, onClearRemind };
 }

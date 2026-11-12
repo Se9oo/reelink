@@ -15,7 +15,7 @@ import { DatePicker } from 'seed-design/ui/date-picker';
 import { DialogBody, DialogContent, DialogFooter, DialogRoot } from 'seed-design/ui/dialog';
 import { TimePicker } from 'seed-design/ui/time-picker';
 
-import { nextWholeHour, partsToRemindAt, remindAtToParts } from '@/features/link-actions/model/remind-at';
+import { partsToRemindAt, remindAtToParts, tenMinutesLater } from '@/features/link-actions/model/remind-at';
 
 import { Link } from '@/entities/link/model/types';
 import { notificationSettingsQueryOptions } from '@/entities/notification/api/get-notification-settings';
@@ -27,13 +27,13 @@ interface RemindLinkDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	link: Link;
-	onSave: (remindAt: Date | null) => void;
+	onSave: (remindAt: Date) => void;
 }
 
 export function RemindLinkDialog({ open, onOpenChange, link, onSave }: RemindLinkDialogProps) {
 	const isTabletUp = useMediaQuery('(min-width: 768px)');
 	const [now] = useState(() => new Date());
-	const [initial] = useState(() => remindAtToParts(link.remindAt ? new Date(link.remindAt) : nextWholeHour(now)));
+	const [initial] = useState(() => remindAtToParts(link.remindAt ? new Date(link.remindAt) : tenMinutesLater(now)));
 	const [date, setDate] = useState<DatePickerDate>(initial.date);
 	const [time, setTime] = useState<TimePickerValue>(initial.time);
 	const { data: settings } = useQuery(notificationSettingsQueryOptions());
@@ -48,16 +48,12 @@ export function RemindLinkDialog({ open, onOpenChange, link, onSave }: RemindLin
 		!(settings.notificationMethod === 'kakao' && settings.kakaoStatus === 'active') &&
 		settings.pushSubscriptionCount === 0;
 
-	function close(value: Date | null) {
-		onSave(value);
-		onOpenChange(false);
-	}
-
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 
 		if (canSave) {
-			close(remindAt);
+			onSave(remindAt);
+			onOpenChange(false);
 		}
 	}
 
@@ -84,21 +80,14 @@ export function RemindLinkDialog({ open, onOpenChange, link, onSave }: RemindLin
 	);
 
 	const footer = (
-		<div className="flex w-full flex-col gap-2">
-			<ResponsivePair gap="x2">
-				<ActionButton type="button" variant="neutralWeak" onClick={() => onOpenChange(false)} flexGrow={1}>
-					취소
-				</ActionButton>
-				<ActionButton type="submit" variant="brandSolid" disabled={!canSave} flexGrow={1}>
-					저장
-				</ActionButton>
-			</ResponsivePair>
-			{link.remindAt && (
-				<ActionButton type="button" variant="ghost" onClick={() => close(null)}>
-					알림 해제
-				</ActionButton>
-			)}
-		</div>
+		<ResponsivePair gap="x2">
+			<ActionButton type="button" variant="neutralWeak" onClick={() => onOpenChange(false)} flexGrow={1}>
+				취소
+			</ActionButton>
+			<ActionButton type="submit" variant="brandSolid" disabled={!canSave} flexGrow={1}>
+				저장
+			</ActionButton>
+		</ResponsivePair>
 	);
 
 	if (isTabletUp) {

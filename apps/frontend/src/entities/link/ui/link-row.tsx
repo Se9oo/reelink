@@ -2,6 +2,7 @@
 
 import {
 	IconBellLine,
+	IconBellSlashLine,
 	IconDot3HorizontalFill,
 	IconGlobeLine,
 	IconPencilLine,
@@ -26,6 +27,7 @@ interface LinkRowProps {
 	onDelete: () => void;
 	onTogglePin: () => void;
 	onRemind?: () => void;
+	onClearRemind?: () => void;
 }
 
 function PinBadge({ className }: { className: string }) {
@@ -41,7 +43,16 @@ function PinBadge({ className }: { className: string }) {
 	);
 }
 
-export function LinkRow({ link, folderPath, onMove, onEdit, onDelete, onTogglePin, onRemind }: LinkRowProps) {
+export function LinkRow({
+	link,
+	folderPath,
+	onMove,
+	onEdit,
+	onDelete,
+	onTogglePin,
+	onRemind,
+	onClearRemind,
+}: LinkRowProps) {
 	const host = new URL(link.url).hostname;
 
 	return (
@@ -154,7 +165,16 @@ export function LinkRow({ link, folderPath, onMove, onEdit, onDelete, onTogglePi
 						)}
 						{onMove && <MenuItem label="폴더 이동" prefixIcon={<IconFolderLine />} onClick={onMove} />}
 						<MenuItem label="수정" prefixIcon={<IconPencilLine />} onClick={onEdit} />
-						{onRemind && <MenuItem label="알림 설정" prefixIcon={<IconBellLine />} onClick={onRemind} />}
+						{onRemind && (
+							<MenuItem
+								label={link.remindAt ? '알림 시각 변경' : '알림 설정'}
+								prefixIcon={<IconBellLine />}
+								onClick={onRemind}
+							/>
+						)}
+						{link.remindAt && onClearRemind && (
+							<MenuItem label="알림 해제" prefixIcon={<IconBellSlashLine />} onClick={onClearRemind} />
+						)}
 						<MenuItem label="삭제" prefixIcon={<IconTrashcanLine />} onClick={onDelete} />
 					</MenuGroup>
 				</MenuContent>
