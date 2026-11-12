@@ -4,7 +4,7 @@
 :root {
 	--background: var(--seed-color-bg-layer-default);
 	--foreground: var(--seed-color-fg-neutral);
-	--app-safe-top: calc(env(safe-area-inset-top) + min(env(safe-area-inset-top), 8px));
+	--app-safe-top: calc(env(safe-area-inset-top) + min(env(safe-area-inset-top), 16px));
 }
 
 :root,
