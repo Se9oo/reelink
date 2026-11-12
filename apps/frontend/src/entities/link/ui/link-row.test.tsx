@@ -203,7 +203,7 @@ describe('LinkRow', () => {
 			<LinkRow link={link({ remindAt })} onEdit={() => {}} onDelete={() => {}} onTogglePin={() => {}} />,
 		);
 
-		expect(screen.getByText('1월 2일 오전 10:00 알림')).toBeInTheDocument();
+		expect(screen.getByText('2030년 1월 2일 오전 10:00 알림')).toBeInTheDocument();
 
 		rerender(<LinkRow link={link()} onEdit={() => {}} onDelete={() => {}} onTogglePin={() => {}} />);
 

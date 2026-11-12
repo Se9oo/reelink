@@ -211,7 +211,7 @@ describe('RemindFeed', () => {
 		await chooseMoreMenuItem(user, '알림 설정');
 		await user.click(await screen.findByRole('button', { name: '저장' }));
 
-		expect(await screen.findByText('1월 2일 오전 10:00 알림')).toBeInTheDocument();
+		expect(await screen.findByText('2030년 1월 2일 오전 10:00 알림')).toBeInTheDocument();
 	});
 
 	test('알림이 있는 카드에서 더보기로 알림을 해제하면 알림 표시가 바로 사라진다', async () => {
@@ -220,11 +220,11 @@ describe('RemindFeed', () => {
 		vi.mocked(apiClient.patch).mockReturnValue({ json: async () => feed[0] } as never);
 		renderFeed();
 
-		expect(await screen.findByText('1월 2일 오전 10:00 알림')).toBeInTheDocument();
+		expect(await screen.findByText('2030년 1월 2일 오전 10:00 알림')).toBeInTheDocument();
 
 		await chooseMoreMenuItem(user, '알림 해제');
 
-		await waitFor(() => expect(screen.queryByText('1월 2일 오전 10:00 알림')).not.toBeInTheDocument());
+		await waitFor(() => expect(screen.queryByText('2030년 1월 2일 오전 10:00 알림')).not.toBeInTheDocument());
 		expect(apiClient.patch).toHaveBeenCalledWith('links/l1/remind', { json: { remindAt: null } });
 	});
 
