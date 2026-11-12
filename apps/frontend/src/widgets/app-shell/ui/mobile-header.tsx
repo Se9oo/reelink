@@ -10,8 +10,8 @@ import { ReelinkSymbol, ReelinkWordmark } from '@/shared/ui/logo/reelink-logo';
 export function MobileHeader() {
 	return (
 		<header
-			className="mobile-header fixed inset-x-0 top-0 z-[1] box-content flex h-14 items-center justify-between
-				bg-[var(--seed-color-bg-layer-default)]/70 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md lg:hidden"
+			className="fixed inset-x-0 top-0 z-[1] box-content flex h-14 items-center justify-between
+				bg-[var(--seed-color-bg-layer-default)] px-4 pt-[env(safe-area-inset-top)] lg:hidden"
 		>
 			<Link href={ROUTES.HOME} aria-label="Reelink 홈" className="flex items-center gap-2">
 				<ReelinkSymbol size={30} />

@@ -99,13 +99,6 @@ button:not(:disabled) {
 	}
 }
 
-@media (prefers-reduced-transparency: reduce) {
-	.mobile-header {
-		background: var(--seed-color-bg-layer-default);
-		backdrop-filter: none;
-	}
-}
-
 @media (max-width: 1023px) {
 	body:has(.bottom-navigation) .seed-bottom-sheet__positioner {
 		bottom: calc(4rem + env(safe-area-inset-bottom));
