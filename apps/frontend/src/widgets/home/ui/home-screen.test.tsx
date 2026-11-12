@@ -124,6 +124,35 @@ describe('HomeScreen', () => {
 		expect(within(section).getByText('2030년 5월 3일 오후 8:00')).toBeInTheDocument();
 	});
 
+	async function chooseUpcomingMenuItem(user: ReturnType<typeof userEvent.setup>, itemName: string) {
+		const section = await screen.findByRole('region', { name: '알림 예약한 링크' });
+		const trigger = within(section).getByRole('button', { name: '더보기' });
+
+		await user.click(trigger);
+
+		const menu = document.getElementById(trigger.getAttribute('aria-controls') ?? '');
+		await user.click(within(menu as HTMLElement).getByRole('menuitem', { name: itemName }));
+	}
+
+	test('알림 예약한 링크의 더보기에서 알림 시각 변경을 고르면 알림 설정 창을 연다', async () => {
+		const user = userEvent.setup();
+		renderHome();
+
+		await chooseUpcomingMenuItem(user, '알림 시각 변경');
+
+		expect(await screen.findByRole('dialog', { name: '알림 설정' })).toBeInTheDocument();
+	});
+
+	test('알림 예약한 링크의 더보기에서 알림 해제를 고르면 알림을 비우고 실행 취소 안내를 보여준다', async () => {
+		const user = userEvent.setup();
+		renderHome();
+
+		await chooseUpcomingMenuItem(user, '알림 해제');
+
+		expect(apiClient.patch).toHaveBeenCalledWith('links/u1/remind', { json: { remindAt: null } });
+		expect(await screen.findByText('알림을 해제했어요')).toBeInTheDocument();
+	});
+
 	test('오래 쌓인 링크의 볼래요는 새 탭으로 원래 링크를 열고 열람 처리한다', async () => {
 		const user = userEvent.setup();
 		renderHome();

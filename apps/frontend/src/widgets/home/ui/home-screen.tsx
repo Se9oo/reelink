@@ -7,13 +7,16 @@ import { useRouter } from 'next/navigation';
 
 import {
 	IconBellLine,
+	IconBellSlashLine,
 	IconBookmarkFill,
 	IconCheckmarkCircleLine,
+	IconDot3HorizontalFill,
 	IconLightbulbDot5Fill,
 } from '@karrotmarket/react-monochrome-icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { overlay } from 'overlay-kit';
 import { ActionButton } from 'seed-design/ui/action-button';
+import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-design/ui/menu';
 
 import { greetingFor, subGreetingFor } from '@/widgets/home/model/home-copy';
 import { HomeLinkCard } from '@/widgets/home/ui/home-link-card';
@@ -38,7 +41,7 @@ export function HomeScreen() {
 	const queryClient = useQueryClient();
 	const router = useRouter();
 	const viewLink = useViewLink();
-	const { onDelete } = useLinkActions();
+	const { onDelete, onRemind, onClearRemind } = useLinkActions();
 
 	if (!home || !me) {
 		return null;
@@ -170,6 +173,34 @@ export function HomeScreen() {
 													</div>
 												)
 											}
+											actions={
+												<MenuRoot size="small">
+													<MenuTrigger asChild>
+														<button
+															type="button"
+															aria-label="더보기"
+															className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg
+																text-[var(--seed-color-fg-neutral-muted)] hover:bg-[var(--seed-color-bg-neutral-weak)]"
+														>
+															<IconDot3HorizontalFill size={18} />
+														</button>
+													</MenuTrigger>
+													<MenuContent>
+														<MenuGroup>
+															<MenuItem
+																label="알림 시각 변경"
+																prefixIcon={<IconBellLine />}
+																onClick={() => onRemind(link)}
+															/>
+															<MenuItem
+																label="알림 해제"
+																prefixIcon={<IconBellSlashLine />}
+																onClick={() => onClearRemind(link)}
+															/>
+														</MenuGroup>
+													</MenuContent>
+												</MenuRoot>
+											}
 										/>
 									))}
 								</CardScroller>
@@ -198,7 +229,7 @@ export function HomeScreen() {
 	);
 }
 
-const CARD_CLASS = 'w-[224px] shrink-0 snap-start';
+const CARD_CLASS = 'w-[272px] shrink-0 snap-start';
 
 function CardScroller({ children }: { children: ReactNode }) {
 	return (

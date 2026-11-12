@@ -12,19 +12,17 @@ interface HomeLinkCardProps {
 	link: Link;
 	className?: string;
 	caption?: ReactNode;
+	actions?: ReactNode;
 }
 
-export function HomeLinkCard({ link, className = '', caption }: HomeLinkCardProps) {
+export function HomeLinkCard({ link, className = '', caption, actions }: HomeLinkCardProps) {
 	const host = new URL(link.url).hostname;
 
 	return (
-		<a
-			href={link.url}
-			target="_blank"
-			rel="noopener noreferrer"
-			className={`flex flex-col overflow-hidden rounded-[14px] border border-[var(--seed-color-stroke-neutral-subtle)]
-				bg-[var(--seed-color-bg-layer-default)] transition-colors hover:border-[var(--seed-color-stroke-neutral-muted)]
-				${className}`}
+		<div
+			className={`relative flex flex-col overflow-hidden rounded-[14px] border
+				border-[var(--seed-color-stroke-neutral-subtle)] bg-[var(--seed-color-bg-layer-default)] transition-colors
+				hover:border-[var(--seed-color-stroke-neutral-muted)] ${className}`}
 		>
 			<div
 				className="flex aspect-[1.91/1] w-full items-center justify-center overflow-hidden
@@ -38,15 +36,26 @@ export function HomeLinkCard({ link, className = '', caption }: HomeLinkCardProp
 				)}
 			</div>
 			<div className="flex flex-1 flex-col justify-between gap-1 px-3 pt-2.5 pb-3">
-				<p className="line-clamp-2 min-h-[2lh] text-sm leading-snug font-bold text-[var(--seed-color-fg-neutral)]">
+				<a
+					href={link.url}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="line-clamp-2 min-h-[2lh] text-sm leading-snug font-bold text-[var(--seed-color-fg-neutral)]
+						after:absolute after:inset-0"
+				>
 					{link.title ?? host}
-				</p>
-				{caption ?? (
-					<p className="truncate text-xs text-[var(--seed-color-fg-neutral-muted)]">
-						{host} · {formatRelativeTime(link.createdAt)} 저장
-					</p>
-				)}
+				</a>
+				<div className="flex items-end gap-1">
+					<div className="min-w-0 flex-1">
+						{caption ?? (
+							<p className="truncate text-xs text-[var(--seed-color-fg-neutral-muted)]">
+								{host} · {formatRelativeTime(link.createdAt)} 저장
+							</p>
+						)}
+					</div>
+					{actions && <div className="relative z-10 -mr-1.5 -mb-1.5 shrink-0">{actions}</div>}
+				</div>
 			</div>
-		</a>
+		</div>
 	);
 }
