@@ -1,5 +1,5 @@
 import ogs from 'open-graph-scraper';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, vi } from 'vitest';
 
 import { fetchOgTags } from './fetch-og-tags.js';
 import { publicDispatcher } from './public-dispatcher.js';
