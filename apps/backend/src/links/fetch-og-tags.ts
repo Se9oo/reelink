@@ -1,5 +1,7 @@
 import ogs from 'open-graph-scraper';
 
+import { publicDispatcher } from './public-dispatcher.js';
+
 export interface OgTags {
 	title: string | null;
 	thumbnailUrl: string | null;
@@ -18,7 +20,10 @@ export async function fetchOgTags(url: string): Promise<OgTags> {
 		const { error, result } = await ogs({
 			url,
 			timeout: 5,
-			fetchOptions: { headers: { 'user-agent': 'Mozilla/5.0 (compatible; ReelinkBot/1.0) facebookexternalhit/1.1' } },
+			fetchOptions: {
+				headers: { 'user-agent': 'Mozilla/5.0 (compatible; ReelinkBot/1.0) facebookexternalhit/1.1' },
+				dispatcher: publicDispatcher,
+			},
 		});
 
 		if (error) {

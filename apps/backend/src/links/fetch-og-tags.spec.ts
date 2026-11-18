@@ -2,6 +2,7 @@ import ogs from 'open-graph-scraper';
 import { describe, expect, it, vi } from 'vitest';
 
 import { fetchOgTags } from './fetch-og-tags.js';
+import { publicDispatcher } from './public-dispatcher.js';
 
 vi.mock('open-graph-scraper');
 
@@ -73,8 +74,20 @@ describe('fetchOgTags', () => {
 
 		expect(ogs).toHaveBeenCalledWith(
 			expect.objectContaining({
-				fetchOptions: { headers: { 'user-agent': 'Mozilla/5.0 (compatible; ReelinkBot/1.0) facebookexternalhit/1.1' } },
+				fetchOptions: expect.objectContaining({
+					headers: { 'user-agent': 'Mozilla/5.0 (compatible; ReelinkBot/1.0) facebookexternalhit/1.1' },
+				}),
 			}),
+		);
+	});
+
+	test('공개 IP에만 연결하는 dispatcher로 요청한다(사용자가 저장한 URL로 내부망에 요청하지 않게)', async () => {
+		vi.mocked(ogs).mockResolvedValue({ error: false, html: '', response: {}, result: {} } as never);
+
+		await fetchOgTags('https://example.com');
+
+		expect(ogs).toHaveBeenCalledWith(
+			expect.objectContaining({ fetchOptions: expect.objectContaining({ dispatcher: publicDispatcher }) }),
 		);
 	});
 });
