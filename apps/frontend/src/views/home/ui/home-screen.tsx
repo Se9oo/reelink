@@ -20,11 +20,11 @@ import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-de
 
 import { greetingFor, subGreetingFor } from '@/views/home/model/home-copy';
 import { HomeLinkCard } from '@/views/home/ui/home-link-card';
+import { KakaoOnboardingCard } from '@/views/home/ui/kakao-onboarding-card';
 import { RemindPreviewStack } from '@/views/home/ui/remind-preview-stack';
 import { StaleLinkCard } from '@/views/home/ui/stale-link-card';
 
 import { KakaoRevokedBanner } from '@/features/connect-kakao-notification/ui/kakao-revoked-banner';
-import { KakaoOnboardingCard } from '@/features/kakao-onboarding/ui/kakao-onboarding-card';
 import { useLinkActions } from '@/features/link-actions/model/use-link-actions';
 import { RegisterLinkModal } from '@/features/register-link/ui/register-link-modal';
 

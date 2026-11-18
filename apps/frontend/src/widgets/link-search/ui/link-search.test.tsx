@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { SnackbarProvider } from 'seed-design/ui/snackbar';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { LinkSearch } from '@/features/search-links/ui/link-search';
+import { LinkSearch } from '@/widgets/link-search/ui/link-search';
 
 import { Folder } from '@/entities/folder/model/types';
 import { Link } from '@/entities/link/model/types';

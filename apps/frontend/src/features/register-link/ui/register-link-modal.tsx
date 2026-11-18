@@ -8,10 +8,9 @@ import { ActionButton } from 'seed-design/ui/action-button';
 import { DialogBody, DialogContent, DialogFooter, DialogRoot } from 'seed-design/ui/dialog';
 import { TextField, TextFieldInput, TextFieldTextarea } from 'seed-design/ui/text-field';
 
-import { FolderTreeSelect } from '@/features/register-link/ui/folder-tree-select';
-
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { buildFolderTree } from '@/entities/folder/model/build-folder-tree';
+import { FolderTreeSelect } from '@/entities/folder/ui/folder-tree-select';
 import { createLink } from '@/entities/link/api/create-link';
 
 import { folderKeys, linkKeys } from '@/shared/api/query-keys';

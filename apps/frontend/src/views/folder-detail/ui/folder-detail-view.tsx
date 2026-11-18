@@ -8,8 +8,9 @@ import { IconChevronLeftLine, IconChevronRightSmallLine } from '@karrotmarket/re
 import { useQuery } from '@tanstack/react-query';
 import { ActionButton } from 'seed-design/ui/action-button';
 
+import { LinkSearch } from '@/widgets/link-search/ui/link-search';
+
 import { useLinkActions } from '@/features/link-actions/model/use-link-actions';
-import { LinkSearch } from '@/features/search-links/ui/link-search';
 import { useLinkSort } from '@/features/sort-links/model/use-link-sort';
 import { LinkSortMenu } from '@/features/sort-links/ui/link-sort-menu';
 

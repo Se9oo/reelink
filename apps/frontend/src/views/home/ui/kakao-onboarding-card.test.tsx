@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { OverlayProvider } from 'overlay-kit';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { KakaoOnboardingCard } from '@/features/kakao-onboarding/ui/kakao-onboarding-card';
+import { KakaoOnboardingCard } from '@/views/home/ui/kakao-onboarding-card';
 
 import { apiClient } from '@/shared/api/client';
 

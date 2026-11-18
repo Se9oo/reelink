@@ -2,7 +2,7 @@
 
 import { FolderTreeScreen } from '@/views/folders-home/ui/folder-tree-screen';
 
-import { LinkSearch } from '@/features/search-links/ui/link-search';
+import { LinkSearch } from '@/widgets/link-search/ui/link-search';
 
 export function FoldersHome() {
 	return (
