@@ -75,8 +75,22 @@ describe('fetchOgTags', () => {
 		expect(ogs).toHaveBeenCalledWith(
 			expect.objectContaining({
 				fetchOptions: expect.objectContaining({
-					headers: { 'user-agent': 'Mozilla/5.0 (compatible; ReelinkBot/1.0) facebookexternalhit/1.1' },
+					headers: expect.objectContaining({
+						'user-agent': 'Mozilla/5.0 (compatible; ReelinkBot/1.0) facebookexternalhit/1.1',
+					}),
 				}),
+			}),
+		);
+	});
+
+	test('압축하지 않은 응답을 요청한다(받는 크기 제한이 압축된 바이트 기준이라, 압축 폭탄이 메모리에서 풀리지 않게)', async () => {
+		vi.mocked(ogs).mockResolvedValue({ error: false, html: '', response: {}, result: {} } as never);
+
+		await fetchOgTags('https://example.com');
+
+		expect(ogs).toHaveBeenCalledWith(
+			expect.objectContaining({
+				fetchOptions: expect.objectContaining({ headers: expect.objectContaining({ 'accept-encoding': 'identity' }) }),
 			}),
 		);
 	});

@@ -1,8 +1,8 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { fetch } from 'undici';
+import { Agent, fetch } from 'undici';
 
-import { isPublicAddress, publicDispatcher } from './public-dispatcher.js';
+import { isPublicAddress, MAX_RESPONSE_SIZE, publicDispatcher } from './public-dispatcher.js';
 
 describe('isPublicAddress', () => {
 	test.each(['8.8.8.8', '1.1.1.1', '2606:4700:4700::1111'])('%s는 공개 주소다', (address) => {
@@ -57,5 +57,42 @@ describe('publicDispatcher', () => {
 		await expect(fetch(`http://localhost:${port}`, { dispatcher: publicDispatcher })).rejects.toMatchObject({
 			cause: { message: expect.stringContaining('내부 주소로는 요청하지 않습니다') },
 		});
+	});
+});
+
+describe('MAX_RESPONSE_SIZE', () => {
+	let server: Server;
+	let port: number;
+	const sizeLimited = new Agent({ maxResponseSize: MAX_RESPONSE_SIZE });
+
+	beforeAll(async () => {
+		server = createServer((req, res) => {
+			const total = req.url === '/large' ? MAX_RESPONSE_SIZE + 1024 : 1024 * 1024;
+			const chunk = Buffer.alloc(64 * 1024, 'a');
+
+			for (let sent = 0; sent < total; sent += chunk.length) {
+				res.write(chunk);
+			}
+			res.end();
+		});
+		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+		port = (server.address() as AddressInfo).port;
+	});
+
+	afterAll(async () => {
+		server.close();
+		await sizeLimited.close();
+	});
+
+	test('한도보다 작은 응답은 끝까지 받는다', async () => {
+		const res = await fetch(`http://127.0.0.1:${port}/small`, { dispatcher: sizeLimited });
+
+		expect((await res.arrayBuffer()).byteLength).toBe(1024 * 1024);
+	});
+
+	test('Content-Length 없이 보내도 한도를 넘으면 받다가 끊는다', async () => {
+		await expect(
+			fetch(`http://127.0.0.1:${port}/large`, { dispatcher: sizeLimited }).then((res) => res.arrayBuffer()),
+		).rejects.toMatchObject({ cause: { code: 'UND_ERR_RES_EXCEEDED_MAX_SIZE' } });
 	});
 });

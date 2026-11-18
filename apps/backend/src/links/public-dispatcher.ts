@@ -58,12 +58,15 @@ const publicLookup: LookupFunction = (hostname, options, callback) => {
 
 const connectPublic = buildConnector({ lookup: publicLookup });
 
+export const MAX_RESPONSE_SIZE = 5 * 1024 * 1024;
+
 /**
  * 공개 IP에만 연결하는 undici dispatcher. 사용자가 저장한 URL로 서버가 요청할 때(SSRF 방지) fetch에 넘긴다.
  * 연결할 때마다 검사하므로 리다이렉트로 내부 주소로 넘어가거나 DNS 결과가 바뀌어도 막힌다.
  * IP로 적은 주소는 DNS 조회를 거치지 않아 따로 검사한다.
  */
 export const publicDispatcher = new Agent({
+	maxResponseSize: MAX_RESPONSE_SIZE,
 	connect: (options, callback) => {
 		const host = options.hostname.replace(/^\[|\]$/g, '');
 

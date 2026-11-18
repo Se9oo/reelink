@@ -21,7 +21,10 @@ export async function fetchOgTags(url: string): Promise<OgTags> {
 			url,
 			timeout: 5,
 			fetchOptions: {
-				headers: { 'user-agent': 'Mozilla/5.0 (compatible; ReelinkBot/1.0) facebookexternalhit/1.1' },
+				headers: {
+					'user-agent': 'Mozilla/5.0 (compatible; ReelinkBot/1.0) facebookexternalhit/1.1',
+					'accept-encoding': 'identity',
+				},
 				dispatcher: publicDispatcher,
 			},
 		});
