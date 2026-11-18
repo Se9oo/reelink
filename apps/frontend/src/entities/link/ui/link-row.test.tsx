@@ -1,9 +1,26 @@
-import { render, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
 
 import { Link } from '@/entities/link/model/types';
 import { LinkRow } from '@/entities/link/ui/link-row';
+
+import { apiClient } from '@/shared/api/client';
+
+vi.mock('@/shared/api/client', () => ({
+	apiClient: { patch: vi.fn() },
+}));
+
+function render(ui: ReactElement) {
+	const queryClient = new QueryClient();
+
+	return rtlRender(ui, {
+		wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+	});
+}
 
 function link(overrides: Partial<Link> = {}): Link {
 	return {
@@ -127,6 +144,51 @@ describe('LinkRow', () => {
 		);
 
 		expect(container.querySelector('img')).toHaveAttribute('src', 'https://img.example.com/a.png');
+	});
+
+	test('썸네일이 깨지면 기본 아이콘으로 바꾸고, 썸네일 다시 가져오기를 한 번만 요청한다', async () => {
+		vi.mocked(apiClient.patch).mockReturnValue({
+			json: () => Promise.resolve(link({ id: 'broken', thumbnailUrl: 'https://img.example.com/new.png' })),
+		} as unknown as ReturnType<typeof apiClient.patch>);
+
+		const { container } = render(
+			<LinkRow
+				link={link({ id: 'broken', thumbnailUrl: 'https://img.example.com/expired.png' })}
+				onMove={() => {}}
+				onEdit={() => {}}
+				onDelete={() => {}}
+				onTogglePin={() => {}}
+			/>,
+		);
+
+		container.querySelectorAll('img').forEach((img) => fireEvent.error(img));
+
+		expect(container.querySelector('img')).not.toBeInTheDocument();
+		expect(screen.getAllByText('n.news.naver.com').length).toBeGreaterThan(0);
+		await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/broken/thumbnail'));
+		expect(apiClient.patch).toHaveBeenCalledTimes(1);
+	});
+
+	test('썸네일 다시 가져오기가 실패하면 다음에 깨질 때 다시 요청한다', async () => {
+		vi.mocked(apiClient.patch).mockClear();
+		vi.mocked(apiClient.patch).mockReturnValue({
+			json: () => Promise.reject(new Error('network')),
+		} as unknown as ReturnType<typeof apiClient.patch>);
+		const brokenLink = link({ id: 'retry', thumbnailUrl: 'https://img.example.com/retry.png' });
+		const row = (
+			<LinkRow link={brokenLink} onMove={() => {}} onEdit={() => {}} onDelete={() => {}} onTogglePin={() => {}} />
+		);
+
+		const first = render(row);
+		fireEvent.error(first.container.querySelector('img')!);
+		await waitFor(() => expect(apiClient.patch).toHaveBeenCalledTimes(1));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		first.unmount();
+
+		const second = render(row);
+		fireEvent.error(second.container.querySelector('img')!);
+
+		await waitFor(() => expect(apiClient.patch).toHaveBeenCalledTimes(2));
 	});
 
 	test('더보기 메뉴에서 폴더 이동을 누르면 onMove가 호출된다', async () => {

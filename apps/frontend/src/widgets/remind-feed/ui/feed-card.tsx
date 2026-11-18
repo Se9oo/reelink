@@ -2,6 +2,7 @@
 
 import { IconBellLine } from '@karrotmarket/react-monochrome-icon';
 
+import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
 import { hostColor } from '@/entities/link/model/host-color';
 import { Link } from '@/entities/link/model/types';
 
@@ -20,6 +21,7 @@ interface FeedCardProps {
 
 export function FeedCard({ link, position, total, folderPath, viewed, revisit, onOpen }: FeedCardProps) {
 	const host = new URL(link.url).hostname;
+	const { thumbnailUrl, onError: onThumbnailError } = useLinkThumbnail(link);
 
 	return (
 		<a
@@ -30,22 +32,24 @@ export function FeedCard({ link, position, total, folderPath, viewed, revisit, o
 			className="relative block h-full w-full overflow-hidden rounded-[22px]
 				text-[var(--seed-color-palette-static-white)] select-none"
 		>
-			{link.thumbnailUrl ? (
+			{thumbnailUrl ? (
 				<>
 					{/* eslint-disable-next-line @next/next/no-img-element */}
 					<img
-						src={link.thumbnailUrl}
+						src={thumbnailUrl}
 						referrerPolicy="no-referrer"
 						alt=""
 						aria-hidden="true"
+						onError={onThumbnailError}
 						className="absolute inset-0 h-full w-full scale-125 object-cover blur-2xl brightness-75"
 					/>
 					<div className="absolute inset-x-0 top-[20%] bottom-[30%] flex items-center justify-center px-4">
 						{/* eslint-disable-next-line @next/next/no-img-element */}
 						<img
-							src={link.thumbnailUrl}
+							src={thumbnailUrl}
 							referrerPolicy="no-referrer"
 							alt=""
+							onError={onThumbnailError}
 							className="max-h-full max-w-full rounded-xl object-contain shadow-[0_8px_24px_rgb(0_0_0/0.3)]"
 						/>
 					</div>

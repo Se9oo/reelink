@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { IconGlobeLine } from '@karrotmarket/react-monochrome-icon';
 
+import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
 import { Link } from '@/entities/link/model/types';
 
 import { formatRelativeTime } from '@/shared/lib/format-relative-time';
@@ -17,6 +18,7 @@ interface HomeLinkCardProps {
 
 export function HomeLinkCard({ link, className = '', caption, actions }: HomeLinkCardProps) {
 	const host = new URL(link.url).hostname;
+	const { thumbnailUrl, onError: onThumbnailError } = useLinkThumbnail(link);
 
 	return (
 		<div
@@ -28,9 +30,15 @@ export function HomeLinkCard({ link, className = '', caption, actions }: HomeLin
 				className="flex aspect-[1.91/1] w-full items-center justify-center overflow-hidden
 					bg-[var(--seed-color-bg-neutral-weak)] text-[var(--seed-color-fg-neutral-muted)]"
 			>
-				{link.thumbnailUrl ? (
+				{thumbnailUrl ? (
 					// eslint-disable-next-line @next/next/no-img-element
-					<img src={link.thumbnailUrl} referrerPolicy="no-referrer" alt="" className="h-full w-full object-cover" />
+					<img
+						src={thumbnailUrl}
+						referrerPolicy="no-referrer"
+						alt=""
+						onError={onThumbnailError}
+						className="h-full w-full object-cover"
+					/>
 				) : (
 					<IconGlobeLine size={24} />
 				)}

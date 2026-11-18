@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import {
 	IconChevronRightSmallLine,
@@ -10,6 +10,8 @@ import {
 } from '@karrotmarket/react-monochrome-icon';
 import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-design/ui/menu';
 
+import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
+import { Link } from '@/entities/link/model/types';
 import { isUrgent, TrashItem } from '@/entities/trash/model/trash-view';
 
 import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
@@ -125,17 +127,13 @@ export function TrashItemRow({ item, onRestore, onDelete }: TrashItemRowProps) {
 								))}
 								{children.links.map((link) => (
 									<div key={link.id} className="flex items-center gap-2">
-										{link.thumbnailUrl ? (
-											// eslint-disable-next-line @next/next/no-img-element
-											<img
-												src={link.thumbnailUrl}
-												referrerPolicy="no-referrer"
-												alt=""
-												className="h-5 w-5 shrink-0 rounded object-cover"
-											/>
-										) : (
-											<IconGlobeLine size={15} className="w-5 shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
-										)}
+										<LinkThumbnail
+											link={link}
+											imageClassName="h-5 w-5 shrink-0 rounded object-cover"
+											fallback={
+												<IconGlobeLine size={15} className="w-5 shrink-0 text-[var(--seed-color-fg-neutral-muted)]" />
+											}
+										/>
 										<div className="truncate text-[13.5px] text-[var(--seed-color-fg-neutral-muted)]">
 											{link.title ?? new URL(link.url).hostname}
 										</div>
@@ -170,11 +168,27 @@ function describe(item: TrashItem) {
 		caption: link.parentFolderName && `${link.parentFolderName} 안에 있었음`,
 		title: link.title ?? host,
 		meta: host,
-		thumbnail: link.thumbnailUrl ? (
-			// eslint-disable-next-line @next/next/no-img-element
-			<img src={link.thumbnailUrl} referrerPolicy="no-referrer" alt="" className="h-full w-full object-cover" />
-		) : (
-			<IconGlobeLine size={20} />
+		thumbnail: (
+			<LinkThumbnail link={link} imageClassName="h-full w-full object-cover" fallback={<IconGlobeLine size={20} />} />
 		),
 	};
+}
+
+function LinkThumbnail({
+	link,
+	imageClassName,
+	fallback,
+}: {
+	link: Link;
+	imageClassName: string;
+	fallback: ReactNode;
+}) {
+	const { thumbnailUrl, onError } = useLinkThumbnail(link);
+
+	if (!thumbnailUrl) {
+		return fallback;
+	}
+
+	// eslint-disable-next-line @next/next/no-img-element
+	return <img src={thumbnailUrl} referrerPolicy="no-referrer" alt="" onError={onError} className={imageClassName} />;
 }

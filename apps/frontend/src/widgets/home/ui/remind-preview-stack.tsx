@@ -1,3 +1,6 @@
+'use client';
+
+import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
 import { hostColor } from '@/entities/link/model/host-color';
 import { Link } from '@/entities/link/model/types';
 
@@ -21,33 +24,37 @@ export function RemindPreviewStack({ links }: RemindPreviewStackProps) {
 
 	return (
 		<div aria-hidden="true" className="relative hidden h-[196px] w-[168px] shrink-0 md:block">
-			{cards.map((link, index) => {
-				const host = new URL(link.url).hostname;
-				const position = POSITIONS[index + offset];
+			{cards.map((link, index) => (
+				<PreviewCard key={link.id} link={link} position={POSITIONS[index + offset]} />
+			))}
+		</div>
+	);
+}
 
-				return (
-					<div
-						key={link.id}
-						className={`absolute h-[168px] w-[120px] overflow-hidden rounded-[14px]
-						text-[var(--seed-color-palette-static-white)] shadow-[0_8px_20px_rgb(16_40_80/0.14)] ${position}`}
-						style={link.thumbnailUrl ? undefined : { background: hostColor(host) }}
-					>
-						{link.thumbnailUrl && (
-							// eslint-disable-next-line @next/next/no-img-element
-							<img
-								src={link.thumbnailUrl}
-								referrerPolicy="no-referrer"
-								alt=""
-								className="absolute inset-0 h-full w-full object-cover"
-							/>
-						)}
-						<div className="absolute inset-0 bg-gradient-to-b from-transparent from-40% to-[rgb(10_14_20/0.72)]" />
-						<p className="absolute inset-x-2.5 bottom-2.5 line-clamp-3 text-[11px] leading-snug font-bold">
-							{link.savedReason ?? link.title ?? host}
-						</p>
-					</div>
-				);
-			})}
+function PreviewCard({ link, position }: { link: Link; position: (typeof POSITIONS)[number] }) {
+	const host = new URL(link.url).hostname;
+	const { thumbnailUrl, onError: onThumbnailError } = useLinkThumbnail(link);
+
+	return (
+		<div
+			className={`absolute h-[168px] w-[120px] overflow-hidden rounded-[14px]
+				text-[var(--seed-color-palette-static-white)] shadow-[0_8px_20px_rgb(16_40_80/0.14)] ${position}`}
+			style={thumbnailUrl ? undefined : { background: hostColor(host) }}
+		>
+			{thumbnailUrl && (
+				// eslint-disable-next-line @next/next/no-img-element
+				<img
+					src={thumbnailUrl}
+					referrerPolicy="no-referrer"
+					alt=""
+					onError={onThumbnailError}
+					className="absolute inset-0 h-full w-full object-cover"
+				/>
+			)}
+			<div className="absolute inset-0 bg-gradient-to-b from-transparent from-40% to-[rgb(10_14_20/0.72)]" />
+			<p className="absolute inset-x-2.5 bottom-2.5 line-clamp-3 text-[11px] leading-snug font-bold">
+				{link.savedReason ?? link.title ?? host}
+			</p>
 		</div>
 	);
 }

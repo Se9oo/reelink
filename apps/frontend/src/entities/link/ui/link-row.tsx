@@ -13,6 +13,7 @@ import {
 } from '@karrotmarket/react-monochrome-icon';
 import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-design/ui/menu';
 
+import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
 import { Link } from '@/entities/link/model/types';
 
 import { formatRelativeTime } from '@/shared/lib/format-relative-time';
@@ -54,6 +55,7 @@ export function LinkRow({
 	onClearRemind,
 }: LinkRowProps) {
 	const host = new URL(link.url).hostname;
+	const { thumbnailUrl, onError: onThumbnailError } = useLinkThumbnail(link);
 
 	return (
 		<div
@@ -67,9 +69,15 @@ export function LinkRow({
 					className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[10px]
 						bg-[var(--seed-color-bg-neutral-weak)] text-[var(--seed-color-fg-neutral-muted)]"
 				>
-					{link.thumbnailUrl ? (
+					{thumbnailUrl ? (
 						// eslint-disable-next-line @next/next/no-img-element
-						<img src={link.thumbnailUrl} referrerPolicy="no-referrer" alt="" className="h-full w-full object-cover" />
+						<img
+							src={thumbnailUrl}
+							referrerPolicy="no-referrer"
+							alt=""
+							onError={onThumbnailError}
+							className="h-full w-full object-cover"
+						/>
 					) : (
 						<IconGlobeLine size={22} />
 					)}
@@ -79,12 +87,18 @@ export function LinkRow({
 
 			<div
 				className={`relative hidden aspect-[1.91/1] w-full overflow-hidden md:block ${
-					link.thumbnailUrl ? 'bg-[#2b2e35]' : 'bg-[var(--seed-color-bg-neutral-weak)]'
+					thumbnailUrl ? 'bg-[#2b2e35]' : 'bg-[var(--seed-color-bg-neutral-weak)]'
 				}`}
 			>
-				{link.thumbnailUrl ? (
+				{thumbnailUrl ? (
 					// eslint-disable-next-line @next/next/no-img-element
-					<img src={link.thumbnailUrl} referrerPolicy="no-referrer" alt="" className="h-full w-full object-cover" />
+					<img
+						src={thumbnailUrl}
+						referrerPolicy="no-referrer"
+						alt=""
+						onError={onThumbnailError}
+						className="h-full w-full object-cover"
+					/>
 				) : (
 					<div
 						aria-hidden="true"

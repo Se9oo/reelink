@@ -3,6 +3,7 @@
 import { IconGlobeLine } from '@karrotmarket/react-monochrome-icon';
 import { ActionButton } from 'seed-design/ui/action-button';
 
+import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
 import { Link } from '@/entities/link/model/types';
 
 import { formatRelativeTime } from '@/shared/lib/format-relative-time';
@@ -15,6 +16,7 @@ interface StaleLinkCardProps {
 
 export function StaleLinkCard({ link, onView, onDelete }: StaleLinkCardProps) {
 	const host = new URL(link.url).hostname;
+	const { thumbnailUrl, onError: onThumbnailError } = useLinkThumbnail(link);
 
 	return (
 		<li
@@ -27,9 +29,15 @@ export function StaleLinkCard({ link, onView, onDelete }: StaleLinkCardProps) {
 						bg-[var(--seed-color-bg-neutral-weak)] text-[var(--seed-color-fg-neutral-muted)] md:aspect-[1.91/1]
 						md:w-full md:rounded-none"
 				>
-					{link.thumbnailUrl ? (
+					{thumbnailUrl ? (
 						// eslint-disable-next-line @next/next/no-img-element
-						<img src={link.thumbnailUrl} referrerPolicy="no-referrer" alt="" className="h-full w-full object-cover" />
+						<img
+							src={thumbnailUrl}
+							referrerPolicy="no-referrer"
+							alt=""
+							onError={onThumbnailError}
+							className="h-full w-full object-cover"
+						/>
 					) : (
 						<IconGlobeLine size={22} />
 					)}

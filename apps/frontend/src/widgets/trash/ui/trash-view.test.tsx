@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
@@ -60,7 +61,11 @@ function renderView({ folders = [], links = [] }: { folders?: TrashFolder[]; lin
 		onDeleteLink: vi.fn(),
 	};
 
-	render(<TrashView folders={folders} links={links} {...handlers} />);
+	render(
+		<QueryClientProvider client={new QueryClient()}>
+			<TrashView folders={folders} links={links} {...handlers} />
+		</QueryClientProvider>,
+	);
 
 	return handlers;
 }
