@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { trashKeys } from '@/entities/trash/api/trash-keys';
-
 import { apiClient } from '@/shared/api/client';
+import { trashKeys } from '@/shared/api/query-keys';
 
 interface DeleteTrashItemParams {
 	type: 'folder' | 'link';

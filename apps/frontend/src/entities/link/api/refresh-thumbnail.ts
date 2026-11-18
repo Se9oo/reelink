@@ -2,11 +2,10 @@ import { useState } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
 
-import { linkKeys } from '@/entities/link/api/link-keys';
 import { Link } from '@/entities/link/model/types';
-import { trashKeys } from '@/entities/trash/api/trash-keys';
 
 import { apiClient } from '@/shared/api/client';
+import { linkKeys, trashKeys } from '@/shared/api/query-keys';
 
 const refreshingUrls = new Set<string>();
 

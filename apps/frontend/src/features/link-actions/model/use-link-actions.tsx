@@ -10,10 +10,10 @@ import { RemindLinkDialog } from '@/features/link-actions/ui/remind-link-dialog'
 import { useDeleteLink } from '@/entities/link/api/delete-link';
 import { useMoveLink } from '@/entities/link/api/move-link';
 import { usePinLink } from '@/entities/link/api/pin-link';
+import { useRestoreLink } from '@/entities/link/api/restore-link';
 import { useSetRemindAt } from '@/entities/link/api/set-remind-at';
 import { useUpdateLink } from '@/entities/link/api/update-link';
 import { Link } from '@/entities/link/model/types';
-import { useRestoreItem } from '@/entities/trash/api/restore-item';
 
 import { formatRemindAt } from '@/shared/lib/format-remind-at';
 
@@ -27,7 +27,7 @@ export function useLinkActions() {
 	const updateLink = useUpdateLink();
 	const pinLink = usePinLink();
 	const setRemindAt = useSetRemindAt();
-	const restoreItem = useRestoreItem();
+	const restoreLink = useRestoreLink();
 	const snackbar = useSnackbarAdapter();
 
 	function showFailure(message: string) {
@@ -43,10 +43,10 @@ export function useLinkActions() {
 							message="링크를 삭제했어요"
 							actionLabel="실행 취소"
 							onAction={() =>
-								restoreItem.mutate(
-									{ type: 'link', id: link.id },
-									{ onSuccess: callbacks.onRestored, onError: () => showFailure('되돌리지 못했어요') },
-								)
+								restoreLink.mutate(link.id, {
+									onSuccess: callbacks.onRestored,
+									onError: () => showFailure('되돌리지 못했어요'),
+								})
 							}
 						/>
 					),

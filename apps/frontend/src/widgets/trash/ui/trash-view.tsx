@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 
 import { IconChevronLeftLine } from '@karrotmarket/react-monochrome-icon';
 
-import { buildTrashItems, isUrgent, RETENTION_DAYS, TrashItem } from '@/entities/trash/model/trash-view';
-import { TrashFolder, TrashLink } from '@/entities/trash/model/types';
-import { TrashItemRow } from '@/entities/trash/ui/trash-item-row';
+import { buildTrashItems, isUrgent, RETENTION_DAYS, TrashItem } from '@/widgets/trash/model/trash-view';
+import { TrashFolder, TrashLink } from '@/widgets/trash/model/types';
+import { TrashItemRow } from '@/widgets/trash/ui/trash-item-row';
 
 interface TrashViewProps {
 	folders: TrashFolder[];

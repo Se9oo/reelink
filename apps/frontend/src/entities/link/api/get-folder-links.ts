@@ -1,10 +1,10 @@
 import { queryOptions } from '@tanstack/react-query';
 
-import { linkKeys } from '@/entities/link/api/link-keys';
 import { hasPendingOgTags } from '@/entities/link/model/has-pending-og-tags';
 import { Link } from '@/entities/link/model/types';
 
 import { apiClient } from '@/shared/api/client';
+import { linkKeys } from '@/shared/api/query-keys';
 import { shouldRetry } from '@/shared/api/should-retry';
 
 function getFolderLinks(folderId: string) {

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { buildTrashItems, getChildren, getDaysUntilPurge, isUrgent } from '@/entities/trash/model/trash-view';
-import { TrashFolder, TrashLink } from '@/entities/trash/model/types';
+import { buildTrashItems, getChildren, getDaysUntilPurge, isUrgent } from '@/widgets/trash/model/trash-view';
+import { TrashFolder, TrashLink } from '@/widgets/trash/model/types';
 
 const NOW = new Date('2026-10-16T00:00:00Z');
 

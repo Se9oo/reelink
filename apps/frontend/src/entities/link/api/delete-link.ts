@@ -1,9 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { linkKeys } from '@/entities/link/api/link-keys';
-import { trashKeys } from '@/entities/trash/api/trash-keys';
-
 import { apiClient } from '@/shared/api/client';
+import { linkKeys, trashKeys } from '@/shared/api/query-keys';
 
 function deleteLink(linkId: string) {
 	return apiClient.delete(`links/${linkId}`);

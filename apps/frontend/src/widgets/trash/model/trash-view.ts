@@ -1,4 +1,4 @@
-import { TrashFolder, TrashLink } from '@/entities/trash/model/types';
+import { TrashFolder, TrashLink } from '@/widgets/trash/model/types';
 
 export const RETENTION_DAYS = 30;
 const URGENT_THRESHOLD_DAYS = 3;

@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { linkKeys } from '@/entities/link/api/link-keys';
-
 import { apiClient } from '@/shared/api/client';
+import { linkKeys } from '@/shared/api/query-keys';
 
 function viewLink(linkId: string) {
 	return apiClient.patch(`links/${linkId}/view`).json();

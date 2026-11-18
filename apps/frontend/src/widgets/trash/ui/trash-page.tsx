@@ -3,12 +3,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { overlay } from 'overlay-kit';
 
+import { trashQueryOptions } from '@/widgets/trash/api/get-trash';
+import { TrashFolder, TrashLink } from '@/widgets/trash/model/types';
+import { PermanentDeleteDialog } from '@/widgets/trash/ui/permanent-delete-dialog';
 import { TrashView } from '@/widgets/trash/ui/trash-view';
 
-import { trashQueryOptions } from '@/entities/trash/api/get-trash';
-import { useRestoreItem } from '@/entities/trash/api/restore-item';
-import { TrashFolder, TrashLink } from '@/entities/trash/model/types';
-import { PermanentDeleteDialog } from '@/entities/trash/ui/permanent-delete-dialog';
+import { useRestoreFolder } from '@/entities/folder/api/restore-folder';
+import { useRestoreLink } from '@/entities/link/api/restore-link';
 
 function openPermanentDeleteDialog(type: 'folder' | 'link', id: string, name: string) {
 	overlay.open(({ isOpen, close }) => (
@@ -18,15 +19,16 @@ function openPermanentDeleteDialog(type: 'folder' | 'link', id: string, name: st
 
 export function TrashPage() {
 	const { data } = useQuery(trashQueryOptions());
-	const restoreItem = useRestoreItem();
+	const restoreFolder = useRestoreFolder();
+	const restoreLink = useRestoreLink();
 
 	if (!data) {
 		return null;
 	}
 
 	const handlers = {
-		onRestoreFolder: (id: string) => restoreItem.mutate({ type: 'folder', id }),
-		onRestoreLink: (id: string) => restoreItem.mutate({ type: 'link', id }),
+		onRestoreFolder: (id: string) => restoreFolder.mutate(id),
+		onRestoreLink: (id: string) => restoreLink.mutate(id),
 		onDeleteFolder: (folder: TrashFolder) => openPermanentDeleteDialog('folder', folder.id, folder.name),
 		onDeleteLink: (link: TrashLink) =>
 			openPermanentDeleteDialog('link', link.id, link.title ?? new URL(link.url).hostname),

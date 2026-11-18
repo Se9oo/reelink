@@ -1,9 +1,9 @@
 import { queryOptions } from '@tanstack/react-query';
 
-import { trashKeys } from '@/entities/trash/api/trash-keys';
-import { TrashResponse } from '@/entities/trash/model/types';
+import { TrashResponse } from '@/widgets/trash/model/types';
 
 import { apiClient } from '@/shared/api/client';
+import { trashKeys } from '@/shared/api/query-keys';
 
 function getTrash() {
 	return apiClient.get('trash').json<TrashResponse>();

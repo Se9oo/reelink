@@ -10,12 +10,11 @@ import { TextField, TextFieldInput, TextFieldTextarea } from 'seed-design/ui/tex
 
 import { FolderTreeSelect } from '@/features/register-link/ui/folder-tree-select';
 
-import { folderKeys } from '@/entities/folder/api/folder-keys';
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { buildFolderTree } from '@/entities/folder/model/build-folder-tree';
 import { createLink } from '@/entities/link/api/create-link';
-import { linkKeys } from '@/entities/link/api/link-keys';
 
+import { folderKeys, linkKeys } from '@/shared/api/query-keys';
 import { isValidHttpUrl } from '@/shared/lib/is-valid-http-url';
 
 interface RegisterLinkModalProps {

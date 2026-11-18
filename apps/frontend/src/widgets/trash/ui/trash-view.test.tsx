@@ -3,9 +3,8 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
 
+import { TrashFolder, TrashLink } from '@/widgets/trash/model/types';
 import { TrashView } from '@/widgets/trash/ui/trash-view';
-
-import { TrashFolder, TrashLink } from '@/entities/trash/model/types';
 
 const { mockBack } = vi.hoisted(() => ({ mockBack: vi.fn() }));
 

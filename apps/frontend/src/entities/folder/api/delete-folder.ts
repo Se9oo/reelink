@@ -1,9 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { folderKeys } from '@/entities/folder/api/folder-keys';
-import { trashKeys } from '@/entities/trash/api/trash-keys';
-
 import { apiClient } from '@/shared/api/client';
+import { folderKeys, trashKeys } from '@/shared/api/query-keys';
 
 function deleteFolder(folderId: string) {
 	return apiClient.delete(`folders/${folderId}`);

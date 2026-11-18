@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { linkKeys } from '@/entities/link/api/link-keys';
 import { Link } from '@/entities/link/model/types';
 
 import { apiClient } from '@/shared/api/client';
+import { linkKeys } from '@/shared/api/query-keys';
 
 interface PinLinkParams {
 	linkId: string;

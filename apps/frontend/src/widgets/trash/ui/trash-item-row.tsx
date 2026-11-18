@@ -10,9 +10,10 @@ import {
 } from '@karrotmarket/react-monochrome-icon';
 import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-design/ui/menu';
 
+import { isUrgent, TrashItem } from '@/widgets/trash/model/trash-view';
+
 import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
 import { Link } from '@/entities/link/model/types';
-import { isUrgent, TrashItem } from '@/entities/trash/model/trash-view';
 
 import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
 

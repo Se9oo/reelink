@@ -11,7 +11,7 @@ import {
 	AlertDialogTitle,
 } from 'seed-design/ui/alert-dialog';
 
-import { useDeleteTrashItem } from '@/entities/trash/api/delete-trash-item';
+import { useDeleteTrashItem } from '@/widgets/trash/api/delete-trash-item';
 
 interface PermanentDeleteDialogProps {
 	open: boolean;

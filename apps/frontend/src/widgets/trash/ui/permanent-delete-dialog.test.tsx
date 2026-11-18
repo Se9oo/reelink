@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { PermanentDeleteDialog } from '@/entities/trash/ui/permanent-delete-dialog';
+import { PermanentDeleteDialog } from '@/widgets/trash/ui/permanent-delete-dialog';
 
 import { apiClient } from '@/shared/api/client';
 
