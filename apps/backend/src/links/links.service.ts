@@ -357,6 +357,34 @@ export class LinksService {
 	}
 
 	/**
+	 * OG 태그를 다시 가져와 썸네일 주소를 바꾼다. 서명이 필요한 썸네일 URL은 기한이 지나면 403이 나서,
+	 * 화면에서 이미지가 깨지면 부른다. 새 썸네일을 못 가져오면 기존 주소를 그대로 둔다.
+	 * 휴지통에 있는 링크도 복구될 수 있어서 삭제 여부와 상관없이 바꾼다.
+	 * @param userId string
+	 * @param linkId string
+	 * @returns Link
+	 * @throws NotFoundException 링크가 없거나 내 링크가 아닌 경우
+	 */
+	async refreshThumbnail({ userId, linkId }: { userId: string; linkId: string }): Promise<Link> {
+		const where = and(eq(links.id, linkId), eq(links.userId, userId));
+		const [link] = await this.db.select().from(links).where(where);
+
+		if (!link) {
+			throw new NotFoundException();
+		}
+
+		const { thumbnailUrl } = await fetchOgTags(link.url);
+
+		if (thumbnailUrl === null || thumbnailUrl === link.thumbnailUrl) {
+			return link;
+		}
+
+		const [updated] = await this.db.update(links).set({ thumbnailUrl }).where(where).returning();
+
+		return updated ?? link;
+	}
+
+	/**
 	 * 링크를 폴더 상단에 고정하거나 고정을 해제한다. 고정 시각을 pinnedAt에 기록하고, 해제하면 null로 둔다.
 	 * @param userId string
 	 * @param linkId string

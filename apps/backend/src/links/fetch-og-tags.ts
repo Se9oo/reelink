@@ -7,6 +7,7 @@ export interface OgTags {
 
 /**
  * URL의 OG 태그(og:title, og:image)를 가져온다. 실패하거나 값이 없으면 null로 채운다.
+ * og:image가 상대 경로면 페이지 URL 기준 절대 주소로 바꾼다.
  * @param url string
  * @returns OgTags
  */
@@ -24,9 +25,11 @@ export async function fetchOgTags(url: string): Promise<OgTags> {
 			return { title: null, thumbnailUrl: null };
 		}
 
+		const image = result.ogImage?.[0]?.url;
+
 		return {
 			title: result.ogTitle ?? null,
-			thumbnailUrl: result.ogImage?.[0]?.url ?? null,
+			thumbnailUrl: image ? (URL.parse(image, url)?.href ?? null) : null,
 		};
 	} catch {
 		return { title: null, thumbnailUrl: null };

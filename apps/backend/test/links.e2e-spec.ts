@@ -6,6 +6,7 @@ import request from 'supertest';
 
 import { DrizzleDb } from '../src/db/drizzle.module.js';
 import { folders, links, users } from '../src/db/schema.js';
+import { fetchOgTags } from '../src/links/fetch-og-tags.js';
 import { linkGoUrl } from '../src/links/link-go-url.js';
 import { LinksService } from '../src/links/links.service.js';
 
@@ -686,6 +687,77 @@ describe('LinksController (e2e)', () => {
 
 		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
 			await request(app.getHttpServer()).patch(`/links/${crypto.randomUUID()}/pin`).send({ pinned: true }).expect(401);
+		});
+	});
+
+	describe('Patch /links/:id/thumbnail', () => {
+		async function createLinkWithStaleThumbnail() {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '썸네일 테스트 폴더' })
+				.expect(201);
+			const link = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://www.threads.com/@a/post/1', folderId: folder.body.id })
+				.expect(201);
+
+			await new Promise((resolve) => setTimeout(resolve, 300));
+			await db
+				.update(links)
+				.set({ thumbnailUrl: 'https://img.example.com/expired.png' })
+				.where(eq(links.id, link.body.id));
+
+			return link.body.id as string;
+		}
+
+		function refresh(linkId: string, token = accessToken) {
+			return request(app.getHttpServer()).patch(`/links/${linkId}/thumbnail`).set('Cookie', `access_token=${token}`);
+		}
+
+		test('OG 태그를 다시 가져와 새 썸네일 주소로 바꾼다.', async () => {
+			const linkId = await createLinkWithStaleThumbnail();
+
+			const res = await refresh(linkId).expect(200);
+
+			expect(res.body.thumbnailUrl).toBe('https://img.example.com/og.png');
+		});
+
+		test('새 썸네일을 못 가져오면 기존 주소를 그대로 둔다.', async () => {
+			const linkId = await createLinkWithStaleThumbnail();
+			vi.mocked(fetchOgTags).mockResolvedValueOnce({ title: null, thumbnailUrl: null });
+
+			const res = await refresh(linkId).expect(200);
+
+			expect(res.body.thumbnailUrl).toBe('https://img.example.com/expired.png');
+		});
+
+		test('휴지통에 있는 링크도 썸네일을 바꾼다.', async () => {
+			const linkId = await createLinkWithStaleThumbnail();
+
+			await request(app.getHttpServer())
+				.delete(`/links/${linkId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			const res = await refresh(linkId).expect(200);
+
+			expect(res.body.thumbnailUrl).toBe('https://img.example.com/og.png');
+		});
+
+		test('남의 링크거나 존재하지 않는 링크면 404 오류를 반환한다.', async () => {
+			const [otherUser] = await db
+				.insert(users)
+				.values({ email: '썸네일-다른이메일', nickname: '다른유저' })
+				.returning();
+			const otherToken = await app.get(JwtService).signAsync({ sub: otherUser.id });
+			const linkId = await createLinkWithStaleThumbnail();
+
+			await refresh(linkId, otherToken).expect(404);
+			await refresh(crypto.randomUUID()).expect(404);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
 		});
 	});
 

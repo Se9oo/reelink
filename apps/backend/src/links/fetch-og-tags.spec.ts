@@ -19,6 +19,19 @@ describe('fetchOgTags', () => {
 		expect(result).toEqual({ title: '제목', thumbnailUrl: 'https://example.com/thumb.jpg' });
 	});
 
+	test('og:image가 상대 경로면 페이지 URL 기준 절대 주소로 바꾼다', async () => {
+		vi.mocked(ogs).mockResolvedValue({
+			error: false,
+			html: '',
+			response: {},
+			result: { ogTitle: '제목', ogImage: [{ url: '/images/cover.png' }] },
+		} as never);
+
+		const result = await fetchOgTags('https://blog.example.com/post/1');
+
+		expect(result.thumbnailUrl).toBe('https://blog.example.com/images/cover.png');
+	});
+
 	test('추출에 실패하면 title/thumbnailUrl이 null이다', async () => {
 		vi.mocked(ogs).mockResolvedValue({
 			error: true,

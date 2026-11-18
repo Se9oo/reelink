@@ -94,6 +94,14 @@ export class LinksController {
 		return await this.linksService.pinLink({ userId, linkId, pinned });
 	}
 
+	@Patch(':id/thumbnail')
+	@UseGuards(JwtAuthGuard)
+	async refreshThumbnail(@Req() req: Request, @Param('id', ParseUUIDPipe) linkId: string) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.linksService.refreshThumbnail({ userId, linkId });
+	}
+
 	@Patch(':id/remind')
 	@UseGuards(JwtAuthGuard)
 	async setRemindAt(
