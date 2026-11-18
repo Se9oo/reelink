@@ -12,6 +12,7 @@
 		"^react$",
 		"^next(/.*)?$",
 		"<THIRD_PARTY_MODULES>",
+		"^@/views/(.*)$",
 		"^@/widgets/(.*)$",
 		"^@/features/(.*)$",
 		"^@/entities/(.*)$",
