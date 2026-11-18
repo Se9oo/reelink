@@ -31,6 +31,7 @@ Red → Green → Refactor 순서로 진행
 - `src/views`: FSD의 `pages` 레이어. 화면 하나에서만 쓰는 본문을 둔다 (FSD 2.1 pages-first). `src/pages`라고 이름 지으면 Next가 Pages Router 폴더로 인식해 루트 `app/`과 위치가 다르다며 빌드가 실패해서 `views`로 이름 붙였다
 - `src/widgets`: 여러 화면에서 다시 쓰는 블록만 둔다(`folder-list`). 한 화면에서만 쓰면 `src/views`에 둔다
 - `src/app/layouts`: 모든 화면을 감싸는 앱 레이아웃(`app-shell`: 사이드바, 하단 탭, 모바일 헤더). 위젯을 조립하므로 widgets가 아니라 맨 위 app 레이어에 둔다
+- 레이어 규칙(위 레이어만 아래 레이어를 import, 같은 레이어는 같은 슬라이스 안에서만)은 `eslint-plugin-boundaries`가 `pnpm lint`에서 검사한다(`eslint.config.mjs`). 공개 API(`index.ts`)는 쓰지 않고 내부 경로로 직접 import한다
 - `src/app`: 전역 프로바이더·세팅(예: `QueryProvider`) — 라우팅용 `app/`과 이름은 같지만 다른 레이어라 혼동 주의
 
 ## 특별 주의사항
