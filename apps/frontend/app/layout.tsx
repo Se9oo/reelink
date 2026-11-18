@@ -2,9 +2,10 @@ import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import Script from 'next/script';
 
-import { QueryProvider } from '@/app/providers/query-provider';
 import { OverlayProvider } from 'overlay-kit';
 import { SnackbarProvider } from 'seed-design/ui/snackbar';
+
+import { QueryProvider } from '@/app/providers/query-provider';
 
 import { SITE_URL } from '@/shared/config/env';
 import { THEME_COLORS } from '@/shared/config/theme-color';

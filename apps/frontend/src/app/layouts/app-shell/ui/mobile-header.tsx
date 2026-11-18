@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { AccountMenu } from '@/widgets/app-shell/ui/account-menu';
+import { AccountMenu } from '@/app/layouts/app-shell/ui/account-menu';
 
 import { ThemeToggle } from '@/features/toggle-theme/ui/theme-toggle';
 

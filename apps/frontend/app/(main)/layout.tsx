@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 
-import { BottomNavigation } from '@/widgets/app-shell/ui/bottom-navigation';
-import { FloatingLinkButton } from '@/widgets/app-shell/ui/floating-link-button';
-import { MobileHeader } from '@/widgets/app-shell/ui/mobile-header';
-import { Sidebar } from '@/widgets/app-shell/ui/sidebar';
+import { BottomNavigation } from '@/app/layouts/app-shell/ui/bottom-navigation';
+import { FloatingLinkButton } from '@/app/layouts/app-shell/ui/floating-link-button';
+import { MobileHeader } from '@/app/layouts/app-shell/ui/mobile-header';
+import { Sidebar } from '@/app/layouts/app-shell/ui/sidebar';
 
 import { PushSubscriptionSync } from '@/features/web-push-notification/ui/push-subscription-sync';
 

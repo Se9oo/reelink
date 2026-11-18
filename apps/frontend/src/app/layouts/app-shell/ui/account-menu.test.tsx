@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { OverlayProvider } from 'overlay-kit';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { AccountMenu } from '@/widgets/app-shell/ui/account-menu';
+import { AccountMenu } from '@/app/layouts/app-shell/ui/account-menu';
 
 import { PushEnvironment } from '@/features/web-push-notification/lib/push-environment';
 

@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 
 import { IconHouseFill, IconLightbulbDot5Fill } from '@karrotmarket/react-monochrome-icon';
 
-import { AccountMenu } from '@/widgets/app-shell/ui/account-menu';
+import { AccountMenu } from '@/app/layouts/app-shell/ui/account-menu';
+
 import { FolderList } from '@/widgets/folder-list/ui/folder-list';
 
 import { ThemeToggle } from '@/features/toggle-theme/ui/theme-toggle';

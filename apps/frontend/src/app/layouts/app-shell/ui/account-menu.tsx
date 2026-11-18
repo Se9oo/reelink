@@ -8,7 +8,7 @@ import { Avatar } from 'seed-design/ui/avatar';
 import { IdentityPlaceholder } from 'seed-design/ui/identity-placeholder';
 import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-design/ui/menu';
 
-import { useAccountMenuItems } from '@/widgets/app-shell/lib/use-account-menu-items';
+import { useAccountMenuItems } from '@/app/layouts/app-shell/lib/use-account-menu-items';
 
 import { meQueryOptions } from '@/entities/user/api/get-me';
 
