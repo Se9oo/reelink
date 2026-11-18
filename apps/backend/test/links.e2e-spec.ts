@@ -9,6 +9,7 @@ import { folders, links, users } from '../src/db/schema.js';
 import { fetchOgTags } from '../src/links/fetch-og-tags.js';
 import { linkGoUrl } from '../src/links/link-go-url.js';
 import { LinksService } from '../src/links/links.service.js';
+import { REDIS, type RedisClient } from '../src/redis/redis.module.js';
 
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
@@ -27,9 +28,16 @@ describe('LinksController (e2e)', () => {
 	let accessToken: string;
 	let testUserId: string;
 
+	let redis: RedisClient;
+
 	beforeAll(async () => {
 		context = await setupE2EApp('links-e2e@test.com', '링크테스트');
 		({ app, db, accessToken, testUserId } = context);
+		redis = app.get<RedisClient>(REDIS);
+	});
+
+	beforeEach(async () => {
+		await redis.del(`ogfetch:${testUserId}`, `ogrefresh:${testUserId}`);
 	});
 
 	afterAll(async () => {
@@ -687,6 +695,89 @@ describe('LinksController (e2e)', () => {
 
 		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
 			await request(app.getHttpServer()).patch(`/links/${crypto.randomUUID()}/pin`).send({ pinned: true }).expect(401);
+		});
+	});
+
+	describe('OG 태그 요청 횟수 제한', () => {
+		const fetchKey = () => `ogfetch:${testUserId}`;
+		const refreshKey = () => `ogrefresh:${testUserId}`;
+
+		async function createLink() {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '횟수 제한 폴더' })
+				.expect(201);
+			const link = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://example.com/limit', folderId: folder.body.id })
+				.expect(201);
+
+			return link.body.id as string;
+		}
+
+		function refresh(linkId: string) {
+			return request(app.getHttpServer())
+				.patch(`/links/${linkId}/thumbnail`)
+				.set('Cookie', `access_token=${accessToken}`);
+		}
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		test('OG 태그를 가져올 때마다 사용자별 카운터가 1분 동안 쌓인다', async () => {
+			await createLink();
+
+			await vi.waitFor(async () => expect(await redis.get(fetchKey())).toBe('1'));
+			expect(await redis.ttl(fetchKey())).toBeGreaterThan(50);
+		});
+
+		test('1분에 60번을 넘으면 링크는 저장하고 OG 태그는 가져오지 않는다', async () => {
+			await redis.set(fetchKey(), '60', 'EX', 60);
+			vi.mocked(fetchOgTags).mockClear();
+
+			const linkId = await createLink();
+			await vi.waitFor(async () => expect(await redis.get(fetchKey())).toBe('61'));
+			const [saved] = await db.select().from(links).where(eq(links.id, linkId));
+
+			expect(fetchOgTags).not.toHaveBeenCalled();
+			expect(saved.title).toBeNull();
+		});
+
+		test('썸네일 다시 가져오기는 새 링크와 따로 세고, 한도를 넘으면 429를 돌려준다', async () => {
+			vi.mocked(fetchOgTags).mockClear();
+			const linkId = await createLink();
+			await vi.waitFor(() => expect(fetchOgTags).toHaveBeenCalledTimes(1));
+			await redis.set(refreshKey(), '60', 'EX', 60);
+			vi.mocked(fetchOgTags).mockClear();
+
+			await refresh(linkId).expect(429);
+
+			expect(fetchOgTags).not.toHaveBeenCalled();
+			await redis.del(refreshKey());
+			await redis.set(fetchKey(), '60', 'EX', 60);
+
+			await refresh(linkId).expect(200);
+			expect(fetchOgTags).toHaveBeenCalledTimes(1);
+		});
+
+		test('Redis가 실패하면 횟수 제한 없이 OG 태그를 가져온다', async () => {
+			vi.spyOn(redis, 'incr').mockRejectedValueOnce(new Error('Connection is closed.'));
+			vi.mocked(fetchOgTags).mockClear();
+
+			await createLink();
+
+			await vi.waitFor(() => expect(fetchOgTags).toHaveBeenCalledTimes(1));
+		});
+
+		test('만료 시간을 먼저 걸고 센다(INCR 뒤에 만료 설정이 실패해 키가 영원히 남는 일이 없게)', async () => {
+			vi.spyOn(redis, 'incr').mockRejectedValueOnce(new Error('Connection is closed.'));
+
+			await createLink();
+
+			await vi.waitFor(async () => expect(await redis.ttl(fetchKey())).toBeGreaterThan(50));
 		});
 	});
 

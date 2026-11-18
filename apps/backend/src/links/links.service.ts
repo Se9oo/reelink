@@ -1,4 +1,12 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+	BadRequestException,
+	HttpException,
+	HttpStatus,
+	Inject,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { and, asc, desc, eq, gt, ilike, isNull, lt, or, sql } from 'drizzle-orm';
 
@@ -8,6 +16,7 @@ import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { folders, links } from '../db/schema.js';
 import { FoldersService } from '../folders/folders.service.js';
 import { lockUserFolders } from '../folders/lock-user-folders.js';
+import { REDIS, type RedisClient } from '../redis/redis.module.js';
 
 import { fetchOgTags } from './fetch-og-tags.js';
 import { HomeSummary, Link } from './links.types.js';
@@ -20,6 +29,8 @@ const HOME_RECENT_LIMIT = 5;
 const HOME_UPCOMING_LIMIT = 10;
 const HOME_STALE_AFTER_DAYS = 14;
 const HOME_STALE_LIMIT = 3;
+const OG_FETCH_LIMIT = 60;
+const OG_FETCH_WINDOW_SECONDS = 60;
 
 interface CreateLinkParams {
 	userId: string;
@@ -55,8 +66,11 @@ function normalizeOptionalText(key: string, value: unknown): string | null | und
 
 @Injectable()
 export class LinksService {
+	private readonly logger = new Logger(LinksService.name);
+
 	constructor(
 		@Inject(DRIZZLE) private readonly db: DrizzleDb,
+		@Inject(REDIS) private readonly redis: RedisClient,
 		private readonly foldersService: FoldersService,
 	) {}
 
@@ -101,7 +115,7 @@ export class LinksService {
 			return created;
 		});
 
-		void this.applyOgTags(link.id, url);
+		void this.applyOgTags(userId, link.id, url).catch((error) => this.logOgTagsFailure(link.id, error));
 
 		return link;
 	}
@@ -125,7 +139,7 @@ export class LinksService {
 		});
 
 		for (const link of created) {
-			void this.applyOgTags(link.id, link.url);
+			void this.applyOgTags(userId, link.id, link.url).catch((error) => this.logOgTagsFailure(link.id, error));
 		}
 
 		return created;
@@ -364,6 +378,7 @@ export class LinksService {
 	 * @param linkId string
 	 * @returns Link
 	 * @throws NotFoundException 링크가 없거나 내 링크가 아닌 경우
+	 * @throws HttpException 429 썸네일 다시 가져오기를 1분에 60번 넘게 요청한 경우
 	 */
 	async refreshThumbnail({ userId, linkId }: { userId: string; linkId: string }): Promise<Link> {
 		const where = and(eq(links.id, linkId), eq(links.userId, userId));
@@ -371,6 +386,10 @@ export class LinksService {
 
 		if (!link) {
 			throw new NotFoundException();
+		}
+
+		if (!(await this.isWithinOgLimit(`ogrefresh:${userId}`))) {
+			throw new HttpException('썸네일을 너무 자주 다시 가져왔습니다.', HttpStatus.TOO_MANY_REQUESTS);
 		}
 
 		const { thumbnailUrl } = await fetchOgTags(link.url);
@@ -473,10 +492,15 @@ export class LinksService {
 	/**
 	 * OG 태그를 비동기로 가져와 title/thumbnailUrl을 채운다. 등록 응답을 막지 않도록 await 없이 호출됨.
 	 * 그 사이 사용자가 제목을 직접 고쳤을 수 있어서 title은 아직 비어 있을 때만 채운다.
+	 * @param userId string 요청 횟수를 셀 사용자
 	 * @param linkId string
 	 * @param url string
 	 */
-	private async applyOgTags(linkId: string, url: string): Promise<void> {
+	private async applyOgTags(userId: string, linkId: string, url: string): Promise<void> {
+		if (!(await this.isWithinOgLimit(`ogfetch:${userId}`))) {
+			return;
+		}
+
 		const { title, thumbnailUrl } = await fetchOgTags(url);
 
 		if (title === null && thumbnailUrl === null) {
@@ -487,5 +511,30 @@ export class LinksService {
 			.update(links)
 			.set({ title: sql`coalesce(${links.title}, ${title})`, thumbnailUrl })
 			.where(eq(links.id, linkId));
+	}
+
+	/**
+	 * applyOgTags는 await 없이 불려서, 실패하면 처리되지 않은 Promise 거부로 프로세스가 죽지 않게 여기서 받아 남긴다.
+	 * @param linkId string
+	 * @param error unknown
+	 */
+	private logOgTagsFailure(linkId: string, error: unknown): void {
+		this.logger.error(`OG 태그 저장 실패 (linkId=${linkId})`, error instanceof Error ? error.stack : error);
+	}
+
+	/**
+	 * OG 태그 요청을 1분에 60번까지만 허용한다. 서버가 사용자 대신 외부로 요청을 보내는 기능이라 남용을 막는다.
+	 * 만료 시간이 붙은 키를 먼저 만들고 세서, 중간에 실패해도 키가 영원히 남지 않는다. Redis가 실패하면 허용한다.
+	 * @param key string `ogfetch:<userId>`(새 링크) 또는 `ogrefresh:<userId>`(썸네일 다시 가져오기)
+	 * @returns boolean
+	 */
+	private async isWithinOgLimit(key: string): Promise<boolean> {
+		try {
+			await this.redis.set(key, 0, 'EX', OG_FETCH_WINDOW_SECONDS, 'NX');
+
+			return (await this.redis.incr(key)) <= OG_FETCH_LIMIT;
+		} catch {
+			return true;
+		}
 	}
 }
