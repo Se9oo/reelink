@@ -8,7 +8,8 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { and, asc, desc, eq, gt, ilike, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, ilike, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { validate as isUuid } from 'uuid';
 
 import { countGraphemes } from '../common/count-graphemes.js';
 import { isValidHttpUrl } from '../common/is-valid-http-url.js';
@@ -31,6 +32,7 @@ const HOME_STALE_AFTER_DAYS = 14;
 const HOME_STALE_LIMIT = 3;
 const OG_FETCH_LIMIT = 60;
 const OG_FETCH_WINDOW_SECONDS = 60;
+const MAX_IDS_PER_REQUEST = 20;
 
 interface CreateLinkParams {
 	userId: string;
@@ -143,6 +145,32 @@ export class LinksService {
 		}
 
 		return created;
+	}
+
+	/**
+	 * id 목록으로 내 링크를 조회한다. OG 태그를 기다리는 링크만 다시 읽으려고 쓴다. 남의 링크, 삭제된 링크, 없는 id는 빠진다.
+	 * @param userId string
+	 * @param ids unknown 쉼표로 구분한 uuid 문자열, 최대 20개
+	 * @returns Link[] 순서는 보장하지 않음
+	 * @throws BadRequestException ids가 없거나 비었거나 20개를 넘거나 uuid 형식이 아닌 값이 있는 경우
+	 */
+	async getLinksByIds({ userId, ids }: { userId: string; ids: unknown }): Promise<Link[]> {
+		const parsed =
+			typeof ids === 'string'
+				? ids
+						.split(',')
+						.map((id) => id.trim())
+						.filter(Boolean)
+				: [];
+
+		if (parsed.length === 0 || parsed.length > MAX_IDS_PER_REQUEST || !parsed.every((id) => isUuid(id))) {
+			throw new BadRequestException(`ids는 쉼표로 구분한 uuid ${MAX_IDS_PER_REQUEST}개 이하여야 합니다.`);
+		}
+
+		return await this.db
+			.select()
+			.from(links)
+			.where(and(eq(links.userId, userId), isNull(links.deletedAt), inArray(links.id, parsed)));
 	}
 
 	/**

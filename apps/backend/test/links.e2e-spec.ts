@@ -248,6 +248,67 @@ describe('LinksController (e2e)', () => {
 		});
 	});
 
+	describe('Get /links?ids=', () => {
+		async function createLink(token = accessToken) {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${token}`)
+				.send({ name: 'id 조회 폴더' })
+				.expect(201);
+			const link = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${token}`)
+				.send({ url: 'https://example.com/ids', folderId: folder.body.id })
+				.expect(201);
+
+			return link.body.id as string;
+		}
+
+		function getByIds(ids: string | undefined, token = accessToken) {
+			const req = request(app.getHttpServer()).get('/links').set('Cookie', `access_token=${token}`);
+
+			return ids === undefined ? req : req.query({ ids });
+		}
+
+		test('요청한 id의 내 링크만 돌려준다', async () => {
+			const a = await createLink();
+			const b = await createLink();
+
+			const res = await getByIds(`${a},${b}`).expect(200);
+
+			expect(res.body.map((link: { id: string }) => link.id).sort()).toEqual([a, b].sort());
+		});
+
+		test('남의 링크, 삭제된 링크, 없는 id는 빠진다', async () => {
+			const [otherUser] = await db.insert(users).values({ email: 'ids-다른이메일', nickname: '다른유저' }).returning();
+			const otherToken = await app.get(JwtService).signAsync({ sub: otherUser.id });
+			const others = await createLink(otherToken);
+			const deleted = await createLink();
+			const alive = await createLink();
+			await request(app.getHttpServer())
+				.delete(`/links/${deleted}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			const res = await getByIds([others, deleted, crypto.randomUUID(), alive].join(',')).expect(200);
+
+			expect(res.body.map((link: { id: string }) => link.id)).toEqual([alive]);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('ids가 없거나 비었거나 20개를 넘거나 uuid 형식이 아니면 400', async () => {
+			await getByIds(undefined).expect(400);
+			await getByIds('').expect(400);
+			await getByIds(Array.from({ length: 21 }, () => crypto.randomUUID()).join(',')).expect(400);
+			await getByIds('not-a-uuid').expect(400);
+		});
+
+		test('인증 쿠키가 없으면 401', async () => {
+			await request(app.getHttpServer()).get('/links').query({ ids: crypto.randomUUID() }).expect(401);
+		});
+	});
+
 	describe('Get /links/search', () => {
 		async function createFolder(name: string) {
 			const res = await request(app.getHttpServer())
