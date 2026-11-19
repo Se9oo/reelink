@@ -2,6 +2,8 @@ import { useState } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
 
+import { feedKeys } from '@/entities/link/api/get-feed';
+import { patchLinkThumbnail } from '@/entities/link/model/patch-link-thumbnail';
 import { Link } from '@/entities/link/model/types';
 
 import { apiClient } from '@/shared/api/client';
@@ -28,9 +30,10 @@ export function useLinkThumbnail(link: Link) {
 		refreshingUrls.add(failedUrl);
 		refreshThumbnail(link.id)
 			.then((updated) => {
-				if (updated.thumbnailUrl !== failedUrl) {
-					queryClient.invalidateQueries({ queryKey: linkKeys.all });
-					queryClient.invalidateQueries({ queryKey: trashKeys.all });
+				for (const queryKey of [linkKeys.all, feedKeys.all, trashKeys.all]) {
+					queryClient.setQueriesData({ queryKey }, (data) =>
+						data === undefined ? data : patchLinkThumbnail(data, updated.id, updated.thumbnailUrl),
+					);
 				}
 			})
 			.catch(() => refreshingUrls.delete(failedUrl));
