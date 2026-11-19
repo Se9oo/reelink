@@ -2,12 +2,10 @@ import { useState } from 'react';
 
 import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { feedKeys } from '@/entities/link/api/get-feed';
-import { patchLinkThumbnail } from '@/entities/link/model/patch-link-thumbnail';
+import { patchLinkInCaches } from '@/entities/link/api/patch-link-in-caches';
 import { Link } from '@/entities/link/model/types';
 
 import { apiClient } from '@/shared/api/client';
-import { linkKeys, trashKeys } from '@/shared/api/query-keys';
 
 const attemptedUrls = new Set<string>();
 
@@ -29,13 +27,7 @@ export function useLinkThumbnail(link: Link) {
 	const { mutate } = useMutation({
 		mutationKey,
 		mutationFn: refreshThumbnail,
-		onSuccess: (updated) => {
-			for (const queryKey of [linkKeys.all, feedKeys.all, trashKeys.all]) {
-				queryClient.setQueriesData({ queryKey }, (data) =>
-					data === undefined ? data : patchLinkThumbnail(data, updated.id, updated.thumbnailUrl),
-				);
-			}
-		},
+		onSuccess: (updated) => patchLinkInCaches(queryClient, updated),
 		onError: (_error, { failedUrl }) => {
 			attemptedUrls.delete(failedUrl);
 		},

@@ -1,4 +1,6 @@
-export function patchLinkThumbnail<T>(data: T, linkId: string, thumbnailUrl: string | null): T {
+import { Link } from '@/entities/link/model/types';
+
+export function patchLink<T>(data: T, updated: Link): T {
 	function patch(value: unknown): unknown {
 		if (Array.isArray(value)) {
 			const next = value.map(patch);
@@ -12,8 +14,10 @@ export function patchLinkThumbnail<T>(data: T, linkId: string, thumbnailUrl: str
 
 		const record = value as Record<string, unknown>;
 
-		if (record.id === linkId && 'thumbnailUrl' in record) {
-			return record.thumbnailUrl === thumbnailUrl ? record : { ...record, thumbnailUrl };
+		if (record.id === updated.id && 'thumbnailUrl' in record) {
+			const changed = Object.entries(updated).some(([key, field]) => record[key] !== field);
+
+			return changed ? { ...record, ...updated } : record;
 		}
 
 		const entries = Object.entries(record).map(([key, child]) => [key, patch(child)] as const);
