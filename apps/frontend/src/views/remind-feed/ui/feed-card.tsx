@@ -21,7 +21,7 @@ interface FeedCardProps {
 
 export function FeedCard({ link, position, total, folderPath, viewed, revisit, onOpen }: FeedCardProps) {
 	const host = new URL(link.url).hostname;
-	const { thumbnailUrl, onError: onThumbnailError } = useLinkThumbnail(link);
+	const { thumbnailUrl, refreshing, onError: onThumbnailError } = useLinkThumbnail(link);
 
 	return (
 		<a
@@ -54,6 +54,8 @@ export function FeedCard({ link, position, total, folderPath, viewed, revisit, o
 						/>
 					</div>
 				</>
+			) : refreshing ? (
+				<div className="absolute inset-0 bg-[#2b2e35]" />
 			) : (
 				<div className="absolute inset-0" style={{ background: hostColor(host) }}>
 					<div

@@ -8,6 +8,7 @@ import {
 	IconGlobeLine,
 	IconTrashcanLine,
 } from '@karrotmarket/react-monochrome-icon';
+import { Skeleton } from '@seed-design/react';
 import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-design/ui/menu';
 
 import { isUrgent, TrashItem } from '@/views/trash/model/trash-view';
@@ -184,10 +185,16 @@ function LinkThumbnail({
 	imageClassName: string;
 	fallback: ReactNode;
 }) {
-	const { thumbnailUrl, onError } = useLinkThumbnail(link);
+	const { thumbnailUrl, refreshing, onError } = useLinkThumbnail(link);
 
 	if (!thumbnailUrl) {
-		return fallback;
+		return refreshing ? (
+			<div className={`overflow-hidden ${imageClassName}`}>
+				<Skeleton radius="0" width="full" height="full" />
+			</div>
+		) : (
+			fallback
+		);
 	}
 
 	// eslint-disable-next-line @next/next/no-img-element

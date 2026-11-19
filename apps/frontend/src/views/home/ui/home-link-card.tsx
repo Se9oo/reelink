@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 
 import { IconGlobeLine } from '@karrotmarket/react-monochrome-icon';
+import { Skeleton } from '@seed-design/react';
 
 import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
 import { Link } from '@/entities/link/model/types';
@@ -18,7 +19,7 @@ interface HomeLinkCardProps {
 
 export function HomeLinkCard({ link, className = '', caption, actions }: HomeLinkCardProps) {
 	const host = new URL(link.url).hostname;
-	const { thumbnailUrl, onError: onThumbnailError } = useLinkThumbnail(link);
+	const { thumbnailUrl, refreshing, onError: onThumbnailError } = useLinkThumbnail(link);
 
 	return (
 		<div
@@ -39,6 +40,8 @@ export function HomeLinkCard({ link, className = '', caption, actions }: HomeLin
 						onError={onThumbnailError}
 						className="h-full w-full object-cover"
 					/>
+				) : refreshing ? (
+					<Skeleton radius="0" width="full" height="full" />
 				) : (
 					<IconGlobeLine size={24} />
 				)}

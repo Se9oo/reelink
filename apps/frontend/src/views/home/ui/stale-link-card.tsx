@@ -1,6 +1,7 @@
 'use client';
 
 import { IconGlobeLine } from '@karrotmarket/react-monochrome-icon';
+import { Skeleton } from '@seed-design/react';
 import { ActionButton } from 'seed-design/ui/action-button';
 
 import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
@@ -16,7 +17,7 @@ interface StaleLinkCardProps {
 
 export function StaleLinkCard({ link, onView, onDelete }: StaleLinkCardProps) {
 	const host = new URL(link.url).hostname;
-	const { thumbnailUrl, onError: onThumbnailError } = useLinkThumbnail(link);
+	const { thumbnailUrl, refreshing, onError: onThumbnailError } = useLinkThumbnail(link);
 
 	return (
 		<li
@@ -38,6 +39,8 @@ export function StaleLinkCard({ link, onView, onDelete }: StaleLinkCardProps) {
 							onError={onThumbnailError}
 							className="h-full w-full object-cover"
 						/>
+					) : refreshing ? (
+						<Skeleton radius="0" width="full" height="full" />
 					) : (
 						<IconGlobeLine size={22} />
 					)}

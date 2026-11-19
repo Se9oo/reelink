@@ -191,6 +191,48 @@ describe('LinkRow', () => {
 		await waitFor(() => expect(apiClient.patch).toHaveBeenCalledTimes(2));
 	});
 
+	test('썸네일을 다시 가져오는 동안에는 기본 아이콘 대신 스켈레톤을 보여준다', () => {
+		vi.mocked(apiClient.patch).mockReturnValue({
+			json: () => new Promise(() => {}),
+		} as unknown as ReturnType<typeof apiClient.patch>);
+
+		const { container } = render(
+			<LinkRow
+				link={link({ id: 'pending', thumbnailUrl: 'https://img.example.com/pending.png' })}
+				onMove={() => {}}
+				onEdit={() => {}}
+				onDelete={() => {}}
+				onTogglePin={() => {}}
+			/>,
+		);
+
+		container.querySelectorAll('img').forEach((img) => fireEvent.error(img));
+
+		expect(container.querySelector('img')).not.toBeInTheDocument();
+		expect(container.querySelectorAll('.seed-skeleton').length).toBeGreaterThan(0);
+	});
+
+	test('다시 가져오기가 실패하면 스켈레톤을 기본 아이콘으로 바꾼다', async () => {
+		vi.mocked(apiClient.patch).mockReturnValue({
+			json: () => Promise.reject(new Error('network')),
+		} as unknown as ReturnType<typeof apiClient.patch>);
+
+		const { container } = render(
+			<LinkRow
+				link={link({ id: 'failed', thumbnailUrl: 'https://img.example.com/failed.png' })}
+				onMove={() => {}}
+				onEdit={() => {}}
+				onDelete={() => {}}
+				onTogglePin={() => {}}
+			/>,
+		);
+
+		container.querySelectorAll('img').forEach((img) => fireEvent.error(img));
+
+		await waitFor(() => expect(container.querySelector('.seed-skeleton')).not.toBeInTheDocument());
+		expect(container.querySelector('img')).not.toBeInTheDocument();
+	});
+
 	test('더보기 메뉴에서 폴더 이동을 누르면 onMove가 호출된다', async () => {
 		const user = userEvent.setup();
 		const onMove = vi.fn();

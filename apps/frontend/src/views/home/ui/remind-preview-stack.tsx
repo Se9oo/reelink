@@ -1,5 +1,7 @@
 'use client';
 
+import { Skeleton } from '@seed-design/react';
+
 import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
 import { hostColor } from '@/entities/link/model/host-color';
 import { Link } from '@/entities/link/model/types';
@@ -33,14 +35,15 @@ export function RemindPreviewStack({ links }: RemindPreviewStackProps) {
 
 function PreviewCard({ link, position }: { link: Link; position: (typeof POSITIONS)[number] }) {
 	const host = new URL(link.url).hostname;
-	const { thumbnailUrl, onError: onThumbnailError } = useLinkThumbnail(link);
+	const { thumbnailUrl, refreshing, onError: onThumbnailError } = useLinkThumbnail(link);
 
 	return (
 		<div
 			className={`absolute h-[168px] w-[120px] overflow-hidden rounded-[14px]
 				text-[var(--seed-color-palette-static-white)] shadow-[0_8px_20px_rgb(16_40_80/0.14)] ${position}`}
-			style={thumbnailUrl ? undefined : { background: hostColor(host) }}
+			style={thumbnailUrl || refreshing ? undefined : { background: hostColor(host) }}
 		>
+			{refreshing && <Skeleton radius="0" width="full" height="full" className="absolute inset-0" />}
 			{thumbnailUrl && (
 				// eslint-disable-next-line @next/next/no-img-element
 				<img

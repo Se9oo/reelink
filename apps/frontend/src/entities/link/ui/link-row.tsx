@@ -11,6 +11,7 @@ import {
 	IconPushpinSlashLine,
 	IconTrashcanLine,
 } from '@karrotmarket/react-monochrome-icon';
+import { Skeleton } from '@seed-design/react';
 import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-design/ui/menu';
 
 import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
@@ -55,7 +56,7 @@ export function LinkRow({
 	onClearRemind,
 }: LinkRowProps) {
 	const host = new URL(link.url).hostname;
-	const { thumbnailUrl, onError: onThumbnailError } = useLinkThumbnail(link);
+	const { thumbnailUrl, refreshing, onError: onThumbnailError } = useLinkThumbnail(link);
 
 	return (
 		<div
@@ -78,6 +79,8 @@ export function LinkRow({
 							onError={onThumbnailError}
 							className="h-full w-full object-cover"
 						/>
+					) : refreshing ? (
+						<Skeleton radius="0" width="full" height="full" />
 					) : (
 						<IconGlobeLine size={22} />
 					)}
@@ -99,6 +102,8 @@ export function LinkRow({
 						onError={onThumbnailError}
 						className="h-full w-full object-cover"
 					/>
+				) : refreshing ? (
+					<Skeleton radius="0" width="full" height="full" />
 				) : (
 					<div
 						aria-hidden="true"
