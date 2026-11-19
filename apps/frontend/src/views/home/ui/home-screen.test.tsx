@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { HomeScreen } from '@/views/home/ui/home-screen';
 
 import { Link } from '@/entities/link/model/types';
+import { PendingOgTagsSync } from '@/entities/link/ui/pending-og-tags-sync';
 
 import { apiClient } from '@/shared/api/client';
 
@@ -91,6 +92,7 @@ function renderHome() {
 			<OverlayProvider>
 				<SnackbarProvider>
 					<HomeScreen />
+					<PendingOgTagsSync />
 				</SnackbarProvider>
 			</OverlayProvider>
 		</QueryClientProvider>,
@@ -226,5 +228,34 @@ describe('HomeScreen', () => {
 		expect(await screen.findByText('첫 링크를 저장해보세요')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: '링크 등록하기' })).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: /리마인드 시작/ })).not.toBeInTheDocument();
+	});
+
+	test('방금 저장해 OG 태그를 기다리는 링크는 그 링크만 다시 조회해서 제목을 채운다', async () => {
+		const pending = link({ id: 'new', url: 'https://new.example.com', createdAt: new Date().toISOString() });
+		vi.mocked(apiClient.get).mockImplementation(((url: string) => ({
+			json: async () => {
+				if (url === 'auth/me') {
+					return { nickname: '유저' };
+				}
+
+				if (url === 'links') {
+					return [{ ...pending, title: '새로 저장한 글' }];
+				}
+
+				return { ...emptyHome, recent: [pending] };
+			},
+		})) as never);
+
+		const consoleError = vi.spyOn(console, 'error');
+
+		renderHome();
+
+		expect(await screen.findByText('새로 저장한 글', {}, { timeout: 4000 })).toBeInTheDocument();
+		expect(apiClient.get).toHaveBeenCalledWith('links', { searchParams: { ids: 'new' } });
+		expect(vi.mocked(apiClient.get).mock.calls.filter(([url]) => url === 'links/home')).toHaveLength(1);
+		expect(consoleError.mock.calls.some(([message]) => String(message).includes('Cannot update a component'))).toBe(
+			false,
+		);
+		consoleError.mockRestore();
 	});
 });
