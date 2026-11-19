@@ -198,7 +198,7 @@ export function HomeScreen() {
 								<p
 									className="flex items-center gap-2 rounded-xl border border-[var(--seed-color-stroke-neutral-subtle)]
 										bg-[var(--seed-color-bg-layer-default)] px-4 py-3 text-[13px]
-										text-[var(--seed-color-fg-neutral-muted)]"
+										text-[var(--seed-color-fg-neutral-muted)] md:border-0 md:p-0"
 								>
 									<IconBellLine size={16} className="shrink-0 text-[var(--seed-color-fg-brand)]" />
 									링크 더보기에서 알림 시각을 정하면 여기에 보여요
@@ -222,7 +222,7 @@ export function HomeScreen() {
 	);
 }
 
-const CARD_CLASS = 'w-[272px] shrink-0 snap-start';
+const CARD_CLASS = 'w-[272px] shrink-0 snap-start md:w-[calc((100%-1.25rem)/3)]';
 
 function CardScroller({ children }: { children: ReactNode }) {
 	return (
@@ -241,7 +241,11 @@ function Em({ children }: { children: ReactNode }) {
 
 function Section({ label, description, children }: { label: string; description?: string; children: ReactNode }) {
 	return (
-		<section aria-label={label} className="flex min-w-0 flex-col gap-2.5">
+		<section
+			aria-label={label}
+			className="flex min-w-0 flex-col gap-2.5 md:rounded-[20px] md:border
+				md:border-[var(--seed-color-stroke-neutral-subtle)] md:bg-[var(--seed-color-bg-layer-default)] md:p-5"
+		>
 			<div className="flex flex-col gap-1 md:flex-row md:items-baseline md:gap-2.5">
 				<h2 className="text-[15px] font-bold text-[var(--seed-color-fg-neutral)]">{label}</h2>
 				{description && <p className="text-[13px] text-[var(--seed-color-fg-neutral-muted)]">{description}</p>}
