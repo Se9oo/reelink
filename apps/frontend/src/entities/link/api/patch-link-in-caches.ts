@@ -6,12 +6,14 @@ import { Link } from '@/entities/link/model/types';
 
 import { linkKeys, trashKeys } from '@/shared/api/query-keys';
 
+export const LINK_CACHE_KEYS = [linkKeys.all, feedKeys.all, trashKeys.all];
+
 export function patchLinkInCaches(
 	queryClient: QueryClient,
 	linkId: string,
 	fieldsFrom: (cached: Link) => Partial<Link>,
 ) {
-	for (const queryKey of [linkKeys.all, feedKeys.all, trashKeys.all]) {
+	for (const queryKey of LINK_CACHE_KEYS) {
 		queryClient.setQueriesData({ queryKey }, (data) =>
 			data === undefined ? data : patchLink(data, linkId, fieldsFrom),
 		);

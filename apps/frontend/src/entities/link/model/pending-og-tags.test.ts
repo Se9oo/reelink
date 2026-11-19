@@ -14,6 +14,22 @@ describe('collectLinksWithoutOgTags', () => {
 
 		expect(collectLinksWithoutOgTags(home)).toEqual([{ id: 'n', createdAt: '2026-10-20T12:00:10Z' }]);
 	});
+
+	test('삭제된 링크(휴지통)는 OG를 기다리지 않는다', () => {
+		const trash = {
+			links: [
+				{
+					id: 'd',
+					title: null,
+					thumbnailUrl: null,
+					createdAt: '2026-10-20T12:00:10Z',
+					deletedAt: '2026-10-20T12:00:12Z',
+				},
+			],
+		};
+
+		expect(collectLinksWithoutOgTags(trash)).toEqual([]);
+	});
 });
 
 describe('selectPendingIds', () => {

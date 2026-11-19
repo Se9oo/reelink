@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { useLinkActions } from '@/features/link-actions/model/use-link-actions';
 
+import { feedKeys } from '@/entities/link/api/get-feed';
 import { Link } from '@/entities/link/model/types';
 import { NotificationSettings } from '@/entities/notification/model/types';
 
@@ -79,6 +80,8 @@ function renderHarness(target: Link = link) {
 			</OverlayProvider>
 		</QueryClientProvider>,
 	);
+
+	return queryClient;
 }
 
 describe('useLinkActions', () => {
@@ -109,6 +112,16 @@ describe('useLinkActions', () => {
 
 		expect(apiClient.delete).toHaveBeenCalledWith('links/l1');
 		expect(await screen.findByText('링크를 삭제했어요')).toBeInTheDocument();
+	});
+
+	test('삭제하면 피드 캐시도 무효화해서 지운 링크가 남지 않게 한다', async () => {
+		const user = userEvent.setup();
+		const queryClient = renderHarness();
+		queryClient.setQueryData(feedKeys.all, { unviewed: [link], revisit: [] });
+
+		await user.click(screen.getByRole('button', { name: '삭제하기' }));
+
+		await waitFor(() => expect(queryClient.getQueryState(feedKeys.all)?.isInvalidated).toBe(true));
 	});
 
 	test('실행 취소를 누르면 휴지통 복구 API를 호출한다', async () => {

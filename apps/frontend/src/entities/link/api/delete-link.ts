@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { feedKeys } from '@/entities/link/api/get-feed';
+
 import { apiClient } from '@/shared/api/client';
 import { linkKeys, trashKeys } from '@/shared/api/query-keys';
 
@@ -14,6 +16,7 @@ export function useDeleteLink() {
 		mutationFn: deleteLink,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: linkKeys.all });
+			queryClient.invalidateQueries({ queryKey: feedKeys.all });
 			queryClient.invalidateQueries({ queryKey: trashKeys.all });
 		},
 	});

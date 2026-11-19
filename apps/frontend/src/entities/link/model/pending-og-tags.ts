@@ -10,7 +10,9 @@ export interface LinkWithoutOgTags {
 
 export function collectLinksWithoutOgTags(data: unknown): LinkWithoutOgTags[] {
 	if (isLink(data)) {
-		return data.title === null && data.thumbnailUrl === null ? [{ id: data.id, createdAt: data.createdAt }] : [];
+		const waiting = data.title === null && data.thumbnailUrl === null && !data.deletedAt;
+
+		return waiting ? [{ id: data.id, createdAt: data.createdAt }] : [];
 	}
 
 	if (typeof data !== 'object' || data === null) {

@@ -5,21 +5,20 @@ import { useCallback, useSyncExternalStore } from 'react';
 import { notifyManager, type QueryCache, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { getLinksByIds } from '@/entities/link/api/get-links-by-ids';
-import { patchLinkInCaches } from '@/entities/link/api/patch-link-in-caches';
+import { LINK_CACHE_KEYS, patchLinkInCaches } from '@/entities/link/api/patch-link-in-caches';
 import {
 	collectLinksWithoutOgTags,
 	type LinkWithoutOgTags,
 	selectPendingIds,
 } from '@/entities/link/model/pending-og-tags';
 
-const LINK_DATA_KEYS = ['links', 'feed', 'trash'];
-const TRACKED_KEYS = [...LINK_DATA_KEYS, 'og-pending'];
+const LINK_DATA_KEYS: unknown[] = LINK_CACHE_KEYS.map(([root]) => root);
 const POLL_INTERVAL_MS = 1500;
 
 function readSnapshot(cache: QueryCache) {
 	return cache
 		.findAll({ type: 'active' })
-		.filter((query) => LINK_DATA_KEYS.includes(String(query.queryKey[0])))
+		.filter((query) => LINK_DATA_KEYS.includes(query.queryKey[0]))
 		.flatMap((query) => collectLinksWithoutOgTags(query.state.data))
 		.map(({ id, createdAt }) => `${id}|${createdAt}`)
 		.sort()
@@ -45,7 +44,7 @@ export function PendingOgTagsSync() {
 			const notify = notifyManager.batchCalls(onChange);
 
 			return cache.subscribe((event) => {
-				if (TRACKED_KEYS.includes(String(event.query.queryKey[0]))) {
+				if (LINK_DATA_KEYS.includes(event.query.queryKey[0])) {
 					notify();
 				}
 			});
