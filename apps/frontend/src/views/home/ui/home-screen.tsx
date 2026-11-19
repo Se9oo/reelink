@@ -73,7 +73,7 @@ export function HomeScreen() {
 						{me.nickname}님, {greetingFor(new Date().getHours())}
 					</h1>
 					<p className="mt-1.5 text-sm text-[var(--seed-color-fg-neutral-muted)]">
-						{subGreetingFor(remind.unviewedCount)}
+						{subGreetingFor({ staleCount: stale.length, unviewedCount: remind.unviewedCount })}
 					</p>
 				</header>
 

@@ -12,18 +12,16 @@ export function greetingFor(hour: number) {
 	return '';
 }
 
-export function subGreetingFor(unviewedCount: number) {
-	if (unviewedCount === 0) {
-		return '새로 저장한 링크를 둘러볼까요?';
+const MAX_SUGGESTED_COUNT = 3;
+
+export function subGreetingFor({ staleCount, unviewedCount }: { staleCount: number; unviewedCount: number }) {
+	if (staleCount > 0) {
+		return `오래 쌓인 링크 ${staleCount}개부터 정리해볼까요?`;
 	}
 
-	const MAX_UNVIEWED_COUNT = 3;
-
-	let count = unviewedCount;
-
-	if (unviewedCount > MAX_UNVIEWED_COUNT) {
-		count = MAX_UNVIEWED_COUNT;
+	if (unviewedCount > 0) {
+		return `안 본 링크 ${Math.min(unviewedCount, MAX_SUGGESTED_COUNT)}개만 먼저 볼까요?`;
 	}
 
-	return `오늘은 오래된 링크 ${count}개만 정리해볼까요?`;
+	return '다 봤어요! 새로 본 링크를 저장해보세요';
 }

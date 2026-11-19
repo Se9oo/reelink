@@ -25,16 +25,19 @@ describe('greetingFor', () => {
 });
 
 describe('subGreetingFor', () => {
-	test('안 본 링크 수가 0개라면 "새로 저장한 링크를 둘러볼까요?" 문구가 출력된다', () => {
-		expect(subGreetingFor(0)).toBe('새로 저장한 링크를 둘러볼까요?');
+	test('2주 넘게 안 본 링크가 있으면 오래 쌓인 링크부터 정리하자고 한다', () => {
+		expect(subGreetingFor({ staleCount: 2, unviewedCount: 9 })).toBe('오래 쌓인 링크 2개부터 정리해볼까요?');
 	});
 
-	test('안 본 링크 수가 N개라면 "오늘은 오래된 링크 N개만 정리해볼까요?" 문구가 출력된다', () => {
-		expect(subGreetingFor(1)).toBe('오늘은 오래된 링크 1개만 정리해볼까요?');
-		expect(subGreetingFor(3)).toBe('오늘은 오래된 링크 3개만 정리해볼까요?');
+	test('안 본 링크가 모두 최근 것이면 오래됐다고 하지 않고 먼저 보자고 한다', () => {
+		expect(subGreetingFor({ staleCount: 0, unviewedCount: 1 })).toBe('안 본 링크 1개만 먼저 볼까요?');
 	});
 
-	test('안 본 링크 수가 3개를 넘으면 최대 3개로 제한한다', () => {
-		expect(subGreetingFor(12)).toBe('오늘은 오래된 링크 3개만 정리해볼까요?');
+	test('안 본 링크가 3개를 넘으면 3개까지만 권한다', () => {
+		expect(subGreetingFor({ staleCount: 0, unviewedCount: 12 })).toBe('안 본 링크 3개만 먼저 볼까요?');
+	});
+
+	test('안 본 링크가 없으면 새 링크를 저장하자고 한다', () => {
+		expect(subGreetingFor({ staleCount: 0, unviewedCount: 0 })).toBe('다 봤어요! 새로 본 링크를 저장해보세요');
 	});
 });
