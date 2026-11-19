@@ -9,7 +9,6 @@ import {
 	IconBellLine,
 	IconBellSlashLine,
 	IconBookmarkFill,
-	IconCheckmarkCircleLine,
 	IconDot3HorizontalFill,
 	IconLightbulbDot5Fill,
 } from '@karrotmarket/react-monochrome-icon';
@@ -124,11 +123,8 @@ export function HomeScreen() {
 							<RemindPreviewStack links={remind.previews} />
 						</section>
 
-						<Section
-							label="오래 쌓인 링크"
-							description={stale.length > 0 ? '아직 볼 건지, 이제 보내줄 건지 골라주세요' : undefined}
-						>
-							{stale.length > 0 ? (
+						{stale.length > 0 && (
+							<Section label="오래 쌓인 링크" description="아직 볼 건지, 이제 보내줄 건지 골라주세요">
 								<ul className="grid gap-2.5 md:grid-cols-3">
 									{stale.map((link) => (
 										<StaleLinkCard
@@ -139,14 +135,8 @@ export function HomeScreen() {
 										/>
 									))}
 								</ul>
-							) : (
-								<SectionPlaceholder
-									icon={<IconCheckmarkCircleLine size={26} />}
-									title="오래 쌓인 링크가 없어요"
-									description="2주 넘게 안 본 링크가 생기면 여기서 정리할 수 있어요"
-								/>
-							)}
-						</Section>
+							</Section>
+						)}
 
 						<Section label="알림 예약한 링크">
 							{upcoming.length > 0 ? (
@@ -205,11 +195,14 @@ export function HomeScreen() {
 									))}
 								</CardScroller>
 							) : (
-								<SectionPlaceholder
-									icon={<IconBellLine size={26} />}
-									title="예약한 알림이 없어요"
-									description="링크 더보기에서 알림 시각을 정하면 여기에 보여요"
-								/>
+								<p
+									className="flex items-center gap-2 rounded-xl border border-[var(--seed-color-stroke-neutral-subtle)]
+										bg-[var(--seed-color-bg-layer-default)] px-4 py-3 text-[13px]
+										text-[var(--seed-color-fg-neutral-muted)]"
+								>
+									<IconBellLine size={16} className="shrink-0 text-[var(--seed-color-fg-brand)]" />
+									링크 더보기에서 알림 시각을 정하면 여기에 보여요
+								</p>
 							)}
 						</Section>
 
@@ -255,24 +248,6 @@ function Section({ label, description, children }: { label: string; description?
 			</div>
 			{children}
 		</section>
-	);
-}
-
-function SectionPlaceholder({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
-	return (
-		<div
-			className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--seed-color-stroke-neutral-subtle)]
-				bg-[var(--seed-color-bg-layer-default)] px-6 py-8 text-center"
-		>
-			<div
-				className="mb-1 flex h-14 w-14 items-center justify-center rounded-[20px] bg-[var(--seed-color-bg-brand-weak)]
-					text-[var(--seed-color-fg-brand)]"
-			>
-				{icon}
-			</div>
-			<p className="text-[15px] font-bold text-[var(--seed-color-fg-neutral)]">{title}</p>
-			<p className="text-[13px] text-balance break-keep text-[var(--seed-color-fg-neutral-muted)]">{description}</p>
-		</div>
 	);
 }
 

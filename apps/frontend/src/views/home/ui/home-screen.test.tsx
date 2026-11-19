@@ -183,16 +183,14 @@ describe('HomeScreen', () => {
 		expect(await screen.findByText('링크를 삭제했어요')).toBeInTheDocument();
 	});
 
-	test('알림 예약한 링크와 오래 쌓인 링크가 없으면 섹션은 두고 빈 안내를 보여준다', async () => {
+	test('오래 쌓인 링크가 없으면 섹션을 숨기고, 알림 예약한 링크가 없으면 알림 정하는 방법을 한 줄로 안내한다', async () => {
 		mockApi({ ...busyHome, upcoming: [], stale: [] });
 		renderHome();
 
 		const upcoming = await screen.findByRole('region', { name: '알림 예약한 링크' });
-		const stale = screen.getByRole('region', { name: '오래 쌓인 링크' });
 
-		expect(within(upcoming).getByText('예약한 알림이 없어요')).toBeInTheDocument();
-		expect(within(stale).getByText('오래 쌓인 링크가 없어요')).toBeInTheDocument();
-		expect(within(stale).queryByRole('button', { name: '지울래요' })).not.toBeInTheDocument();
+		expect(within(upcoming).getByText('링크 더보기에서 알림 시각을 정하면 여기에 보여요')).toBeInTheDocument();
+		expect(screen.queryByRole('region', { name: '오래 쌓인 링크' })).not.toBeInTheDocument();
 	});
 
 	test('이번 주 기록은 보여주지 않는다', async () => {
