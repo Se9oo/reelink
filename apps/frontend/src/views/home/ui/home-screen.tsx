@@ -234,8 +234,8 @@ const CARD_CLASS = 'w-[272px] shrink-0 snap-start';
 function CardScroller({ children }: { children: ReactNode }) {
 	return (
 		<div
-			className="-mx-4 flex snap-x [scrollbar-color:transparent_transparent] gap-2.5 overflow-x-auto px-4 pb-1
-				hover:[scrollbar-color:var(--app-scrollbar-hover)_transparent] md:mx-0 md:px-0"
+			className="-mx-4 flex snap-x scroll-px-4 [scrollbar-color:transparent_transparent] gap-2.5 overflow-x-auto px-4
+				pb-1 hover:[scrollbar-color:var(--app-scrollbar-hover)_transparent] md:mx-0 md:scroll-px-0 md:px-0"
 		>
 			{children}
 		</div>
