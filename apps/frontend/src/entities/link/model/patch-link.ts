@@ -1,13 +1,17 @@
 import { isLink } from '@/entities/link/model/is-link';
 import { Link } from '@/entities/link/model/types';
 
-export function patchLink<T>(data: T, updated: Link): T {
+export function patchLink<T>(data: T, linkId: string, fieldsFrom: (cached: Link) => Partial<Link>): T {
 	function patch(value: unknown): unknown {
 		if (isLink(value)) {
-			const changed =
-				value.id === updated.id && Object.entries(updated).some(([key, field]) => value[key as keyof Link] !== field);
+			if (value.id !== linkId) {
+				return value;
+			}
 
-			return changed ? { ...value, ...updated } : value;
+			const fields = fieldsFrom(value);
+			const changed = Object.entries(fields).some(([key, field]) => value[key as keyof Link] !== field);
+
+			return changed ? { ...value, ...fields } : value;
 		}
 
 		if (typeof value !== 'object' || value === null) {

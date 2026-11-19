@@ -68,7 +68,12 @@ export function PendingOgTagsSync() {
 
 			links
 				.filter((link) => link.title !== null || link.thumbnailUrl !== null)
-				.forEach((link) => patchLinkInCaches(queryClient, link));
+				.forEach((link) =>
+					patchLinkInCaches(queryClient, link.id, (cached) => ({
+						title: cached.title ?? link.title,
+						thumbnailUrl: link.thumbnailUrl,
+					})),
+				);
 
 			return links;
 		},

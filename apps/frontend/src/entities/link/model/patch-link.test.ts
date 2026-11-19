@@ -26,20 +26,25 @@ function link(overrides: Partial<Link> & Pick<Link, 'id'>): Link {
 
 const target = link({ id: 'l1' });
 const other = link({ id: 'l2', url: 'https://example.com', thumbnailUrl: 'https://img.example.com/other.png' });
-const newThumbnail = { ...target, thumbnailUrl: 'https://img.example.com/new.png' };
+const newThumbnail = () => ({ thumbnailUrl: 'https://img.example.com/new.png' });
 
 describe('patchLink', () => {
 	test('링크 배열(폴더, 검색)에서 같은 id 링크만 바꾼다', () => {
-		const result = patchLink([target, other], newThumbnail);
+		const result = patchLink([target, other], 'l1', newThumbnail);
 
-		expect(result).toEqual([newThumbnail, other]);
+		expect(result).toEqual([{ ...target, ...newThumbnail() }, other]);
 		expect(result[1]).toBe(other);
 	});
 
-	test('서버가 준 제목도 덮어쓴다', () => {
-		const result = patchLink([target], { ...target, title: '새 제목' });
+	test('돌려준 필드만 바꾸고, 그사이 사용자가 바꾼 다른 필드는 그대로 둔다', () => {
+		const edited = { ...target, title: '사용자가 고친 제목', status: 'viewed' as const, folderId: 'f2' };
 
-		expect(result[0].title).toBe('새 제목');
+		const [result] = patchLink([edited], 'l1', (cached) => ({
+			title: cached.title ?? 'OG 제목',
+			thumbnailUrl: 'https://img.example.com/new.png',
+		}));
+
+		expect(result).toEqual({ ...edited, thumbnailUrl: 'https://img.example.com/new.png' });
 	});
 
 	test('홈 요약처럼 중첩된 모양에서도 찾아 바꾼다', () => {
@@ -50,7 +55,7 @@ describe('patchLink', () => {
 			recent: [target],
 		};
 
-		const result = patchLink(home, newThumbnail);
+		const result = patchLink(home, 'l1', newThumbnail);
 
 		expect(result.remind.oldestUnviewed?.thumbnailUrl).toBe('https://img.example.com/new.png');
 		expect(result.remind.previews[0].thumbnailUrl).toBe('https://img.example.com/new.png');
@@ -64,16 +69,16 @@ describe('patchLink', () => {
 			links: [{ ...target, parentFolderName: '원래 폴더' }],
 		};
 
-		const result = patchLink(trash, newThumbnail);
+		const result = patchLink(trash, 'l1', newThumbnail);
 
 		expect(result.folders).toBe(trash.folders);
-		expect(result.links[0]).toEqual({ ...newThumbnail, parentFolderName: '원래 폴더' });
+		expect(result.links[0]).toEqual({ ...target, ...newThumbnail(), parentFolderName: '원래 폴더' });
 	});
 
 	test('바꿀 링크가 없거나 바뀐 필드가 없으면 원래 객체를 그대로 돌려준다', () => {
 		const feed = { unviewed: [target], revisit: [other] };
 
-		expect(patchLink(feed, { ...newThumbnail, id: 'missing' })).toBe(feed);
-		expect(patchLink(feed, { ...target })).toBe(feed);
+		expect(patchLink(feed, 'missing', newThumbnail)).toBe(feed);
+		expect(patchLink(feed, 'l1', () => ({ thumbnailUrl: target.thumbnailUrl }))).toBe(feed);
 	});
 });

@@ -27,7 +27,7 @@ export function useLinkThumbnail(link: Link) {
 	const { mutate } = useMutation({
 		mutationKey,
 		mutationFn: refreshThumbnail,
-		onSuccess: (updated) => patchLinkInCaches(queryClient, updated),
+		onSuccess: (updated) => patchLinkInCaches(queryClient, updated.id, () => ({ thumbnailUrl: updated.thumbnailUrl })),
 		onError: (_error, { failedUrl }) => {
 			attemptedUrls.delete(failedUrl);
 		},
