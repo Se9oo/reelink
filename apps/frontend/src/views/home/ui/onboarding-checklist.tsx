@@ -148,11 +148,9 @@ export function OnboardingChecklist() {
 					<Step
 						number={1}
 						done={save === 'done'}
-						title="공유 버튼으로 바로 저장하기"
+						title="홈 화면에 앱으로 설치하기"
 						description={
-							canPromptInstall
-								? '홈 화면에 설치하면 공유 목록에 Reelink가 떠요'
-								: '크롬 메뉴(⋮)에서 홈 화면에 추가 → 설치를 눌러주세요'
+							canPromptInstall ? '앱처럼 바로 열 수 있어요' : '크롬 메뉴(⋮)에서 홈 화면에 추가 → 설치를 눌러주세요'
 						}
 						action={
 							canPromptInstall && (

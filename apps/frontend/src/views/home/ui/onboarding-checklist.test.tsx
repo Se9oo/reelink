@@ -127,6 +127,8 @@ describe('OnboardingChecklist', () => {
 
 		expect(promptInstall).toHaveBeenCalled();
 		expect(screen.getByText('설치 후 켤 수 있어요')).toBeInTheDocument();
+		expect(screen.getByText('홈 화면에 앱으로 설치하기')).toBeInTheDocument();
+		expect(screen.queryByText(/공유 목록/)).not.toBeInTheDocument();
 	});
 
 	test('안드로이드에서 설치 창을 띄울 수 없으면 크롬 메뉴로 안내한다', async () => {
