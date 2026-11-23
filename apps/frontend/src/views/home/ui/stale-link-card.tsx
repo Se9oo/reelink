@@ -17,7 +17,7 @@ interface StaleLinkCardProps {
 
 export function StaleLinkCard({ link, onView, onDelete }: StaleLinkCardProps) {
 	const host = new URL(link.url).hostname;
-	const { thumbnailUrl, refreshing, onError: onThumbnailError } = useLinkThumbnail(link);
+	const { thumbnailUrl, loading, onError: onThumbnailError } = useLinkThumbnail(link);
 
 	return (
 		<li
@@ -39,7 +39,7 @@ export function StaleLinkCard({ link, onView, onDelete }: StaleLinkCardProps) {
 							onError={onThumbnailError}
 							className="h-full w-full object-cover"
 						/>
-					) : refreshing ? (
+					) : loading ? (
 						<Skeleton radius="0" width="full" height="full" />
 					) : (
 						<IconGlobeLine size={22} />

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -231,6 +231,47 @@ describe('LinkRow', () => {
 
 		await waitFor(() => expect(container.querySelector('.seed-skeleton')).not.toBeInTheDocument());
 		expect(container.querySelector('img')).not.toBeInTheDocument();
+	});
+
+	test('방금 저장해 OG 태그를 기다리는 링크는 썸네일 자리에 스켈레톤을 보여준다', () => {
+		const { container } = render(
+			<LinkRow
+				link={link({ id: 'saving', title: null, thumbnailUrl: null, createdAt: new Date().toISOString() })}
+				onMove={() => {}}
+				onEdit={() => {}}
+				onDelete={() => {}}
+				onTogglePin={() => {}}
+			/>,
+		);
+
+		expect(container.querySelectorAll('.seed-skeleton').length).toBeGreaterThan(0);
+	});
+
+	test('15초가 지나도 OG 태그가 오지 않으면 스켈레톤을 기본 아이콘으로 바꾼다', () => {
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+		vi.setSystemTime(new Date('2026-10-20T12:00:14Z'));
+
+		try {
+			const { container } = render(
+				<LinkRow
+					link={link({ id: 'no-og', title: null, thumbnailUrl: null, createdAt: '2026-10-20T12:00:00Z' })}
+					onMove={() => {}}
+					onEdit={() => {}}
+					onDelete={() => {}}
+					onTogglePin={() => {}}
+				/>,
+			);
+
+			expect(container.querySelectorAll('.seed-skeleton').length).toBeGreaterThan(0);
+
+			act(() => {
+				vi.advanceTimersByTime(1100);
+			});
+
+			expect(container.querySelector('.seed-skeleton')).not.toBeInTheDocument();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	test('더보기 메뉴에서 폴더 이동을 누르면 onMove가 호출된다', async () => {

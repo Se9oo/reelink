@@ -19,7 +19,7 @@ interface HomeLinkCardProps {
 
 export function HomeLinkCard({ link, className = '', caption, actions }: HomeLinkCardProps) {
 	const host = new URL(link.url).hostname;
-	const { thumbnailUrl, refreshing, onError: onThumbnailError } = useLinkThumbnail(link);
+	const { thumbnailUrl, loading, onError: onThumbnailError } = useLinkThumbnail(link);
 
 	return (
 		<div
@@ -40,7 +40,7 @@ export function HomeLinkCard({ link, className = '', caption, actions }: HomeLin
 						onError={onThumbnailError}
 						className="h-full w-full object-cover"
 					/>
-				) : refreshing ? (
+				) : loading ? (
 					<Skeleton radius="0" width="full" height="full" />
 				) : (
 					<IconGlobeLine size={24} />

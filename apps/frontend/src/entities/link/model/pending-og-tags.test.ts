@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { collectLinksWithoutOgTags, selectPendingIds } from '@/entities/link/model/pending-og-tags';
+import { collectLinksWithoutOgTags, ogWaitRemainingMs, selectPendingIds } from '@/entities/link/model/pending-og-tags';
 
 const now = new Date('2026-10-20T12:00:15Z');
 
@@ -58,5 +58,20 @@ describe('selectPendingIds', () => {
 		}));
 
 		expect(selectPendingIds(entries, now)).toEqual(entries.slice(0, 20).map((entry) => entry.id));
+	});
+});
+
+describe('ogWaitRemainingMs', () => {
+	const waiting = { title: null, thumbnailUrl: null, createdAt: '2026-10-20T12:00:10Z', deletedAt: null };
+
+	test('OG를 기다리는 링크는 15초까지 남은 시간을 돌려준다', () => {
+		expect(ogWaitRemainingMs(waiting, now)).toBe(10_000);
+	});
+
+	test('제목이나 썸네일이 있거나, 삭제됐거나, 15초가 지났으면 기다리지 않는다', () => {
+		expect(ogWaitRemainingMs({ ...waiting, title: '제목' }, now)).toBe(0);
+		expect(ogWaitRemainingMs({ ...waiting, thumbnailUrl: 'https://img.example.com/a.png' }, now)).toBe(0);
+		expect(ogWaitRemainingMs({ ...waiting, deletedAt: '2026-10-20T12:00:12Z' }, now)).toBe(0);
+		expect(ogWaitRemainingMs({ ...waiting, createdAt: '2026-10-20T11:59:50Z' }, now)).toBe(0);
 	});
 });

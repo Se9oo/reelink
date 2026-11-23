@@ -4,6 +4,7 @@ import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-quer
 
 import { patchLinkInCaches } from '@/entities/link/api/patch-link-in-caches';
 import { Link } from '@/entities/link/model/types';
+import { useOgWaiting } from '@/entities/link/model/use-og-waiting';
 
 import { apiClient } from '@/shared/api/client';
 
@@ -46,11 +47,12 @@ export function useLinkThumbnail(link: Link) {
 		mutate({ linkId: link.id, failedUrl }, { onSettled: () => setPending(false) });
 	}
 
+	const waitingForOgTags = useOgWaiting(link);
 	const broken = brokenUrl !== null && link.thumbnailUrl === brokenUrl;
 
 	return {
 		thumbnailUrl: broken ? null : link.thumbnailUrl,
-		refreshing: broken && (pending || isMutating),
+		loading: (broken && (pending || isMutating)) || waitingForOgTags,
 		onError,
 	};
 }

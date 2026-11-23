@@ -185,10 +185,10 @@ function LinkThumbnail({
 	imageClassName: string;
 	fallback: ReactNode;
 }) {
-	const { thumbnailUrl, refreshing, onError } = useLinkThumbnail(link);
+	const { thumbnailUrl, loading, onError } = useLinkThumbnail(link);
 
 	if (!thumbnailUrl) {
-		return refreshing ? (
+		return loading ? (
 			<div className={`overflow-hidden ${imageClassName}`}>
 				<Skeleton radius="0" width="full" height="full" />
 			</div>
