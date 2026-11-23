@@ -20,10 +20,11 @@ interface RegisterLinkModalProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onRegistered: () => void;
+	initialUrl?: string;
 }
 
-export function RegisterLinkModal({ open, onOpenChange, onRegistered }: RegisterLinkModalProps) {
-	const [url, setUrl] = useState('');
+export function RegisterLinkModal({ open, onOpenChange, onRegistered, initialUrl }: RegisterLinkModalProps) {
+	const [url, setUrl] = useState(initialUrl ?? '');
 	const [urlTouched, setUrlTouched] = useState(false);
 	const [folderId, setFolderId] = useState<string | null>(null);
 	const [savedReason, setSavedReason] = useState('');

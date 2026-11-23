@@ -31,5 +31,14 @@
 	],
 	"theme_color": "#f5f7fa",
 	"background_color": "#f5f7fa",
-	"display": "standalone"
+	"display": "standalone",
+	"share_target": {
+		"action": "/share",
+		"method": "GET",
+		"params": {
+			"title": "title",
+			"text": "text",
+			"url": "url"
+		}
+	}
 }

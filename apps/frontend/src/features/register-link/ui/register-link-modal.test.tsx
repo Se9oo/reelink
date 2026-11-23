@@ -17,12 +17,12 @@ const folders: Folder[] = [
 	{ id: 'f1', userId: 'u', parentFolderId: null, name: '개발', sortOrder: 0, isSystem: false, deletedAt: null },
 ];
 
-function renderModal() {
+function renderModal(initialUrl?: string) {
 	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
 
 	render(
 		<QueryClientProvider client={queryClient}>
-			<RegisterLinkModal open onOpenChange={() => {}} onRegistered={() => {}} />
+			<RegisterLinkModal open onOpenChange={() => {}} onRegistered={() => {}} initialUrl={initialUrl} />
 		</QueryClientProvider>,
 	);
 }
@@ -47,6 +47,20 @@ describe('RegisterLinkModal', () => {
 
 		expect(screen.getByText('http:// 또는 https://로 시작하는 주소를 입력해주세요')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: '등록하기' })).toBeDisabled();
+	});
+
+	test('initialUrl을 받으면 URL 칸을 채운 채로 열려 폴더만 고르면 등록할 수 있다', async () => {
+		const user = userEvent.setup();
+		renderModal('https://youtu.be/abc');
+
+		expect(await screen.findByRole('textbox', { name: /URL/ })).toHaveValue('https://youtu.be/abc');
+
+		await user.click(await screen.findByText('개발'));
+		await user.click(screen.getByRole('button', { name: '등록하기' }));
+
+		expect(apiClient.post).toHaveBeenCalledWith('links', {
+			json: { url: 'https://youtu.be/abc', folderId: 'f1', savedReason: undefined },
+		});
 	});
 
 	test('입력하는 중에는 오류 문구를 보여주지 않는다', async () => {
