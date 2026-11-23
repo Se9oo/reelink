@@ -80,11 +80,15 @@ describe('WebPushToggle', () => {
 		vi.clearAllMocks();
 	});
 
-	test('데스크톱은 브라우저가 켜져 있을 때만 알림이 온다고 안내한다.', async () => {
+	test('데스크톱은 브라우저가 켜져 있을 때만 알림이 오고, 안 오면 컴퓨터 알림 설정을 확인하라고 안내한다.', async () => {
 		stubBrowser();
 		renderToggle();
 
-		expect(await screen.findByText('브라우저가 켜져 있을 때만 알림이 와요')).toBeInTheDocument();
+		expect(
+			await screen.findByText(
+				'브라우저가 켜져 있을 때만 알림이 와요. 알림이 안 오면 컴퓨터 설정에서 브라우저 알림이 허용돼 있는지 확인해주세요',
+			),
+		).toBeInTheDocument();
 	});
 
 	test('휴대폰, 태블릿 브라우저 탭에서는 토글 대신 홈 화면 추가를 안내한다.', async () => {
