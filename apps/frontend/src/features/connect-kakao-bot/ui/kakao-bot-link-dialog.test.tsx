@@ -103,9 +103,9 @@ describe('KakaoBotLinkDialog', () => {
 		renderDialog();
 
 		expect(await screen.findByText('연동 완료!')).toBeInTheDocument();
-		const shareSteps = within(screen.getByRole('list')).getAllByRole('listitem');
-		expect(shareSteps[0]).toHaveTextContent('카카오톡 선택');
-		expect(shareSteps[1]).toHaveTextContent('Reelink 채팅방 선택');
+		const saveSteps = within(screen.getByRole('list')).getAllByRole('listitem');
+		expect(saveSteps[0]).toHaveTextContent('링크 복사');
+		expect(saveSteps[1]).toHaveTextContent('Reelink 채팅방에 붙여넣어 보내기');
 	});
 
 	test('이미 연동돼 있어도 이번 코드로 연동되기 전이면 코드를 계속 보여준다', async () => {

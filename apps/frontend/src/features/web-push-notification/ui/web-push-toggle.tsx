@@ -2,21 +2,14 @@
 
 import Link from 'next/link';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ActionButton } from 'seed-design/ui/action-button';
-import { Snackbar, useSnackbarAdapter } from 'seed-design/ui/snackbar';
 import { Switch } from 'seed-design/ui/switch';
 
-import {
-	browserPushSubscriptionKey,
-	getBrowserSubscription,
-	PushPermissionDeniedError,
-	turnOffWebPush,
-	turnOnWebPush,
-} from '@/features/web-push-notification/lib/browser-push';
+import { browserPushSubscriptionKey, getBrowserSubscription } from '@/features/web-push-notification/lib/browser-push';
 import { usePushEnvironment } from '@/features/web-push-notification/lib/push-environment';
+import { useSetWebPush } from '@/features/web-push-notification/model/use-set-web-push';
 
-import { notificationKeys } from '@/entities/notification/api/notification-keys';
 import { meQueryOptions } from '@/entities/user/api/get-me';
 
 import { ROUTES } from '@/shared/config/routes';
@@ -43,23 +36,7 @@ export function WebPushToggle() {
 		queryFn: getBrowserSubscription,
 		enabled: canSubscribe,
 	});
-	const queryClient = useQueryClient();
-	const snackbar = useSnackbarAdapter();
-
-	const toggle = useMutation({
-		mutationFn: (on: boolean) => (on || !subscription ? turnOnWebPush() : turnOffWebPush(subscription)),
-		onSuccess: (next) => {
-			queryClient.setQueryData(browserPushSubscriptionKey, next);
-			queryClient.invalidateQueries({ queryKey: notificationKeys.settings });
-		},
-		onError: (error) => {
-			const message =
-				error instanceof PushPermissionDeniedError
-					? '브라우저 설정에서 알림을 허용해주세요'
-					: '알림 설정을 바꾸지 못했어요. 다시 시도해주세요';
-			snackbar.create({ render: () => <Snackbar variant="critical" message={message} /> });
-		},
-	});
+	const toggle = useSetWebPush();
 
 	if (!canSubscribe || !me) {
 		return null;
@@ -78,7 +55,7 @@ export function WebPushToggle() {
 			size="24"
 			checked={!!subscription}
 			disabled={subscription === undefined || toggle.isPending}
-			onCheckedChange={(checked) => toggle.mutate(checked)}
+			onCheckedChange={(checked) => toggle.mutate(checked ? undefined : (subscription ?? undefined))}
 			inputProps={{ 'aria-label': '이 기기에서 알림 받기' }}
 		/>
 	);

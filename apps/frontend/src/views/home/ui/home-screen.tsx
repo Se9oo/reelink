@@ -1,6 +1,5 @@
 'use client';
 
-import { Suspense } from 'react';
 import type { ReactNode } from 'react';
 
 import { useRouter } from 'next/navigation';
@@ -19,7 +18,7 @@ import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-de
 
 import { greetingFor, subGreetingFor } from '@/views/home/model/home-copy';
 import { HomeLinkCard } from '@/views/home/ui/home-link-card';
-import { KakaoOnboardingCard } from '@/views/home/ui/kakao-onboarding-card';
+import { OnboardingChecklist } from '@/views/home/ui/onboarding-checklist';
 import { RemindPreviewStack } from '@/views/home/ui/remind-preview-stack';
 import { StaleLinkCard } from '@/views/home/ui/stale-link-card';
 
@@ -78,9 +77,7 @@ export function HomeScreen() {
 				</header>
 
 				<KakaoRevokedBanner />
-				<Suspense>
-					<KakaoOnboardingCard />
-				</Suspense>
+				<OnboardingChecklist />
 
 				{isEmpty ? (
 					<EmptyHome onRegister={openRegisterModal} />

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { getPushEnvironment } from '@/features/web-push-notification/lib/push-environment';
+import { getPlatform, getPushEnvironment } from '@/features/web-push-notification/lib/push-environment';
 
 const MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15';
 const WINDOWS = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36';
@@ -60,5 +60,15 @@ describe('getPushEnvironment', () => {
 		expect(getPushEnvironment({ userAgent: IPHONE, maxTouchPoints: 5, supported: false, standalone: true })).toBe(
 			'unsupported',
 		);
+	});
+});
+
+describe('getPlatform', () => {
+	test('안드로이드, 아이폰, 아이패드(맥 UA + 터치), 데스크톱을 구분한다', () => {
+		expect(getPlatform({ userAgent: ANDROID_PHONE, maxTouchPoints: 5 })).toBe('android');
+		expect(getPlatform({ userAgent: IPHONE, maxTouchPoints: 5 })).toBe('ios');
+		expect(getPlatform({ userAgent: MAC, maxTouchPoints: 5 })).toBe('ios');
+		expect(getPlatform({ userAgent: MAC, maxTouchPoints: 0 })).toBe('desktop');
+		expect(getPlatform({ userAgent: WINDOWS, maxTouchPoints: 0 })).toBe('desktop');
 	});
 });

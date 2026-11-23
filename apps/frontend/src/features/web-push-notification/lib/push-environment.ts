@@ -1,13 +1,29 @@
 import { useSyncExternalStore } from 'react';
 
 export type PushEnvironment = 'unsupported' | 'install-required' | 'mobile' | 'desktop';
+export type Platform = 'android' | 'ios' | 'desktop';
 
-interface PushEnvironmentInput {
-	supported: boolean;
-	standalone: boolean;
+interface DeviceInput {
 	userAgent: string;
 	maxTouchPoints: number;
+}
+
+interface PushEnvironmentInput extends DeviceInput {
+	supported: boolean;
+	standalone: boolean;
 	mobile?: boolean;
+}
+
+export function getPlatform({ userAgent, maxTouchPoints }: DeviceInput): Platform {
+	if (/Android/.test(userAgent)) {
+		return 'android';
+	}
+
+	if (/iPhone|iPad/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1)) {
+		return 'ios';
+	}
+
+	return 'desktop';
 }
 
 export function getPushEnvironment({
@@ -17,8 +33,7 @@ export function getPushEnvironment({
 	maxTouchPoints,
 	mobile,
 }: PushEnvironmentInput): PushEnvironment {
-	const isMobile =
-		mobile === true || /Android|iPhone|iPad/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
+	const isMobile = mobile === true || getPlatform({ userAgent, maxTouchPoints }) !== 'desktop';
 
 	if (isMobile && !standalone) {
 		return 'install-required';

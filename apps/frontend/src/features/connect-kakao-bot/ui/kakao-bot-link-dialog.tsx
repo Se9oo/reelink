@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 
-import { IconCheckmarkFill } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { ActionButton } from 'seed-design/ui/action-button';
@@ -82,38 +81,21 @@ function LinkCodePanel({ onClose }: { onClose: () => void }) {
 		return (
 			<div className="flex flex-col items-center gap-2 py-4 text-center">
 				<p className="text-base font-bold text-[var(--seed-color-fg-neutral)]">연동 완료!</p>
-				<p className="text-sm text-[var(--seed-color-fg-neutral-muted)]">유튜브, 인스타에서 공유 버튼을 누르고</p>
+				<p className="text-sm text-[var(--seed-color-fg-neutral-muted)]">이제 이렇게 저장할 수 있어요</p>
 				<ol className="mt-1 flex w-full flex-col gap-3 rounded-2xl bg-[var(--seed-color-bg-neutral-weak)] p-3 text-left">
-					<li className="flex flex-col gap-2">
-						<ShareStepLabel number={1}>카카오톡 선택</ShareStepLabel>
-						<div className="flex justify-around" aria-hidden>
-							<ShareApp label="메시지" className="bg-[#34c759] opacity-45" />
-							<ShareApp label="카카오톡" className="bg-[#fee500] ring-3 ring-[var(--seed-color-bg-brand-solid)]">
-								<KakaoTalkIcon />
-							</ShareApp>
-							<ShareApp label="메일" className="bg-[#007aff] opacity-45" />
-							<ShareApp label="더보기" className="bg-[#8e8e93] opacity-45" />
-						</div>
+					<li>
+						<ShareStepLabel number={1}>유튜브, 인스타에서 링크 복사</ShareStepLabel>
 					</li>
 					<li className="flex flex-col gap-2">
-						<ShareStepLabel number={2}>Reelink 채팅방 선택</ShareStepLabel>
-						<div
-							className="flex items-center gap-2.5 rounded-xl bg-[var(--seed-color-bg-layer-default)] px-2.5 py-2"
-							aria-hidden
-						>
-							<span
-								className="flex size-8 items-center justify-center rounded-[11px]
-									bg-[var(--seed-color-bg-neutral-weak)]"
-							>
-								<ReelinkIcon />
+						<ShareStepLabel number={2}>Reelink 채팅방에 붙여넣어 보내기</ShareStepLabel>
+						<div className="flex flex-col gap-2 rounded-xl bg-[#bacee0] p-3 text-[13px] text-[#191919]" aria-hidden>
+							<span className="self-end rounded-xl rounded-tr-sm bg-[#fee500] px-3 py-1.5 break-all">
+								https://youtu.be/…
 							</span>
-							<span className="flex-1 text-[13px] font-bold text-[var(--seed-color-fg-neutral)]">Reelink</span>
-							<span
-								className="flex size-5 items-center justify-center rounded-full bg-[var(--seed-color-bg-brand-solid)]
-									text-white"
-							>
-								<IconCheckmarkFill size={12} />
-							</span>
+							<div className="flex flex-col items-start gap-1">
+								<span className="text-xs text-[#4a5560]">Reelink</span>
+								<span className="rounded-xl rounded-tl-sm bg-white px-3 py-1.5">저장했어요 ✅</span>
+							</div>
 						</div>
 					</li>
 				</ol>
@@ -145,7 +127,8 @@ function LinkCodePanel({ onClose }: { onClose: () => void }) {
 				className="w-full rounded-xl bg-[var(--seed-color-bg-brand-weak)] px-3.5 py-3 text-[13px] break-keep
 					text-[var(--seed-color-fg-neutral)]"
 			>
-				연동하면 유튜브, 인스타에서 <b>공유 → 카카오톡 → Reelink</b>로 링크를 바로 저장할 수 있어요
+				카카오톡 채팅방은 내 Reelink 계정을 알 수 없어서, 아래 코드를 한 번 보내 둘을 이어줘야 해요. <b>처음 한 번만</b>{' '}
+				하면 돼요
 			</p>
 			<ol className="flex w-full flex-col gap-4">
 				<Step number={1} title="연동 코드 복사">
@@ -242,35 +225,6 @@ function ShareStepLabel({ number, children }: { number: number; children: React.
 			</span>
 			{children}
 		</p>
-	);
-}
-
-function ShareApp({ label, className, children }: { label: string; className: string; children?: React.ReactNode }) {
-	return (
-		<span className="flex flex-col items-center gap-1 text-[11px] text-[var(--seed-color-fg-neutral-muted)]">
-			<span className={`flex size-11 items-center justify-center rounded-xl ${className}`}>{children}</span>
-			{label}
-		</span>
-	);
-}
-
-function KakaoTalkIcon() {
-	return (
-		<svg width="24" height="24" viewBox="0 0 24 24">
-			<path
-				fill="#191919"
-				d="M12 4C7 4 3 7.1 3 11c0 2.5 1.7 4.7 4.2 5.9l-.9 3.3c-.1.3.3.6.6.4l3.9-2.6c.4 0 .8.1 1.2.1 5 0 9-3.1 9-7S17 4 12 4z"
-			/>
-		</svg>
-	);
-}
-
-function ReelinkIcon() {
-	return (
-		<svg width="22" height="22" viewBox="6 8 52 48">
-			<rect x="6" y="14" width="34" height="20" rx="10" fill="#007fff" transform="rotate(-18 23 24)" />
-			<rect x="24" y="30" width="34" height="20" rx="10" fill="#66b0ff" transform="rotate(-18 41 40)" />
-		</svg>
 	);
 }
 
