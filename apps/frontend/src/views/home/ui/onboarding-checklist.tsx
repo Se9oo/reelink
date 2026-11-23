@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 
+import Link from 'next/link';
+
 import { IconCheckmarkFill } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
 import { overlay } from 'overlay-kit';
@@ -19,6 +21,7 @@ import { useSetWebPush } from '@/features/web-push-notification/model/use-set-we
 import { linkStatusQueryOptions } from '@/entities/kakao-bot/api/get-link-status';
 import { meQueryOptions } from '@/entities/user/api/get-me';
 
+import { ROUTES } from '@/shared/config/routes';
 import { promptInstall, useCanPromptInstall } from '@/shared/lib/install-prompt';
 
 const DISMISS_KEY = 'kakao-onboarding-dismissed-at';
@@ -43,16 +46,15 @@ export function OnboardingChecklist() {
 	const turnOn = useSetWebPush();
 
 	const { data: me } = useQuery(meQueryOptions());
-	const loggedIn = me?.isGuest === false;
 	const canSubscribe = environment === 'desktop' || environment === 'mobile';
-	const { data: botStatus } = useQuery({ ...linkStatusQueryOptions(), enabled: loggedIn });
+	const { data: botStatus } = useQuery({ ...linkStatusQueryOptions(), enabled: !!me });
 	const { data: subscription } = useQuery({
 		queryKey: browserPushSubscriptionKey,
 		queryFn: getBrowserSubscription,
-		enabled: loggedIn && canSubscribe,
+		enabled: !!me && canSubscribe,
 	});
 
-	if (hidden || !loggedIn || !environment || !botStatus || (canSubscribe && subscription === undefined)) {
+	if (hidden || !me || !environment || !botStatus || (canSubscribe && subscription === undefined)) {
 		return null;
 	}
 
@@ -60,12 +62,14 @@ export function OnboardingChecklist() {
 	const { save, notify } = getOnboardingSteps({
 		platform,
 		environment,
+		guest: me.isGuest,
 		botLinked: botStatus.linked,
 		subscribed: !!subscription,
 		permission: currentPermission(),
 	});
+	const finished = (step: string) => step === 'done' || step === 'hidden';
 
-	if (save === 'done' && (notify === 'done' || notify === 'hidden')) {
+	if (finished(save) && finished(notify)) {
 		return null;
 	}
 
@@ -110,6 +114,15 @@ export function OnboardingChecklist() {
 						</ActionButton>
 					),
 				};
+			case 'login':
+				return {
+					description: '로그인하면 알림을 받을 수 있어요',
+					action: (
+						<ActionButton asChild size="small" variant="brandSolid">
+							<Link href={ROUTES.LOGIN}>로그인</Link>
+						</ActionButton>
+					),
+				};
 			default:
 				return {};
 		}
@@ -150,21 +163,23 @@ export function OnboardingChecklist() {
 						}
 					/>
 				) : (
-					<Step
-						number={1}
-						done={save === 'done'}
-						title="카카오톡으로 링크 저장하기"
-						description="Reelink 채팅방에 링크를 보내면 저장돼요"
-						action={
-							<ActionButton size="small" variant="brandSolid" onClick={openBotDialog}>
-								연동하기
-							</ActionButton>
-						}
-					/>
+					save !== 'hidden' && (
+						<Step
+							number={1}
+							done={save === 'done'}
+							title="카카오톡으로 링크 저장하기"
+							description="Reelink 채팅방에 링크를 보내면 저장돼요"
+							action={
+								<ActionButton size="small" variant="brandSolid" onClick={openBotDialog}>
+									연동하기
+								</ActionButton>
+							}
+						/>
+					)
 				)}
 				{notify !== 'hidden' && (
 					<Step
-						number={2}
+						number={save === 'hidden' ? 1 : 2}
 						done={notify === 'done'}
 						disabled={notify === 'after-install'}
 						title="볼 게 쌓이면 알림 받기"

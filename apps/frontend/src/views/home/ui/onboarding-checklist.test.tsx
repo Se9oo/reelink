@@ -94,12 +94,21 @@ describe('OnboardingChecklist', () => {
 		window.localStorage.clear();
 	});
 
-	test('게스트면 카드를 보여주지 않는다', async () => {
+	test('게스트 안드로이드에는 설치하기와 알림 로그인 안내를 보여준다', async () => {
+		setup({ isGuest: true, platform: 'android', environment: 'install-required' });
+		renderCard();
+
+		expect(await screen.findByRole('button', { name: '설치하기' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login');
+	});
+
+	test('게스트 데스크톱에는 봇 연동 없이 알림 로그인 안내만 보여준다', async () => {
 		setup({ isGuest: true });
 		renderCard();
 
-		await vi.waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('auth/me'));
-		expect(screen.queryByText(TITLE)).not.toBeInTheDocument();
+		expect(await screen.findByRole('link', { name: '로그인' })).toBeInTheDocument();
+		expect(screen.getByText('로그인하면 알림을 받을 수 있어요')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: '연동하기' })).not.toBeInTheDocument();
 	});
 
 	test('저장과 알림이 모두 끝났으면 카드를 보여주지 않는다', async () => {

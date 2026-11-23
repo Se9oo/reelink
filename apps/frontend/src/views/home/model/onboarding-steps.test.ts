@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import { getOnboardingSteps } from '@/views/home/model/onboarding-steps';
 
-const base = { botLinked: false, subscribed: false, permission: 'default' as const };
+const base = { guest: false, botLinked: false, subscribed: false, permission: 'default' as const };
 
 describe('getOnboardingSteps', () => {
 	test('안드로이드 브라우저 탭: 설치하기, 알림은 설치 후', () => {
@@ -36,6 +36,24 @@ describe('getOnboardingSteps', () => {
 		expect(
 			getOnboardingSteps({ ...base, platform: 'desktop', environment: 'desktop', permission: 'denied' }).notify,
 		).toBe('hidden');
+	});
+
+	test('게스트 안드로이드: 설치는 그대로 안내하고 알림은 로그인으로 유도한다', () => {
+		expect(getOnboardingSteps({ ...base, guest: true, platform: 'android', environment: 'install-required' })).toEqual({
+			save: 'install',
+			notify: 'login',
+		});
+	});
+
+	test('게스트 아이폰, 데스크톱: 봇 연동 줄은 숨기고 알림은 로그인으로 유도한다', () => {
+		expect(getOnboardingSteps({ ...base, guest: true, platform: 'ios', environment: 'install-required' })).toEqual({
+			save: 'hidden',
+			notify: 'login',
+		});
+		expect(getOnboardingSteps({ ...base, guest: true, platform: 'desktop', environment: 'desktop' })).toEqual({
+			save: 'hidden',
+			notify: 'login',
+		});
 	});
 
 	test('알림을 지원하지 않는 브라우저면 알림 줄을 숨긴다', () => {
