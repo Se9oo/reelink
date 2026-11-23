@@ -124,7 +124,7 @@ describe('OnboardingChecklist', () => {
 		setup({ platform: 'android', environment: 'install-required', canPromptInstall: false });
 		renderCard();
 
-		expect(await screen.findByText('크롬 메뉴(⋮)에서 앱 설치를 눌러주세요')).toBeInTheDocument();
+		expect(await screen.findByText('크롬 메뉴(⋮)에서 홈 화면에 추가 → 설치를 눌러주세요')).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: '설치하기' })).not.toBeInTheDocument();
 	});
 

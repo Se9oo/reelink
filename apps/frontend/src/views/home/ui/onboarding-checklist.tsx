@@ -139,7 +139,7 @@ export function OnboardingChecklist() {
 						description={
 							canPromptInstall
 								? '홈 화면에 설치하면 공유 목록에 Reelink가 떠요'
-								: '크롬 메뉴(⋮)에서 앱 설치를 눌러주세요'
+								: '크롬 메뉴(⋮)에서 홈 화면에 추가 → 설치를 눌러주세요'
 						}
 						action={
 							canPromptInstall && (
