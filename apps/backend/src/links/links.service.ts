@@ -529,15 +529,19 @@ export class LinksService {
 			return;
 		}
 
-		const { title, thumbnailUrl } = await fetchOgTags(url);
+		const { title, thumbnailUrl, description } = await fetchOgTags(url);
 
-		if (title === null && thumbnailUrl === null) {
+		if (title === null && thumbnailUrl === null && description === null) {
 			return;
 		}
 
 		await this.db
 			.update(links)
-			.set({ title: sql`coalesce(${links.title}, ${title})`, thumbnailUrl })
+			.set({
+				title: sql`coalesce(${links.title}, ${title})`,
+				thumbnailUrl,
+				description: sql`coalesce(${links.description}, ${description})`,
+			})
 			.where(eq(links.id, linkId));
 	}
 

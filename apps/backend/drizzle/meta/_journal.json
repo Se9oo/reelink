@@ -78,6 +78,13 @@
       "when": 1794296222424,
       "tag": "0010_fresh_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795500556341,
+      "tag": "0011_curved_rawhide_kid",
+      "breakpoints": true
     }
   ]
 }

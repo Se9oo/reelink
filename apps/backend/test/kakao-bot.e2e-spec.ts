@@ -11,7 +11,7 @@ import { REDIS, type RedisClient } from '../src/redis/redis.module.js';
 import { type E2ETestContext, setupE2EApp, teardownE2EApp } from './utils/setup-e2e-app.js';
 
 vi.mock('../src/links/fetch-og-tags.js', () => ({
-	fetchOgTags: vi.fn(async () => ({ title: null, thumbnailUrl: null })),
+	fetchOgTags: vi.fn(async () => ({ title: null, thumbnailUrl: null, description: null })),
 }));
 
 const SECRET = 'test-webhook-secret';

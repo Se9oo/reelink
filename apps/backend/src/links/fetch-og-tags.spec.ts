@@ -17,7 +17,46 @@ describe('fetchOgTags', () => {
 
 		const result = await fetchOgTags('https://example.com');
 
-		expect(result).toEqual({ title: '제목', thumbnailUrl: 'https://example.com/thumb.jpg' });
+		expect(result).toEqual({ title: '제목', thumbnailUrl: 'https://example.com/thumb.jpg', description: null });
+	});
+
+	test('og:description을 description에 담는다', async () => {
+		vi.mocked(ogs).mockResolvedValue({
+			error: false,
+			html: '',
+			response: {},
+			result: { ogTitle: '제목', ogDescription: '다이어그램 스킬을 발견했습니다!' },
+		} as never);
+
+		const result = await fetchOgTags('https://example.com');
+
+		expect(result.description).toBe('다이어그램 스킬을 발견했습니다!');
+	});
+
+	test('og:description은 글자 단위로 앞 100글자만 남긴다(이모지가 중간에서 쪼개지지 않게)', async () => {
+		vi.mocked(ogs).mockResolvedValue({
+			error: false,
+			html: '',
+			response: {},
+			result: { ogDescription: '👍🏻'.repeat(150) },
+		} as never);
+
+		const result = await fetchOgTags('https://example.com');
+
+		expect(result.description).toBe('👍🏻'.repeat(100));
+	});
+
+	test('og:description이 공백뿐이면 null이다', async () => {
+		vi.mocked(ogs).mockResolvedValue({
+			error: false,
+			html: '',
+			response: {},
+			result: { ogDescription: '   ' },
+		} as never);
+
+		const result = await fetchOgTags('https://example.com');
+
+		expect(result.description).toBeNull();
 	});
 
 	test('og:image가 상대 경로면 페이지 URL 기준 절대 주소로 바꾼다', async () => {
@@ -43,7 +82,7 @@ describe('fetchOgTags', () => {
 
 		const result = await fetchOgTags('https://example.com');
 
-		expect(result).toEqual({ title: null, thumbnailUrl: null });
+		expect(result).toEqual({ title: null, thumbnailUrl: null, description: null });
 	});
 
 	test('ogs가 예외를 던져도 title/thumbnailUrl이 null이다', async () => {
@@ -51,7 +90,7 @@ describe('fetchOgTags', () => {
 
 		const result = await fetchOgTags('https://example.com');
 
-		expect(result).toEqual({ title: null, thumbnailUrl: null });
+		expect(result).toEqual({ title: null, thumbnailUrl: null, description: null });
 	});
 
 	test('og:image가 없으면 thumbnailUrl만 null이다', async () => {
@@ -64,7 +103,7 @@ describe('fetchOgTags', () => {
 
 		const result = await fetchOgTags('https://example.com');
 
-		expect(result).toEqual({ title: '제목', thumbnailUrl: null });
+		expect(result).toEqual({ title: '제목', thumbnailUrl: null, description: null });
 	});
 
 	test('우리 봇 이름에 facebookexternalhit 토큰을 붙인 User-Agent로 요청한다(YouTube Music이 그 외 요청엔 지원 중단 브라우저 페이지를 줘서)', async () => {

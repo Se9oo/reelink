@@ -17,7 +17,7 @@ vi.mock('../src/links/fetch-og-tags.js', () => ({
 	fetchOgTags: vi.fn(async () => {
 		await new Promise((resolve) => setTimeout(resolve, 150));
 
-		return { title: 'OG 제목', thumbnailUrl: 'https://img.example.com/og.png' };
+		return { title: 'OG 제목', thumbnailUrl: 'https://img.example.com/og.png', description: 'OG 설명' };
 	}),
 }));
 
@@ -618,6 +618,25 @@ describe('LinksController (e2e)', () => {
 			expect(saved.thumbnailUrl).toBe('https://img.example.com/og.png');
 		});
 
+		test('OG 추출이 끝나면 og:description을 설명으로 저장한다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: 'OG 설명 폴더' })
+				.expect(201);
+			const created = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ url: 'https://naver.com', folderId: folder.body.id })
+				.expect(201);
+
+			await vi.waitFor(async () => {
+				const [saved] = await db.select().from(links).where(eq(links.id, created.body.id));
+
+				expect(saved.description).toBe('OG 설명');
+			});
+		});
+
 		test('제목이나 저장 이유가 500자를 넘으면 400 오류를 반환한다.', async () => {
 			const link = await createLinkInNewFolder();
 
@@ -878,7 +897,7 @@ describe('LinksController (e2e)', () => {
 
 		test('새 썸네일을 못 가져오면 기존 주소를 그대로 둔다.', async () => {
 			const linkId = await createLinkWithStaleThumbnail();
-			vi.mocked(fetchOgTags).mockResolvedValueOnce({ title: null, thumbnailUrl: null });
+			vi.mocked(fetchOgTags).mockResolvedValueOnce({ title: null, thumbnailUrl: null, description: null });
 
 			const res = await refresh(linkId).expect(200);
 

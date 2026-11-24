@@ -109,6 +109,7 @@ export const links = pgTable(
 		url: text('url').notNull(),
 		title: text('title'),
 		thumbnailUrl: text('thumbnail_url'),
+		description: text('description'),
 		folderSource: text('folder_source').notNull().default('user'),
 		shelfLifeDays: integer('shelf_life_days'),
 		savedReason: text('saved_reason'),
