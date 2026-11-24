@@ -33,6 +33,36 @@ const HOME_STALE_LIMIT = 3;
 const OG_FETCH_LIMIT = 60;
 const OG_FETCH_WINDOW_SECONDS = 60;
 const MAX_IDS_PER_REQUEST = 20;
+const MAX_MOVES_PER_REQUEST = 50;
+
+interface LinkMove {
+	linkId: string;
+	folderId: string;
+	source: 'ai' | 'user';
+}
+
+function isValidMoves(moves: unknown): moves is LinkMove[] {
+	return (
+		Array.isArray(moves) &&
+		moves.length > 0 &&
+		moves.length <= MAX_MOVES_PER_REQUEST &&
+		moves.every((move: Partial<Record<keyof LinkMove, unknown>> | null) => {
+			if (typeof move !== 'object' || move === null) {
+				return false;
+			}
+
+			const { linkId, folderId, source } = move;
+
+			return (
+				typeof linkId === 'string' &&
+				isUuid(linkId) &&
+				typeof folderId === 'string' &&
+				isUuid(folderId) &&
+				(source === 'ai' || source === 'user')
+			);
+		})
+	);
+}
 
 interface CreateLinkParams {
 	userId: string;
@@ -495,6 +525,52 @@ export class LinksService {
 			}
 
 			return link;
+		});
+	}
+
+	/**
+	 * 여러 링크를 한 트랜잭션으로 옮긴다. 하나라도 옮길 수 없으면 아무것도 옮기지 않는다. 상단 고정은 함께 해제된다.
+	 * @param userId string
+	 * @param moves unknown `{ linkId, folderId, source: 'ai' | 'user' }` 1~50개
+	 * @returns Link[] 옮긴 링크
+	 * @throws BadRequestException moves가 배열이 아니거나 개수, uuid, source 형식이 틀린 경우
+	 * @throws NotFoundException 링크나 폴더 중 하나라도 없거나 삭제됐거나 내 것이 아닌 경우
+	 */
+	async moveLinks({ userId, moves }: { userId: string; moves: unknown }): Promise<Link[]> {
+		if (!isValidMoves(moves)) {
+			throw new BadRequestException('moves 형식이 올바르지 않습니다.');
+		}
+
+		return await this.db.transaction(async (tx) => {
+			await lockUserFolders(tx, userId);
+
+			const folderIds = [...new Set(moves.map(({ folderId }) => folderId))];
+			const liveFolders = await tx
+				.select({ id: folders.id })
+				.from(folders)
+				.where(and(inArray(folders.id, folderIds), eq(folders.userId, userId), isNull(folders.deletedAt)));
+
+			if (liveFolders.length !== folderIds.length) {
+				throw new NotFoundException();
+			}
+
+			const moved: Link[] = [];
+
+			for (const { linkId, folderId, source } of moves) {
+				const [link] = await tx
+					.update(links)
+					.set({ folderId, folderSource: source, pinnedAt: null })
+					.where(and(eq(links.id, linkId), eq(links.userId, userId), isNull(links.deletedAt)))
+					.returning();
+
+				if (!link) {
+					throw new NotFoundException();
+				}
+
+				moved.push(link);
+			}
+
+			return moved;
 		});
 	}
 

@@ -38,6 +38,14 @@ export class LinksController {
 		return await this.linksService.createLink({ userId, url, folderId, savedReason });
 	}
 
+	@Post('move')
+	@UseGuards(JwtAuthGuard)
+	async moveLinks(@Req() req: Request, @Body() { moves }: { moves: unknown }) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.linksService.moveLinks({ userId, moves });
+	}
+
 	@Get()
 	@UseGuards(JwtAuthGuard)
 	async getLinksByIds(@Req() req: Request, @Query('ids') ids: unknown) {

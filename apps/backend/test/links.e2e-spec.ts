@@ -542,6 +542,101 @@ describe('LinksController (e2e)', () => {
 		});
 	});
 
+	describe('Post /links/move', () => {
+		async function createFolder(name: string, token = accessToken) {
+			const res = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${token}`)
+				.send({ name })
+				.expect(201);
+
+			return res.body as { id: string };
+		}
+
+		async function createLink(folderId: string, token = accessToken) {
+			const res = await request(app.getHttpServer())
+				.post('/links')
+				.set('Cookie', `access_token=${token}`)
+				.send({ url: 'https://naver.com', folderId })
+				.expect(201);
+
+			return res.body as { id: string };
+		}
+
+		function moveMany(moves: unknown, token = accessToken) {
+			return request(app.getHttpServer()).post('/links/move').set('Cookie', `access_token=${token}`).send({ moves });
+		}
+
+		test('여러 링크를 각자 다른 폴더로 옮기고 folderSource와 상단 고정을 바꾼다.', async () => {
+			const from = await createFolder('일괄 이동 전');
+			const toA = await createFolder('일괄 이동 A');
+			const toB = await createFolder('일괄 이동 B');
+			const first = await createLink(from.id);
+			const second = await createLink(from.id);
+
+			await db.update(links).set({ pinnedAt: new Date() }).where(eq(links.id, first.id));
+
+			const res = await moveMany([
+				{ linkId: first.id, folderId: toA.id, source: 'ai' },
+				{ linkId: second.id, folderId: toB.id, source: 'user' },
+			]).expect(201);
+
+			expect(res.body).toHaveLength(2);
+
+			const [savedFirst] = await db.select().from(links).where(eq(links.id, first.id));
+			const [savedSecond] = await db.select().from(links).where(eq(links.id, second.id));
+
+			expect(savedFirst).toMatchObject({ folderId: toA.id, folderSource: 'ai', pinnedAt: null });
+			expect(savedSecond).toMatchObject({ folderId: toB.id, folderSource: 'user' });
+		});
+
+		test('하나라도 남의 링크거나 삭제된 폴더면 404 오류를 반환하고 아무 링크도 옮기지 않는다.', async () => {
+			const [otherUser] = await db
+				.insert(users)
+				.values({ email: '일괄이동-다른이메일', nickname: '다른유저' })
+				.returning();
+			const otherToken = await app.get(JwtService).signAsync({ sub: otherUser.id });
+			const otherFolder = await createFolder('남의 일괄 폴더', otherToken);
+			const otherLink = await createLink(otherFolder.id, otherToken);
+			const from = await createFolder('일괄 원래 폴더');
+			const to = await createFolder('일괄 대상 폴더');
+			const deleted = await createFolder('일괄 삭제될 폴더');
+			const mine = await createLink(from.id);
+
+			await request(app.getHttpServer())
+				.delete(`/folders/${deleted.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await moveMany([
+				{ linkId: mine.id, folderId: to.id, source: 'ai' },
+				{ linkId: otherLink.id, folderId: to.id, source: 'ai' },
+			]).expect(404);
+			await moveMany([
+				{ linkId: mine.id, folderId: to.id, source: 'ai' },
+				{ linkId: mine.id, folderId: deleted.id, source: 'ai' },
+			]).expect(404);
+
+			const [saved] = await db.select().from(links).where(eq(links.id, mine.id));
+
+			expect(saved.folderId).toBe(from.id);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
+		});
+
+		test('moves가 비었거나 50개를 넘거나 형식이 틀리면 400 오류를 반환한다.', async () => {
+			const folderId = crypto.randomUUID();
+			const linkId = crypto.randomUUID();
+
+			await moveMany([]).expect(400);
+			await moveMany(undefined).expect(400);
+			await moveMany(Array.from({ length: 51 }, () => ({ linkId, folderId, source: 'ai' }))).expect(400);
+			await moveMany([{ linkId, folderId, source: 'bot' }]).expect(400);
+			await moveMany([{ linkId: 'not-uuid', folderId, source: 'ai' }]).expect(400);
+			await moveMany([{ linkId, folderId: 'not-uuid', source: 'user' }]).expect(400);
+		});
+	});
+
 	describe('Patch /links/:id', () => {
 		async function createLinkInNewFolder() {
 			const folder = await request(app.getHttpServer())
