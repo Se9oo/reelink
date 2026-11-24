@@ -25,6 +25,7 @@
     "reminders:send": "nest start --entryFile notifications/send-reminders"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/jwt": "^12.0.2",
