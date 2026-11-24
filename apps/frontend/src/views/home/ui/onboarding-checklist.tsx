@@ -204,7 +204,7 @@ function Step({ number, title, description, done, disabled, action }: StepProps)
 			<span
 				className={`flex size-[22px] shrink-0 items-center justify-center rounded-full text-xs font-bold ${
 					done
-						? 'bg-[var(--seed-color-bg-positive-solid)] text-white'
+						? 'bg-[var(--seed-color-bg-brand-solid)] text-white'
 						: 'border-[1.5px] border-[var(--seed-color-stroke-neutral-muted)] text-[var(--seed-color-fg-neutral-muted)]'
 					}`}
 			>
