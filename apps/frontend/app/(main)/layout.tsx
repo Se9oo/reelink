@@ -8,6 +8,7 @@ import { Sidebar } from '@/app/layouts/app-shell/ui/sidebar';
 import { PushSubscriptionSync } from '@/features/web-push-notification/ui/push-subscription-sync';
 
 import { PendingOgTagsSync } from '@/entities/link/ui/pending-og-tags-sync';
+import { RemindAtExpirySync } from '@/entities/link/ui/remind-at-expiry-sync';
 
 export default function MainLayout({ children }: { children: ReactNode }) {
 	return (
@@ -21,6 +22,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
 			<FloatingLinkButton />
 			<PushSubscriptionSync />
 			<PendingOgTagsSync />
+			<RemindAtExpirySync />
 		</div>
 	);
 }
