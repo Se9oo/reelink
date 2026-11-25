@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { IconSparkle2Line } from '@karrotmarket/react-monochrome-icon';
 import { useQuery } from '@tanstack/react-query';
 import { HTTPError } from 'ky';
 import { ActionButton } from 'seed-design/ui/action-button';
@@ -24,11 +25,12 @@ function statusOf(error: unknown): number | null {
 	return error instanceof HTTPError ? error.response.status : null;
 }
 
-interface AutoSortButtonProps {
+interface AutoSortCardProps {
 	folderId: string;
+	linkCount: number;
 }
 
-export function AutoSortButton({ folderId }: AutoSortButtonProps) {
+export function AutoSortCard({ folderId, linkCount }: AutoSortCardProps) {
 	const [suggestion, setSuggestion] = useState<AutoSortSuggestion | null>(null);
 	const { data: quota } = useQuery(autoSortQuotaQueryOptions());
 	const suggest = useSuggestAutoSort();
@@ -40,10 +42,32 @@ export function AutoSortButton({ folderId }: AutoSortButtonProps) {
 	}
 
 	return (
-		<div className="flex items-center gap-2">
+		<div
+			className="flex items-center gap-3 rounded-[14px] bg-[var(--seed-color-bg-brand-weak)] px-4 py-3.5 md:gap-3.5
+				md:px-5 md:py-4"
+		>
+			<IconSparkle2Line size={22} className="shrink-0 text-[var(--seed-color-fg-brand)]" />
+			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+				<p className="text-sm font-semibold text-[var(--seed-color-fg-neutral)] md:text-[15px]">
+					링크 {linkCount}개를 폴더별로 정리해드릴게요
+				</p>
+				{quota && (
+					<p className="text-xs text-[var(--seed-color-fg-brand)] md:text-[13px]">
+						{quota.remaining === 0 ? (
+							'오늘은 다 썼어요, 내일 다시 정리할 수 있어요'
+						) : (
+							<>
+								<span className="hidden md:inline">AI가 맞는 폴더를 추천하면 확인하고 옮길 수 있어요. </span>
+								오늘 {quota.remaining}개까지 가능
+							</>
+						)}
+					</p>
+				)}
+			</div>
 			<ActionButton
-				variant="neutralWeak"
+				variant="brandSolid"
 				size="small"
+				className="shrink-0"
 				loading={suggest.isPending}
 				disabled={quota?.remaining === 0}
 				onClick={() =>
@@ -53,11 +77,8 @@ export function AutoSortButton({ folderId }: AutoSortButtonProps) {
 					})
 				}
 			>
-				폴더 자동 배치
+				정리하기
 			</ActionButton>
-			{quota && (
-				<span className="text-xs text-[var(--seed-color-fg-neutral-muted)]">오늘 {quota.remaining}개 남았어요</span>
-			)}
 			{suggestion && (
 				<AutoSortPreviewDialog
 					open

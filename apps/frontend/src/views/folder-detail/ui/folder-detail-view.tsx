@@ -10,7 +10,7 @@ import { ActionButton } from 'seed-design/ui/action-button';
 
 import { LinkSearch } from '@/widgets/link-search/ui/link-search';
 
-import { AutoSortButton } from '@/features/auto-sort-links/ui/auto-sort-button';
+import { AutoSortCard } from '@/features/auto-sort-links/ui/auto-sort-card';
 import { useLinkActions } from '@/features/link-actions/model/use-link-actions';
 import { useLinkSort } from '@/features/sort-links/model/use-link-sort';
 import { LinkSortMenu } from '@/features/sort-links/ui/link-sort-menu';
@@ -92,8 +92,8 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 			</div>
 
 			{folder.isSystem && me?.isGuest === false && linkCount > 0 && (
-				<div className="px-4 pb-3 lg:px-0 lg:pb-4">
-					<AutoSortButton folderId={folderId} />
+				<div className="px-4 pt-2 pb-1 lg:px-0 lg:pt-0">
+					<AutoSortCard folderId={folderId} linkCount={linkCount} />
 				</div>
 			)}
 

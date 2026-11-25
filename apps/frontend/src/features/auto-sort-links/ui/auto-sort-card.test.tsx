@@ -5,7 +5,7 @@ import { HTTPError } from 'ky';
 import { SnackbarProvider } from 'seed-design/ui/snackbar';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { AutoSortButton } from '@/features/auto-sort-links/ui/auto-sort-button';
+import { AutoSortCard } from '@/features/auto-sort-links/ui/auto-sort-card';
 
 import { Folder } from '@/entities/folder/model/types';
 import { AutoSortSuggestion } from '@/entities/link/api/auto-sort';
@@ -97,7 +97,7 @@ function renderButton() {
 	render(
 		<QueryClientProvider client={queryClient}>
 			<SnackbarProvider>
-				<AutoSortButton folderId="kakao" />
+				<AutoSortCard folderId="kakao" linkCount={4} />
 			</SnackbarProvider>
 		</QueryClientProvider>,
 	);
@@ -107,22 +107,23 @@ async function openPreview() {
 	const user = userEvent.setup();
 	renderButton();
 
-	await user.click(await screen.findByRole('button', { name: '폴더 자동 배치' }));
+	await user.click(await screen.findByRole('button', { name: '정리하기' }));
 
 	return { user, dialog: await screen.findByRole('dialog', { name: /폴더 자동 배치/ }) };
 }
 
-describe('AutoSortButton', () => {
+describe('AutoSortCard', () => {
 	beforeEach(() => {
 		vi.mocked(apiClient.get).mockReset();
 		vi.mocked(apiClient.post).mockReset();
 		mockApi();
 	});
 
-	test('오늘 남은 개수를 보여준다', async () => {
+	test('정리할 링크 개수와 오늘 남은 개수를 보여준다', async () => {
 		renderButton();
 
-		expect(await screen.findByText('오늘 38개 남았어요')).toBeInTheDocument();
+		expect(screen.getByText('링크 4개를 폴더별로 정리해드릴게요')).toBeInTheDocument();
+		expect(await screen.findByText(/오늘 38개까지 가능/)).toBeInTheDocument();
 	});
 
 	test('미리보기에 추천 폴더 경로, 맞는 폴더 없음, 내일로 넘어간 개수를 보여준다', async () => {
@@ -190,7 +191,7 @@ describe('AutoSortButton', () => {
 		const user = userEvent.setup();
 		renderButton();
 
-		await user.click(await screen.findByRole('button', { name: '폴더 자동 배치' }));
+		await user.click(await screen.findByRole('button', { name: '정리하기' }));
 
 		expect(await screen.findByText(message)).toBeInTheDocument();
 	});
@@ -206,13 +207,13 @@ describe('AutoSortButton', () => {
 		expect(await screen.findByText('목록이 바뀌었어요, 다시 눌러주세요')).toBeInTheDocument();
 	});
 
-	test('남은 개수가 0이면 버튼을 누를 수 없다', async () => {
+	test('남은 개수가 0이면 다 썼다고 알려주고 버튼을 누를 수 없다', async () => {
 		vi.mocked(apiClient.get).mockImplementation(((url: string) => ({
 			json: async () => (url === 'links/auto-sort/quota' ? { remaining: 0 } : folders),
 		})) as never);
 		renderButton();
 
-		expect(await screen.findByText('오늘 0개 남았어요')).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: '폴더 자동 배치' })).toBeDisabled();
+		expect(await screen.findByText('오늘은 다 썼어요, 내일 다시 정리할 수 있어요')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: '정리하기' })).toBeDisabled();
 	});
 });

@@ -110,13 +110,13 @@ describe('FolderDetailView', () => {
 		});
 		renderDetail('kakao');
 
-		expect(await screen.findByRole('button', { name: '폴더 자동 배치' })).toBeInTheDocument();
+		expect(await screen.findByRole('button', { name: '정리하기' })).toBeInTheDocument();
 
 		cleanup();
 		renderDetail('dev');
 
 		expect(await screen.findByText('React 19 새 기능')).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: '폴더 자동 배치' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: '정리하기' })).not.toBeInTheDocument();
 	});
 
 	test('링크가 없는 시스템 폴더에는 폴더 자동 배치 버튼이 없다', async () => {
@@ -124,7 +124,7 @@ describe('FolderDetailView', () => {
 		renderDetail('kakao');
 
 		expect(await screen.findByText('이 폴더엔 아직 링크가 없어요')).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: '폴더 자동 배치' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: '정리하기' })).not.toBeInTheDocument();
 	});
 
 	test('게스트에게는 폴더 자동 배치 버튼이 없다', async () => {
@@ -133,7 +133,7 @@ describe('FolderDetailView', () => {
 
 		expect(await screen.findByRole('heading', { name: '카카오톡으로 등록' })).toBeInTheDocument();
 		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(screen.queryByRole('button', { name: '폴더 자동 배치' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: '정리하기' })).not.toBeInTheDocument();
 	});
 
 	test('하위 폴더 카드에 그 폴더의 하위 폴더 수를 보여준다', async () => {
