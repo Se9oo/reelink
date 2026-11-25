@@ -95,7 +95,7 @@ export class AutoSortService {
 		}
 
 		const key = quotaKey(userId);
-		const allowed = await this.reserveQuota(key, targets.length);
+		const { allowed, remaining } = await this.reserveQuota(key, targets.length);
 
 		if (allowed === 0) {
 			throw new HttpException('오늘 자동 배치 한도를 다 썼습니다.', HttpStatus.TOO_MANY_REQUESTS);
@@ -118,20 +118,20 @@ export class AutoSortService {
 
 		return {
 			suggestions: sent.map(({ id }) => ({ linkId: id, folderId: suggestions.get(id) ?? null })),
-			remaining: await this.getRemaining(userId),
+			remaining,
 			skipped: targets.length - allowed,
 		};
 	}
 
 	/**
 	 * 보낼 개수만큼 먼저 차감하고 한도를 넘는 만큼 되돌려서, 동시에 들어온 요청이 합쳐서 한도를 넘지 않게 한다.
-	 * 유료 API라 한도를 확인할 수 없으면 보내지 않는다.
+	 * 유료 API라 한도를 확인할 수 없으면 보내지 않는다. 남은 개수도 여기서 계산해서, AI 호출 뒤 Redis를 다시 읽다 실패해 결과를 버리는 일이 없게 한다.
 	 * @param key string `aisort:<userId>:<YYYYMMDD>`
 	 * @param wanted number 보내려는 링크 수
-	 * @returns number 실제로 보낼 수 있는 링크 수
+	 * @returns { allowed: number; remaining: number } 실제로 보낼 수 있는 링크 수와 보낸 뒤 남는 개수
 	 * @throws ServiceUnavailableException Redis가 실패한 경우
 	 */
-	private async reserveQuota(key: string, wanted: number): Promise<number> {
+	private async reserveQuota(key: string, wanted: number): Promise<{ allowed: number; remaining: number }> {
 		try {
 			await this.redis.set(key, 0, 'EX', QUOTA_TTL_SECONDS, 'NX');
 			const after = await this.redis.incrby(key, wanted);
@@ -141,7 +141,7 @@ export class AutoSortService {
 				await this.redis.decrby(key, wanted - allowed);
 			}
 
-			return allowed;
+			return { allowed, remaining: Math.max(0, AUTO_SORT_DAILY_LIMIT - (after - wanted + allowed)) };
 		} catch {
 			throw new ServiceUnavailableException('잠시 후 다시 시도해주세요.');
 		}

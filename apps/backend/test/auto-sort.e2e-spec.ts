@@ -190,6 +190,21 @@ describe('AutoSort (e2e)', () => {
 			expect(await redis.get(quotaKey(userId))).toBe('10');
 		});
 
+		test('AI 호출이 끝난 뒤 Redis 조회가 실패해도 추천 결과와 남은 개수를 돌려준다.', async () => {
+			const { userId, token } = await createUser();
+			const inbox = await createFolder(userId, '카카오톡으로 등록', { isSystem: true });
+			await createFolder(userId, '개발');
+			await createLinks(userId, inbox.id, 3);
+			await redis.set(quotaKey(userId), '10', 'EX', 60);
+			const getSpy = vi.spyOn(redis, 'get').mockRejectedValue(new Error('Connection is closed.'));
+
+			const res = await suggest(inbox.id, token).expect(201);
+			getSpy.mockRestore();
+
+			expect(res.body.suggestions).toHaveLength(3);
+			expect(res.body.remaining).toBe(37);
+		});
+
 		test('Redis가 실패하면 AI를 부르지 않고 503 오류를 반환한다.', async () => {
 			const { userId, token } = await createUser();
 			const inbox = await createFolder(userId, '카카오톡으로 등록', { isSystem: true });

@@ -98,7 +98,7 @@ export function normalizeSuggestions(raw: unknown, folderIds: string[], linkIds:
  * @param allFolders ClassifyFolder[] 후보 폴더(시스템 폴더 제외)
  * @param links ClassifyLink[] 분류할 링크
  * @returns Map<string, string | null> 링크 id → 추천 폴더 id, 맞는 폴더가 없으면 null
- * @throws ClassifyLinksError API 호출이 재시도 후에도 실패하거나(크레딧 소진 포함) 응답을 읽을 수 없는 경우
+ * @throws ClassifyLinksError API 호출이 재시도 후에도 실패하거나(크레딧 소진 포함), 분류를 거절하거나, 응답을 읽을 수 없는 경우
  */
 export async function classifyLinks(
 	allFolders: ClassifyFolder[],
@@ -147,7 +147,7 @@ export async function classifyLinks(
 	logger.log(`usage input=${response.usage.input_tokens} output=${response.usage.output_tokens}`);
 
 	if (response.stop_reason === 'refusal') {
-		return normalizeSuggestions([], folderIds, linkIds);
+		throw new ClassifyLinksError('Claude가 분류를 거절함');
 	}
 
 	const text = response.content.find((block) => block.type === 'text')?.text;
