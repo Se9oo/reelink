@@ -81,7 +81,7 @@ export function FolderTreeScreen() {
 	}
 
 	return (
-		<div className="flex flex-col px-2 pb-32">
+		<div className="flex flex-col px-2 pb-10 lg:pb-24">
 			<button
 				type="button"
 				onClick={() => openCreateDialog(null)}

@@ -110,7 +110,7 @@ export function TrashView({
 			</div>
 
 			<div
-				className="min-h-0 flex-1 overflow-y-auto pt-1 pb-24 lg:divide-y
+				className="min-h-0 flex-1 overflow-y-auto pt-1 pb-10 lg:divide-y
 					lg:divide-[var(--seed-color-stroke-neutral-subtle)] lg:overflow-hidden lg:rounded-2xl lg:border
 					lg:border-[var(--seed-color-stroke-neutral-subtle)] lg:bg-[var(--seed-color-bg-layer-default)] lg:p-0"
 			>
