@@ -41,6 +41,7 @@ function link(overrides: Partial<Link> & Pick<Link, 'id'>): Link {
 }
 
 const folders = [
+	folder({ id: 'kakao', name: '카카오톡으로 등록', isSystem: true }),
 	folder({ id: 'dev', name: '개발' }),
 	folder({ id: 'react', name: 'React', parentFolderId: 'dev', sortOrder: 0 }),
 	folder({ id: 'next', name: 'Next.js', parentFolderId: 'dev', sortOrder: 1 }),
@@ -48,11 +49,19 @@ const folders = [
 	folder({ id: 'empty', name: '빈 폴더' }),
 ];
 
-function mockApi(linksByFolder: Record<string, Link[]>) {
+function mockApi(linksByFolder: Record<string, Link[]>, { isGuest = false } = {}) {
 	vi.mocked(apiClient.get).mockImplementation(((url: string) => ({
 		json: async () => {
 			if (url === 'folders') {
 				return folders;
+			}
+
+			if (url === 'auth/me') {
+				return { id: 'u', nickname: '테스터', isGuest };
+			}
+
+			if (url === 'links/auto-sort/quota') {
+				return { remaining: 50 };
 			}
 
 			const match = url.match(/^folders\/(.+)\/links$/);
@@ -92,6 +101,28 @@ describe('FolderDetailView', () => {
 		expect(screen.getByRole('link', { name: /^React(?! 19)/ })).toHaveAttribute('href', '/folders/react');
 		expect(screen.getByRole('link', { name: 'Next.js' })).toHaveAttribute('href', '/folders/next');
 		expect(await screen.findByText('React 19 새 기능')).toBeInTheDocument();
+	});
+
+	test('시스템 폴더에만 폴더 자동 배치 버튼이 있다', async () => {
+		mockApi({});
+		renderDetail('kakao');
+
+		expect(await screen.findByRole('button', { name: '폴더 자동 배치' })).toBeInTheDocument();
+
+		cleanup();
+		renderDetail('dev');
+
+		expect(await screen.findByRole('heading', { name: '개발' })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: '폴더 자동 배치' })).not.toBeInTheDocument();
+	});
+
+	test('게스트에게는 폴더 자동 배치 버튼이 없다', async () => {
+		mockApi({}, { isGuest: true });
+		renderDetail('kakao');
+
+		expect(await screen.findByRole('heading', { name: '카카오톡으로 등록' })).toBeInTheDocument();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(screen.queryByRole('button', { name: '폴더 자동 배치' })).not.toBeInTheDocument();
 	});
 
 	test('하위 폴더 카드에 그 폴더의 하위 폴더 수를 보여준다', async () => {

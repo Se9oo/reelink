@@ -10,6 +10,7 @@ import { ActionButton } from 'seed-design/ui/action-button';
 
 import { LinkSearch } from '@/widgets/link-search/ui/link-search';
 
+import { AutoSortButton } from '@/features/auto-sort-links/ui/auto-sort-button';
 import { useLinkActions } from '@/features/link-actions/model/use-link-actions';
 import { useLinkSort } from '@/features/sort-links/model/use-link-sort';
 import { LinkSortMenu } from '@/features/sort-links/ui/link-sort-menu';
@@ -19,6 +20,7 @@ import { buildFolderPath } from '@/entities/folder/model/build-folder-path';
 import { folderLinksQueryOptions } from '@/entities/link/api/get-folder-links';
 import { sortLinks } from '@/entities/link/model/sort-links';
 import { LinkRow } from '@/entities/link/ui/link-row';
+import { meQueryOptions } from '@/entities/user/api/get-me';
 
 import { folderDetailPath, ROUTES } from '@/shared/config/routes';
 import { IconFolderLine } from '@/shared/ui/icons/icon-folder-line';
@@ -30,6 +32,7 @@ interface FolderDetailViewProps {
 export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 	const { data: folders } = useQuery(foldersQueryOptions());
 	const { data: links } = useQuery(folderLinksQueryOptions(folderId));
+	const { data: me } = useQuery(meQueryOptions());
 	const { onDelete, onMove, onEdit, onTogglePin, onRemind, onClearRemind } = useLinkActions();
 	const { sort, setSort } = useLinkSort();
 
@@ -87,6 +90,12 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 					</div>
 				</div>
 			</div>
+
+			{folder.isSystem && me?.isGuest === false && (
+				<div className="px-4 pb-3 lg:px-0 lg:pb-4">
+					<AutoSortButton folderId={folderId} />
+				</div>
+			)}
 
 			<LinkSearch>
 				{isEmpty && (
