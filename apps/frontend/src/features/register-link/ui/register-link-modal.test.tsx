@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { SnackbarProvider } from 'seed-design/ui/snackbar';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { RegisterLinkModal } from '@/features/register-link/ui/register-link-modal';
@@ -22,7 +23,9 @@ function renderModal(initialUrl?: string) {
 
 	render(
 		<QueryClientProvider client={queryClient}>
-			<RegisterLinkModal open onOpenChange={() => {}} onRegistered={() => {}} initialUrl={initialUrl} />
+			<SnackbarProvider>
+				<RegisterLinkModal open onOpenChange={() => {}} onRegistered={() => {}} initialUrl={initialUrl} />
+			</SnackbarProvider>
 		</QueryClientProvider>,
 	);
 }

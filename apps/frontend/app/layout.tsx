@@ -81,9 +81,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
 					{themeScript}
 				</Script>
 				<QueryProvider>
-					<OverlayProvider>
-						<SnackbarProvider>{children}</SnackbarProvider>
-					</OverlayProvider>
+					<SnackbarProvider>
+						<OverlayProvider>{children}</OverlayProvider>
+					</SnackbarProvider>
 				</QueryProvider>
 			</body>
 		</html>

@@ -111,7 +111,7 @@ button:not(:disabled) {
 }
 
 @media (min-width: 1024px) {
-	body:has(.app-sidebar) .seed-snackbar-region {
+	body:has(.app-sidebar):not(:has([role='dialog'], [role='alertdialog'])) .seed-snackbar-region {
 		left: calc(15rem + env(safe-area-inset-left, 0px));
 	}
 }

@@ -6,6 +6,7 @@ import type { SubmitEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ActionButton } from 'seed-design/ui/action-button';
 import { DialogBody, DialogContent, DialogFooter, DialogRoot } from 'seed-design/ui/dialog';
+import { Snackbar, useSnackbarAdapter } from 'seed-design/ui/snackbar';
 import { TextField, TextFieldInput, TextFieldTextarea } from 'seed-design/ui/text-field';
 
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
@@ -15,6 +16,7 @@ import { createLink } from '@/entities/link/api/create-link';
 
 import { folderKeys, linkKeys } from '@/shared/api/query-keys';
 import { isValidHttpUrl } from '@/shared/lib/is-valid-http-url';
+import { IconClipboardLine } from '@/shared/ui/icons/icon-clipboard-line';
 
 interface RegisterLinkModalProps {
 	open: boolean;
@@ -30,6 +32,7 @@ export function RegisterLinkModal({ open, onOpenChange, onRegistered, initialUrl
 	const [savedReason, setSavedReason] = useState('');
 
 	const queryClient = useQueryClient();
+	const snackbar = useSnackbarAdapter();
 	const { data: folders } = useQuery(foldersQueryOptions());
 	const tree = folders ? buildFolderTree(folders) : [];
 
@@ -47,6 +50,35 @@ export function RegisterLinkModal({ open, onOpenChange, onRegistered, initialUrl
 	});
 
 	const urlInvalid = url !== '' && !isValidHttpUrl(url);
+	const canReadClipboard = typeof navigator !== 'undefined' && typeof navigator.clipboard?.readText === 'function';
+
+	function showPasteFailure(message: string) {
+		snackbar.create({ render: () => <Snackbar variant="critical" message={message} /> });
+	}
+
+	async function pasteUrl() {
+		let text: string;
+
+		try {
+			text = (await navigator.clipboard.readText()).trim();
+		} catch {
+			showPasteFailure('클립보드를 읽지 못했어요, 직접 붙여넣어 주세요');
+			return;
+		}
+
+		if (!text) {
+			showPasteFailure('복사한 링크가 없어요');
+			return;
+		}
+
+		if (!isValidHttpUrl(text)) {
+			showPasteFailure('복사한 내용이 링크가 아니에요');
+			return;
+		}
+
+		setUrl(text);
+		setUrlTouched(true);
+	}
 
 	const handleSubmit = (event: SubmitEvent) => {
 		event.preventDefault();
@@ -73,6 +105,18 @@ export function RegisterLinkModal({ open, onOpenChange, onRegistered, initialUrl
 								errorMessage="http:// 또는 https://로 시작하는 주소를 입력해주세요"
 							>
 								<TextFieldInput placeholder="https://" onBlur={() => setUrlTouched(true)} />
+								{canReadClipboard && (
+									<button
+										type="button"
+										aria-label="붙여넣기"
+										onClick={pasteUrl}
+										className="mr-2 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center
+											text-[var(--seed-color-fg-neutral-muted)] transition-colors duration-200
+											hover:text-[var(--seed-color-fg-neutral)]"
+									>
+										<IconClipboardLine size={20} />
+									</button>
+								)}
 							</TextField>
 
 							<FolderTreeSelect nodes={tree} selectedId={folderId} onSelect={setFolderId} />

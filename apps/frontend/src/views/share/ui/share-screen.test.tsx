@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { OverlayProvider } from 'overlay-kit';
+import { SnackbarProvider } from 'seed-design/ui/snackbar';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { ShareScreen } from '@/views/share/ui/share-screen';
@@ -23,9 +24,11 @@ function renderScreen(sharedUrl: string | null) {
 	render(
 		<StrictMode>
 			<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-				<OverlayProvider>
-					<ShareScreen sharedUrl={sharedUrl} />
-				</OverlayProvider>
+				<SnackbarProvider>
+					<OverlayProvider>
+						<ShareScreen sharedUrl={sharedUrl} />
+					</OverlayProvider>
+				</SnackbarProvider>
 			</QueryClientProvider>
 		</StrictMode>,
 	);
