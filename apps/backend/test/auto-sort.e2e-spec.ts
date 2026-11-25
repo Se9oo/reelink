@@ -87,8 +87,11 @@ describe('AutoSort (e2e)', () => {
 		return await db.insert(links).values(rows).returning();
 	}
 
-	function suggest(folderId: string, token: string) {
-		return request(app.getHttpServer()).post(`/folders/${folderId}/auto-sort`).set('Cookie', `access_token=${token}`);
+	function suggest(folderId: string, token: string, body?: unknown) {
+		return request(app.getHttpServer())
+			.post(`/folders/${folderId}/auto-sort`)
+			.set('Cookie', `access_token=${token}`)
+			.send(body as object);
 	}
 
 	function quota(token: string) {
@@ -252,6 +255,35 @@ describe('AutoSort (e2e)', () => {
 			const res = await suggest(inbox.id, token).expect(201);
 
 			expect(res.body.suggestions).toEqual([{ linkId: kept.id, folderId: live.id }]);
+		});
+
+		test('linkIds를 보내면 고른 링크만 보내고 그만큼만 한도를 쓴다.', async () => {
+			const { userId, token } = await createUser();
+			const inbox = await createFolder(userId, '카카오톡으로 등록', { isSystem: true });
+			await createFolder(userId, '개발');
+			const [first, , third] = await createLinks(userId, inbox.id, 3);
+
+			const res = await suggest(inbox.id, token, { linkIds: [first.id, third.id] }).expect(201);
+
+			const [, sent] = vi.mocked(classifyLinks).mock.calls[0];
+			expect(sent.map(({ id }) => id).sort()).toEqual([first.id, third.id].sort());
+			expect(res.body).toMatchObject({ remaining: 48, skipped: 0 });
+		});
+
+		test('linkIds에 이 폴더에 없거나 삭제된 링크가 있으면 404, 비었거나 형식이 틀리면 400 오류를 반환한다.', async () => {
+			const { userId, token } = await createUser();
+			const inbox = await createFolder(userId, '카카오톡으로 등록', { isSystem: true });
+			const dev = await createFolder(userId, '개발');
+			const [inInbox, deleted] = await createLinks(userId, inbox.id, 2);
+			const [elsewhere] = await createLinks(userId, dev.id, 1);
+			await db.update(links).set({ deletedAt: new Date() }).where(eq(links.id, deleted.id));
+
+			await suggest(inbox.id, token, { linkIds: [inInbox.id, elsewhere.id] }).expect(404);
+			await suggest(inbox.id, token, { linkIds: [inInbox.id, deleted.id] }).expect(404);
+			await suggest(inbox.id, token, { linkIds: [] }).expect(400);
+			await suggest(inbox.id, token, { linkIds: ['not-uuid'] }).expect(400);
+			await suggest(inbox.id, token, { linkIds: inInbox.id }).expect(400);
+			expect(classifyLinks).not.toHaveBeenCalled();
 		});
 	});
 

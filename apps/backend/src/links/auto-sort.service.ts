@@ -8,7 +8,8 @@ import {
 	ServiceUnavailableException,
 } from '@nestjs/common';
 
-import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { validate as isUuid } from 'uuid';
 
 import { DRIZZLE, type DrizzleDb } from '../db/drizzle.module.js';
 import { folders, links } from '../db/schema.js';
@@ -56,16 +57,32 @@ export class AutoSortService {
 	}
 
 	/**
-	 * 시스템 폴더의 링크를 오래된 순으로 남은 한도만큼 AI에 보내 폴더를 추천받는다. 링크는 옮기지 않는다.
+	 * 시스템 폴더의 링크(linkIds가 있으면 그중 고른 것)를 오래된 순으로 남은 한도만큼 AI에 보내 폴더를 추천받는다. 링크는 옮기지 않는다.
 	 * @param userId string
 	 * @param folderId string 내 시스템 폴더("카카오톡으로 등록", "미분류")
+	 * @param linkIds unknown 보낼 링크 id 배열, 생략하면 폴더의 링크 전부
 	 * @returns AutoSortResult
-	 * @throws NotFoundException 폴더가 없거나 삭제됐거나 내 폴더가 아닌 경우
-	 * @throws BadRequestException 시스템 폴더가 아닌 경우
+	 * @throws NotFoundException 폴더가 없거나 삭제됐거나 내 폴더가 아닌 경우, linkIds 중 이 폴더에 없거나 삭제된 링크가 있는 경우
+	 * @throws BadRequestException 시스템 폴더가 아니거나, linkIds가 비었거나 uuid 배열이 아닌 경우
 	 * @throws HttpException 429 오늘 한도를 다 쓴 경우
 	 * @throws ServiceUnavailableException Redis로 한도를 확인할 수 없거나 AI 호출이 실패한 경우(차감한 한도는 되돌림)
 	 */
-	async suggest({ userId, folderId }: { userId: string; folderId: string }): Promise<AutoSortResult> {
+	async suggest({
+		userId,
+		folderId,
+		linkIds,
+	}: {
+		userId: string;
+		folderId: string;
+		linkIds?: unknown;
+	}): Promise<AutoSortResult> {
+		if (
+			linkIds !== undefined &&
+			(!Array.isArray(linkIds) || linkIds.length === 0 || !linkIds.every((id) => typeof id === 'string' && isUuid(id)))
+		) {
+			throw new BadRequestException('linkIds 형식이 올바르지 않습니다.');
+		}
+
 		const [folder] = await this.db
 			.select()
 			.from(folders)
@@ -79,11 +96,24 @@ export class AutoSortService {
 			throw new BadRequestException('시스템 폴더에서만 자동 배치할 수 있습니다.');
 		}
 
+		const selectedIds = linkIds === undefined ? undefined : [...new Set(linkIds as string[])];
 		const targets = await this.db
 			.select()
 			.from(links)
-			.where(and(eq(links.folderId, folderId), eq(links.userId, userId), isNull(links.deletedAt)))
+			.where(
+				and(
+					eq(links.folderId, folderId),
+					eq(links.userId, userId),
+					isNull(links.deletedAt),
+					selectedIds ? inArray(links.id, selectedIds) : undefined,
+				),
+			)
 			.orderBy(asc(links.createdAt));
+
+		if (selectedIds && targets.length !== selectedIds.length) {
+			throw new NotFoundException();
+		}
+
 		const candidates = await this.findCandidateFolders(userId);
 
 		if (targets.length === 0 || candidates.length === 0) {

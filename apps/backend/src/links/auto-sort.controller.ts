@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 
 import type { Request } from 'express';
 
@@ -22,9 +22,13 @@ export class AutoSortController {
 
 	@Post('folders/:id/auto-sort')
 	@UseGuards(JwtAuthGuard, NotGuestGuard)
-	async suggest(@Req() req: Request, @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) folderId: string) {
+	async suggest(
+		@Req() req: Request,
+		@Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) folderId: string,
+		@Body() body: { linkIds?: unknown } | undefined,
+	) {
 		const { sub: userId } = req.user as JwtPayload;
 
-		return await this.autoSortService.suggest({ userId, folderId });
+		return await this.autoSortService.suggest({ userId, folderId, linkIds: body?.linkIds });
 	}
 }
