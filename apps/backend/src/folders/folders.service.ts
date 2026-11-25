@@ -77,7 +77,7 @@ export class FoldersService {
 	 * @param name string 앞뒤 공백을 지우고 저장
 	 * @param parentFolderId string | null | undefined 생략하거나 null이면 최상위 폴더로 생성
 	 * @returns Folder
-	 * @throws BadRequestException 이름이 없거나 공백뿐이거나 50자를 넘는 경우
+	 * @throws BadRequestException 이름이 없거나 공백뿐이거나 50자를 넘는 경우, 부모가 시스템 폴더인 경우
 	 * @throws NotFoundException 부모 폴더가 없거나 삭제됐거나 내 폴더가 아닌 경우
 	 */
 	async createFolder({ userId, name, parentFolderId }: CreateFolderParams): Promise<Folder> {
@@ -94,6 +94,10 @@ export class FoldersService {
 
 				if (!parent) {
 					throw new NotFoundException();
+				}
+
+				if (parent.isSystem) {
+					throw new BadRequestException('시스템 폴더 밑에는 폴더를 만들 수 없습니다.');
 				}
 			}
 
@@ -181,7 +185,7 @@ export class FoldersService {
 	 * @returns Folder
 	 * @throws NotFoundException 폴더가 없거나 내 폴더가 아닌 경우, 새 부모가 없거나 삭제됐거나 내 폴더가 아닌 경우
 	 * @throws ForbiddenException 시스템 폴더(isSystem)인 경우
-	 * @throws BadRequestException 새 부모가 자기 자신이거나 자기 하위 폴더인 경우(순환 방지), 이름이 공백뿐이거나 50자를 넘는 경우
+	 * @throws BadRequestException 새 부모가 자기 자신이거나 자기 하위 폴더인 경우(순환 방지), 시스템 폴더인 경우, 이름이 공백뿐이거나 50자를 넘는 경우
 	 */
 	async updateFolder({ userId, folderId, name, parentFolderId }: UpdateFolderParams): Promise<Folder> {
 		return await this.db.transaction(async (tx) => {
@@ -329,7 +333,7 @@ export class FoldersService {
 	 * @param newParentFolderId string 옮겨갈 새 부모 폴더의 id
 	 * @param tx DrizzleTx lockUserFolders를 잡은 트랜잭션
 	 * @throws NotFoundException 새 부모가 존재하지 않거나 삭제됐거나 내 폴더가 아닌 경우
-	 * @throws BadRequestException 새 부모가 자기 자신이거나 자기 하위 폴더인 경우(순환 방지)
+	 * @throws BadRequestException 새 부모가 자기 자신이거나 자기 하위 폴더인 경우(순환 방지), 시스템 폴더인 경우
 	 */
 	private async assertValidNewParent(
 		userId: string,
@@ -351,6 +355,10 @@ export class FoldersService {
 			// 삭제는 하위로 cascade되므로 바로 위 부모만 살아있으면 된다
 			if (!parent || (parent.id === newParentFolderId && parent.deletedAt)) {
 				throw new NotFoundException();
+			}
+
+			if (parent.id === newParentFolderId && parent.isSystem) {
+				throw new BadRequestException('시스템 폴더 밑으로 이동할 수 없습니다.');
 			}
 
 			if (!parent.parentFolderId) {

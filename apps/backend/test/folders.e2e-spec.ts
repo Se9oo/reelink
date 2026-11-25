@@ -130,6 +130,19 @@ describe('FoldersController (e2e)', () => {
 			expect(child2.body.sortOrder).toEqual(child1.body.sortOrder + 1);
 		});
 
+		test('시스템 폴더 밑에는 폴더를 만들 수 없다.', async () => {
+			const [systemFolder] = await db
+				.insert(folders)
+				.values({ name: '미분류', isSystem: true, userId: testUserId, sortOrder: 0 })
+				.returning();
+
+			await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '자식', parentFolderId: systemFolder.id })
+				.expect(400);
+		});
+
 		test('인증 쿠키가 없으면 401을 반환한다', async () => {
 			await request(app.getHttpServer()).post('/folders').send({ name: '개발' }).expect(401);
 		});
@@ -503,6 +516,24 @@ describe('FoldersController (e2e)', () => {
 				.set('Cookie', `access_token=${accessToken}`)
 				.send({ parentFolderId: deleted.body.id })
 				.expect(404);
+		});
+
+		test('시스템 폴더 밑으로는 이동할 수 없다.', async () => {
+			const folder = await request(app.getHttpServer())
+				.post('/folders')
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ name: '시스템 밑 이동시도' })
+				.expect(201);
+			const [systemFolder] = await db
+				.insert(folders)
+				.values({ name: '카카오톡으로 등록', isSystem: true, userId: testUserId, sortOrder: 0 })
+				.returning();
+
+			await request(app.getHttpServer())
+				.patch(`/folders/${folder.body.id}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.send({ parentFolderId: systemFolder.id })
+				.expect(400);
 		});
 	});
 
