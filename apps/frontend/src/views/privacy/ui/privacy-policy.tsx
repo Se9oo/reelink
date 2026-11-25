@@ -129,6 +129,10 @@ export function PrivacyPolicy() {
 						<td>Cloudflare, Inc.</td>
 						<td>네트워크 전송(CDN·보안 프록시), 데이터베이스 백업 저장(R2)</td>
 					</tr>
+					<tr>
+						<td>Anthropic, PBC</td>
+						<td>폴더 자동 배치(링크에 맞는 폴더 추천)</td>
+					</tr>
 				</tbody>
 			</table>
 
@@ -160,12 +164,20 @@ export function PrivacyPolicy() {
 							<td>5분 간격 및 매일 1회 암호화 통신으로 전송</td>
 							<td>장애 복구용 백업, 최대 14일</td>
 						</tr>
+						<tr>
+							<td>Anthropic, PBC (privacy@anthropic.com)</td>
+							<td>미국</td>
+							<td>링크 제목, 설명, URL, 저장 이유, 폴더 이름</td>
+							<td>폴더 자동 배치를 누를 때 암호화 통신으로 전송</td>
+							<td>링크 폴더 추천, Anthropic 정책에 따른 기간</td>
+						</tr>
 					</tbody>
 				</table>
 			</div>
 			<p>
 				국외 이전을 원하지 않는 경우 회원 탈퇴로 거부할 수 있습니다. 다만 위 이전은 서비스 제공에 필수적이므로, 거부하면
-				서비스를 이용할 수 없습니다.
+				서비스를 이용할 수 없습니다. 단, Anthropic으로의 이전은 선택 기능인 폴더 자동 배치를 누를 때만 일어나므로, 이
+				기능을 쓰지 않으면 이전되지 않습니다.
 			</p>
 
 			<h2>7. 개인정보의 파기 절차 및 방법</h2>
