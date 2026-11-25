@@ -88,7 +88,7 @@ export function AutoSortPreviewDialog({
 				</p>
 			)}
 			<p className="text-xs text-[var(--seed-color-fg-neutral-muted)]">
-				링크 제목, URL, 저장 이유와 폴더 이름이 Anthropic(Claude)으로 보내져요
+				링크 제목, 설명, URL, 저장 이유와 폴더 이름, 폴더 안 링크 제목이 Anthropic(Claude)으로 보내져요
 			</p>
 			{pickingLinkId && (
 				<FolderPickerDialog
