@@ -71,7 +71,10 @@ function httpError(status: number) {
 	return new HTTPError(new Response(null, { status }), new Request('http://localhost'), {} as never);
 }
 
-function mockApi({ suggest = async () => suggestion as unknown }: { suggest?: () => Promise<unknown> } = {}) {
+function mockApi({
+	suggest = async () => suggestion as unknown,
+	remaining = 38,
+}: { suggest?: () => Promise<unknown>; remaining?: number } = {}) {
 	vi.mocked(apiClient.get).mockImplementation(((url: string) => ({
 		json: async () => {
 			if (url === 'folders') {
@@ -79,7 +82,7 @@ function mockApi({ suggest = async () => suggestion as unknown }: { suggest?: ()
 			}
 
 			if (url === 'links/auto-sort/quota') {
-				return { remaining: 38 };
+				return { remaining };
 			}
 
 			return links;
@@ -103,13 +106,25 @@ function renderButton() {
 	);
 }
 
+async function openSelect(user: ReturnType<typeof userEvent.setup>) {
+	await screen.findByText(/까지 가능/);
+	await user.click(screen.getByRole('button', { name: '정리하기' }));
+
+	return await screen.findByRole('dialog', { name: '분석할 링크 고르기' });
+}
+
 async function openPreview() {
 	const user = userEvent.setup();
 	renderButton();
 
-	await user.click(await screen.findByRole('button', { name: '정리하기' }));
+	const select = await openSelect(user);
+	await user.click(within(select).getByRole('button', { name: '4개 분석하기' }));
 
 	return { user, dialog: await screen.findByRole('dialog', { name: /폴더 자동 배치/ }) };
+}
+
+function suggestCalls() {
+	return vi.mocked(apiClient.post).mock.calls.filter(([url]) => url === 'folders/kakao/auto-sort');
 }
 
 describe('AutoSortCard', () => {
@@ -119,21 +134,62 @@ describe('AutoSortCard', () => {
 		mockApi();
 	});
 
-	test('정리할 링크 개수와 오늘 남은 개수를 보여준다', async () => {
+	test('정리할 링크 개수와 오늘 남은 개수, 매일 자정 초기화를 알려준다', async () => {
 		renderButton();
 
 		expect(screen.getByText('링크 4개를 폴더별로 정리해드릴게요')).toBeInTheDocument();
-		expect(await screen.findByText(/오늘 38개까지 가능/)).toBeInTheDocument();
+		expect(await screen.findByText(/오늘 38개까지 가능, 매일 자정에 초기화돼요/)).toBeInTheDocument();
 	});
 
-	test('미리보기에 추천 폴더 경로, 맞는 폴더 없음, 내일로 넘어간 개수를 보여준다', async () => {
+	test('정리하기를 누르면 모든 링크가 체크된 고르기 창을 띄우고, 뺀 링크는 보내지 않는다', async () => {
+		const user = userEvent.setup();
+		renderButton();
+		const select = await openSelect(user);
+
+		expect(
+			within(select)
+				.getAllByRole('checkbox')
+				.every((box) => (box as HTMLInputElement).checked),
+		).toBe(true);
+		expect(within(select).getByText(/오늘 38개까지 보낼 수 있어요, 매일 자정에 초기화돼요/)).toBeInTheDocument();
+		expect(within(select).getByText(/Anthropic\(Claude\)으로 보내져요/)).toBeInTheDocument();
+
+		await user.click(within(select).getByRole('checkbox', { name: '아이폰 리뷰' }));
+		await user.click(within(select).getByRole('button', { name: '3개 분석하기' }));
+
+		expect(suggestCalls()[0][1]).toMatchObject({ json: { linkIds: ['l1', 'l2', 'l4'] } });
+	});
+
+	test('고르기 창에서 취소하면 AI를 부르지 않는다', async () => {
+		const user = userEvent.setup();
+		renderButton();
+		const select = await openSelect(user);
+
+		await user.click(within(select).getByRole('button', { name: '취소' }));
+
+		expect(suggestCalls()).toHaveLength(0);
+	});
+
+	test('남은 한도보다 링크가 많으면 오래된 링크부터 한도만큼만 체크되고 더 고를 수 없다', async () => {
+		mockApi({ remaining: 2 });
+		const user = userEvent.setup();
+		renderButton();
+		const select = await openSelect(user);
+
+		expect(within(select).getByRole('checkbox', { name: '리액트 훅 정리' })).toBeChecked();
+		expect(within(select).getByRole('checkbox', { name: '제주 맛집' })).toBeChecked();
+		expect(within(select).getByRole('checkbox', { name: '아이폰 리뷰' })).toBeDisabled();
+		expect(within(select).getByRole('button', { name: '2개 분석하기' })).toBeInTheDocument();
+	});
+
+	test('미리보기에 추천 폴더 경로, 맞는 폴더 없음, 못 보낸 개수를 보여준다', async () => {
 		const { dialog } = await openPreview();
 
 		expect(within(dialog).getByText('리액트 훅 정리')).toBeInTheDocument();
 		expect(within(dialog).getByRole('button', { name: '개발 > 프론트' })).toBeInTheDocument();
 		expect(within(dialog).getByText('www.youtube.com')).toBeInTheDocument();
 		expect(within(dialog).getByRole('button', { name: '폴더 고르기' })).toBeInTheDocument();
-		expect(within(dialog).getByText('나머지 2개는 내일 다시 눌러주세요')).toBeInTheDocument();
+		expect(within(dialog).getByText('나머지 2개는 자정이 지나면 다시 정리할 수 있어요')).toBeInTheDocument();
 		expect(within(dialog).getByRole('checkbox', { name: 'www.youtube.com' })).not.toBeChecked();
 		expect(within(dialog).getByRole('button', { name: '3개 옮기기' })).toBeInTheDocument();
 	});
@@ -184,14 +240,15 @@ describe('AutoSortCard', () => {
 	});
 
 	test.each([
-		[429, '오늘은 다 썼어요, 내일 다시 눌러주세요'],
+		[429, '오늘은 다 썼어요, 자정이 지나면 다시 눌러주세요'],
 		[503, '잠시 후 다시 눌러주세요'],
 	])('추천이 %i이면 "%s"를 보여준다', async (status, message) => {
 		mockApi({ suggest: () => Promise.reject(httpError(status)) });
 		const user = userEvent.setup();
 		renderButton();
+		const select = await openSelect(user);
 
-		await user.click(await screen.findByRole('button', { name: '정리하기' }));
+		await user.click(within(select).getByRole('button', { name: '4개 분석하기' }));
 
 		expect(await screen.findByText(message)).toBeInTheDocument();
 	});
@@ -213,7 +270,7 @@ describe('AutoSortCard', () => {
 		})) as never);
 		renderButton();
 
-		expect(await screen.findByText('오늘은 다 썼어요, 내일 다시 정리할 수 있어요')).toBeInTheDocument();
+		expect(await screen.findByText('오늘은 다 썼어요, 자정이 지나면 다시 정리할 수 있어요')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: '정리하기' })).toBeDisabled();
 	});
 });

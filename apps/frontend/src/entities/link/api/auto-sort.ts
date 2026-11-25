@@ -26,8 +26,10 @@ export function autoSortQuotaQueryOptions() {
 	return queryOptions({ queryKey: autoSortKeys.quota, queryFn: getAutoSortQuota, retry: shouldRetry });
 }
 
-function suggestAutoSort(folderId: string) {
-	return apiClient.post(`folders/${folderId}/auto-sort`, { timeout: 30_000 }).json<AutoSortSuggestion>();
+function suggestAutoSort({ folderId, linkIds }: { folderId: string; linkIds: string[] }) {
+	return apiClient
+		.post(`folders/${folderId}/auto-sort`, { json: { linkIds }, timeout: 30_000 })
+		.json<AutoSortSuggestion>();
 }
 
 export function useSuggestAutoSort() {

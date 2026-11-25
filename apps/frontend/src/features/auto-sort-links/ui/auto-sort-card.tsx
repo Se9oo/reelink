@@ -9,6 +9,7 @@ import { ActionButton } from 'seed-design/ui/action-button';
 import { Snackbar, useSnackbarAdapter } from 'seed-design/ui/snackbar';
 
 import { AutoSortPreviewDialog } from '@/features/auto-sort-links/ui/auto-sort-preview-dialog';
+import { AutoSortSelectDialog } from '@/features/auto-sort-links/ui/auto-sort-select-dialog';
 
 import {
 	autoSortQuotaQueryOptions,
@@ -16,9 +17,10 @@ import {
 	useMoveLinks,
 	useSuggestAutoSort,
 } from '@/entities/link/api/auto-sort';
+import { folderLinksQueryOptions } from '@/entities/link/api/get-folder-links';
 
 const SUGGEST_ERROR_MESSAGES: Record<number, string> = {
-	429: '오늘은 다 썼어요, 내일 다시 눌러주세요',
+	429: '오늘은 다 썼어요, 자정이 지나면 다시 눌러주세요',
 };
 
 function statusOf(error: unknown): number | null {
@@ -31,8 +33,10 @@ interface AutoSortCardProps {
 }
 
 export function AutoSortCard({ folderId, linkCount }: AutoSortCardProps) {
+	const [selecting, setSelecting] = useState(false);
 	const [suggestion, setSuggestion] = useState<AutoSortSuggestion | null>(null);
 	const { data: quota } = useQuery(autoSortQuotaQueryOptions());
+	const { data: links = [] } = useQuery(folderLinksQueryOptions(folderId));
 	const suggest = useSuggestAutoSort();
 	const moveLinks = useMoveLinks();
 	const snackbar = useSnackbarAdapter();
@@ -54,11 +58,11 @@ export function AutoSortCard({ folderId, linkCount }: AutoSortCardProps) {
 				{quota && (
 					<p className="text-xs text-[var(--seed-color-fg-brand)] md:text-[13px]">
 						{quota.remaining === 0 ? (
-							'오늘은 다 썼어요, 내일 다시 정리할 수 있어요'
+							'오늘은 다 썼어요, 자정이 지나면 다시 정리할 수 있어요'
 						) : (
 							<>
 								<span className="hidden md:inline">AI가 맞는 폴더를 추천하면 확인하고 옮길 수 있어요. </span>
-								오늘 {quota.remaining}개까지 가능
+								오늘 {quota.remaining}개까지 가능, 매일 자정에 초기화돼요
 							</>
 						)}
 					</p>
@@ -68,17 +72,33 @@ export function AutoSortCard({ folderId, linkCount }: AutoSortCardProps) {
 				variant="brandSolid"
 				size="small"
 				className="shrink-0"
-				loading={suggest.isPending}
-				disabled={quota?.remaining === 0}
-				onClick={() =>
-					suggest.mutate(folderId, {
-						onSuccess: setSuggestion,
-						onError: (error) => showMessage(SUGGEST_ERROR_MESSAGES[statusOf(error) ?? 0] ?? '잠시 후 다시 눌러주세요'),
-					})
-				}
+				disabled={!quota || quota.remaining === 0}
+				onClick={() => setSelecting(true)}
 			>
 				정리하기
 			</ActionButton>
+			{selecting && quota && (
+				<AutoSortSelectDialog
+					open
+					onOpenChange={(open) => !open && setSelecting(false)}
+					links={links}
+					remaining={quota.remaining}
+					isPending={suggest.isPending}
+					onConfirm={(linkIds) =>
+						suggest.mutate(
+							{ folderId, linkIds },
+							{
+								onSuccess: (result) => {
+									setSelecting(false);
+									setSuggestion(result);
+								},
+								onError: (error) =>
+									showMessage(SUGGEST_ERROR_MESSAGES[statusOf(error) ?? 0] ?? '잠시 후 다시 눌러주세요'),
+							},
+						)
+					}
+				/>
+			)}
 			{suggestion && (
 				<AutoSortPreviewDialog
 					open

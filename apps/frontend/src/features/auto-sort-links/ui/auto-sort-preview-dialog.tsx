@@ -84,12 +84,9 @@ export function AutoSortPreviewDialog({
 			</ul>
 			{suggestion.skipped > 0 && (
 				<p className="text-sm text-[var(--seed-color-fg-neutral-muted)]">
-					나머지 {suggestion.skipped}개는 내일 다시 눌러주세요
+					나머지 {suggestion.skipped}개는 자정이 지나면 다시 정리할 수 있어요
 				</p>
 			)}
-			<p className="text-xs text-[var(--seed-color-fg-neutral-muted)]">
-				링크 제목, 설명, URL, 저장 이유와 폴더 이름, 폴더 안 링크 제목이 Anthropic(Claude)으로 보내져요
-			</p>
 			{pickingLinkId && (
 				<FolderPickerDialog
 					open
