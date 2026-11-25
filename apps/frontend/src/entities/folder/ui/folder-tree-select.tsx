@@ -17,6 +17,10 @@ interface FolderTreeSelectProps {
 	disabledId?: string;
 }
 
+function isSystemFolder(nodes: FolderTreeNode[], id: string | null): boolean {
+	return nodes.some((node) => (node.id === id ? node.isSystem : isSystemFolder(node.children, id)));
+}
+
 export function FolderTreeSelect({ nodes, selectedId, onSelect, disabledId }: FolderTreeSelectProps) {
 	const { ids: expandedIds, toggle } = useToggleSet();
 	const [creating, setCreating] = useState(false);
@@ -112,7 +116,7 @@ export function FolderTreeSelect({ nodes, selectedId, onSelect, disabledId }: Fo
 				<CreateFolderModal
 					open={creating}
 					onOpenChange={setCreating}
-					parentFolderId={selectedId}
+					parentFolderId={isSystemFolder(nodes, selectedId) ? null : selectedId}
 					onCreated={(folder) => onSelect(folder.id)}
 				/>
 			)}

@@ -49,7 +49,9 @@ export function FolderActionsMenu({
 			</MenuTrigger>
 			<MenuContent {...(instant ? { 'data-instant': true } : {})}>
 				<MenuGroup>
-					<MenuItem label="하위 폴더 만들기" prefixIcon={<IconPlusSmallLine />} onClick={onCreateChild} />
+					{!isSystem && (
+						<MenuItem label="하위 폴더 만들기" prefixIcon={<IconPlusSmallLine />} onClick={onCreateChild} />
+					)}
 					{!isSystem && <MenuItem label="이름 변경" prefixIcon={<IconPencilLine />} onClick={onRename} />}
 					<MenuItem label="삭제" prefixIcon={<IconTrashcanLine />} onClick={onDelete} />
 				</MenuGroup>

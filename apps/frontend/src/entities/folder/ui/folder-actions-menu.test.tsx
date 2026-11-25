@@ -36,13 +36,14 @@ describe('FolderActionsMenu', () => {
 		expect(props.onDelete).toHaveBeenCalledTimes(1);
 	});
 
-	test('시스템 폴더는 이름 변경 항목이 없다', async () => {
+	test('시스템 폴더는 하위 폴더 만들기와 이름 변경 항목이 없다', async () => {
 		const user = userEvent.setup();
 		renderMenu({ folderName: '미분류', isSystem: true });
 
 		await user.click(screen.getByRole('button', { name: '미분류 폴더 메뉴' }));
 
 		expect(await screen.findByRole('menuitem', { name: '삭제' })).toBeInTheDocument();
+		expect(screen.queryByRole('menuitem', { name: '하위 폴더 만들기' })).not.toBeInTheDocument();
 		expect(screen.queryByRole('menuitem', { name: '이름 변경' })).not.toBeInTheDocument();
 	});
 });
