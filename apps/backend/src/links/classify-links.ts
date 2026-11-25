@@ -5,6 +5,9 @@ import Anthropic from '@anthropic-ai/sdk';
 const MODEL = 'claude-haiku-5-5';
 const TIMEOUT_MS = 15_000;
 const MAX_TOKENS = 4096;
+const MAX_FOLDERS = 200;
+const MAX_TEXT_LENGTH = 100;
+const MAX_URL_LENGTH = 200;
 
 const SYSTEM_PROMPT = `당신은 사용자가 저장한 링크를 사용자의 폴더로 정리해주는 분류기입니다.
 폴더 목록(path는 폴더 경로, samples는 그 폴더에 이미 들어 있는 링크 제목)과 링크 목록(title, desc는 설명, url, reason은 사용자가 적은 저장 이유)을 받습니다.
@@ -91,16 +94,17 @@ export function normalizeSuggestions(raw: unknown, folderIds: string[], linkIds:
 }
 
 /**
- * 링크마다 가장 맞는 폴더를 추천받는다.
- * @param folders ClassifyFolder[] 후보 폴더(시스템 폴더 제외)
+ * 링크마다 가장 맞는 폴더를 추천받는다. 긴 텍스트로 비용이 커지지 않게 폴더는 200개, 텍스트는 100자, URL은 200자까지만 보낸다.
+ * @param allFolders ClassifyFolder[] 후보 폴더(시스템 폴더 제외)
  * @param links ClassifyLink[] 분류할 링크
  * @returns Map<string, string | null> 링크 id → 추천 폴더 id, 맞는 폴더가 없으면 null
  * @throws ClassifyLinksError API 호출이 재시도 후에도 실패하거나(크레딧 소진 포함) 응답을 읽을 수 없는 경우
  */
 export async function classifyLinks(
-	folders: ClassifyFolder[],
+	allFolders: ClassifyFolder[],
 	links: ClassifyLink[],
 ): Promise<Map<string, string | null>> {
+	const folders = allFolders.slice(0, MAX_FOLDERS);
 	const folderIds = folders.map(({ id }) => id);
 	const linkIds = links.map(({ id }) => id);
 
@@ -109,13 +113,17 @@ export async function classifyLinks(
 	}
 
 	const input = {
-		folders: folders.map(({ path, sampleTitles }, n) => ({ n, path, samples: sampleTitles })),
+		folders: folders.map(({ path, sampleTitles }, n) => ({
+			n,
+			path: path.slice(0, MAX_TEXT_LENGTH),
+			samples: sampleTitles.map((title) => title.slice(0, MAX_TEXT_LENGTH)),
+		})),
 		links: links.map(({ title, description, url, savedReason }, n) => ({
 			n,
-			title: title ?? URL.parse(url)?.hostname ?? url,
+			title: (title ?? URL.parse(url)?.hostname ?? url).slice(0, MAX_TEXT_LENGTH),
 			...(description ? { desc: description } : {}),
-			url,
-			...(savedReason ? { reason: savedReason } : {}),
+			url: url.slice(0, MAX_URL_LENGTH),
+			...(savedReason ? { reason: savedReason.slice(0, MAX_TEXT_LENGTH) } : {}),
 		})),
 	};
 
