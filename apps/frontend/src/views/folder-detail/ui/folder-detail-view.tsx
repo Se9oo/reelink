@@ -91,7 +91,7 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 				</div>
 			</div>
 
-			{folder.isSystem && me?.isGuest === false && (
+			{folder.isSystem && me?.isGuest === false && linkCount > 0 && (
 				<div className="px-4 pb-3 lg:px-0 lg:pb-4">
 					<AutoSortButton folderId={folderId} />
 				</div>

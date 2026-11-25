@@ -53,7 +53,7 @@ export function AutoSortPreviewDialog({
 			<ul className="flex flex-col">
 				{rows.map((row) => {
 					const link = linkById.get(row.linkId);
-					const label = link ? (link.title ?? new URL(link.url).hostname) : '';
+					const label = link ? (link.title ?? new URL(link.url).hostname) : '삭제된 링크';
 
 					return (
 						<li key={row.linkId} className="flex items-center gap-3 py-2">

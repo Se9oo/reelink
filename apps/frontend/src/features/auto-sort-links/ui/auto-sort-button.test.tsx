@@ -161,6 +161,15 @@ describe('AutoSortButton', () => {
 		expect(await screen.findByText('2개를 옮겼어요')).toBeInTheDocument();
 	});
 
+	test('목록에서 사라진 링크는 삭제된 링크로 보여준다', async () => {
+		mockApi({
+			suggest: async () => ({ ...suggestion, suggestions: [{ linkId: 'gone', folderId: 'trip' }], skipped: 0 }),
+		});
+		const { dialog } = await openPreview();
+
+		expect(within(dialog).getByRole('checkbox', { name: '삭제된 링크' })).toBeInTheDocument();
+	});
+
 	test('맞는 폴더 없음인 링크도 폴더를 고르면 체크된다', async () => {
 		const { user, dialog } = await openPreview();
 
