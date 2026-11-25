@@ -22,7 +22,7 @@ export function FloatingLinkButton() {
 				onClick={openRegisterLinkModal}
 				className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full
 					bg-[var(--seed-color-bg-brand-solid)] text-[var(--seed-color-palette-static-white)]
-					shadow-[0_4px_12px_rgb(0_127_255/0.3)] transition-transform
+					shadow-[0_4px_12px_rgb(0_127_255/0.3)] transition-[background-color,transform] duration-200
 					hover:bg-[var(--seed-color-bg-brand-solid-pressed)] active:scale-95"
 			>
 				<IconLinkLine size={28} />
