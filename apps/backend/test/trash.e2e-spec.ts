@@ -420,11 +420,10 @@ describe('TrashController (e2e)', () => {
 				.send({ pinned: true })
 				.expect(200);
 
-			const subFolder = await request(app.getHttpServer())
-				.post('/folders')
-				.set('Cookie', `access_token=${accessToken}`)
-				.send({ name: '미분류 하위', parentFolderId: oldUncategorizedId })
-				.expect(201);
+			const [subFolder] = await db
+				.insert(folders)
+				.values({ userId: testUserId, name: '미분류 하위', parentFolderId: oldUncategorizedId })
+				.returning();
 			const trashedEarlier = await request(app.getHttpServer())
 				.post('/links')
 				.set('Cookie', `access_token=${accessToken}`)
@@ -467,7 +466,7 @@ describe('TrashController (e2e)', () => {
 			expect(res.body.id).toEqual(liveUncategorizedId);
 
 			const [movedLink] = await db.select().from(links).where(eq(links.id, linkA.body.id));
-			const [movedSubFolder] = await db.select().from(folders).where(eq(folders.id, subFolder.body.id));
+			const [movedSubFolder] = await db.select().from(folders).where(eq(folders.id, subFolder.id));
 			const [stillTrashed] = await db.select().from(links).where(eq(links.id, trashedEarlier.body.id));
 			const oldUncategorized = await db.select().from(folders).where(eq(folders.id, oldUncategorizedId));
 
