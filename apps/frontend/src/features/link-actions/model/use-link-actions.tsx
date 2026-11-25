@@ -4,9 +4,9 @@ import { overlay } from 'overlay-kit';
 import { Snackbar, useSnackbarAdapter } from 'seed-design/ui/snackbar';
 
 import { EditLinkDialog } from '@/features/link-actions/ui/edit-link-dialog';
-import { MoveLinkDialog } from '@/features/link-actions/ui/move-link-dialog';
 import { RemindLinkDialog } from '@/features/link-actions/ui/remind-link-dialog';
 
+import { FolderPickerDialog } from '@/entities/folder/ui/folder-picker-dialog';
 import { useDeleteLink } from '@/entities/link/api/delete-link';
 import { useMoveLink } from '@/entities/link/api/move-link';
 import { usePinLink } from '@/entities/link/api/pin-link';
@@ -99,10 +99,10 @@ export function useLinkActions() {
 
 	function onMove(link: Link, callbacks: UpdatedCallback = {}) {
 		overlay.open(({ isOpen, close }) => (
-			<MoveLinkDialog
+			<FolderPickerDialog
 				open={isOpen}
 				onOpenChange={(open) => !open && close()}
-				currentFolderId={link.folderId}
+				disabledId={link.folderId}
 				onConfirm={(folderId) => moveTo(link, folderId, callbacks)}
 			/>
 		));

@@ -11,3 +11,7 @@ export const folderKeys = {
 export const trashKeys = {
 	all: ['trash'] as const,
 };
+
+export const autoSortKeys = {
+	quota: ['auto-sort-quota'] as const,
+};

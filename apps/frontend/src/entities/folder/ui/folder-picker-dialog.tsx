@@ -14,22 +14,32 @@ import { FolderTreeSelect } from '@/entities/folder/ui/folder-tree-select';
 
 import { useMediaQuery } from '@/shared/lib/use-media-query';
 
-interface MoveLinkDialogProps {
+interface FolderPickerDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	currentFolderId: string;
 	onConfirm: (folderId: string) => void;
+	title?: string;
+	confirmLabel?: string;
+	disabledId?: string;
+	excludeSystem?: boolean;
 }
 
-export function MoveLinkDialog({ open, onOpenChange, currentFolderId, onConfirm }: MoveLinkDialogProps) {
+export function FolderPickerDialog({
+	open,
+	onOpenChange,
+	onConfirm,
+	title = '폴더 이동',
+	confirmLabel = '이동',
+	disabledId,
+	excludeSystem = false,
+}: FolderPickerDialogProps) {
 	const isTabletUp = useMediaQuery('(min-width: 768px)');
 	const [folderId, setFolderId] = useState<string | null>(null);
 	const { data: folders } = useQuery(foldersQueryOptions());
-	const tree = folders ? buildFolderTree(folders) : [];
+	const selectable = excludeSystem ? folders?.filter(({ isSystem }) => !isSystem) : folders;
+	const tree = selectable ? buildFolderTree(selectable) : [];
 
-	const body = (
-		<FolderTreeSelect nodes={tree} selectedId={folderId} onSelect={setFolderId} disabledId={currentFolderId} />
-	);
+	const body = <FolderTreeSelect nodes={tree} selectedId={folderId} onSelect={setFolderId} disabledId={disabledId} />;
 
 	const footer = (
 		<ResponsivePair gap="x2">
@@ -47,7 +57,7 @@ export function MoveLinkDialog({ open, onOpenChange, currentFolderId, onConfirm 
 				}}
 				flexGrow={1}
 			>
-				이동
+				{confirmLabel}
 			</ActionButton>
 		</ResponsivePair>
 	);
@@ -55,7 +65,7 @@ export function MoveLinkDialog({ open, onOpenChange, currentFolderId, onConfirm 
 	if (isTabletUp) {
 		return (
 			<DialogRoot open={open} onOpenChange={onOpenChange}>
-				<DialogContent title="폴더 이동">
+				<DialogContent title={title}>
 					<DialogBody>{body}</DialogBody>
 					<DialogFooter>{footer}</DialogFooter>
 				</DialogContent>
@@ -65,7 +75,7 @@ export function MoveLinkDialog({ open, onOpenChange, currentFolderId, onConfirm 
 
 	return (
 		<BottomSheetRoot open={open} onOpenChange={onOpenChange}>
-			<BottomSheetContent title="폴더 이동">
+			<BottomSheetContent title={title}>
 				<BottomSheetBody>{body}</BottomSheetBody>
 				<BottomSheetFooter>{footer}</BottomSheetFooter>
 			</BottomSheetContent>
