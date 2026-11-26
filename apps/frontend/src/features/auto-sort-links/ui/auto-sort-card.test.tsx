@@ -151,7 +151,8 @@ describe('AutoSortCard', () => {
 				.getAllByRole('checkbox')
 				.every((box) => (box as HTMLInputElement).checked),
 		).toBe(true);
-		expect(within(select).getByText(/오늘 38개까지 보낼 수 있어요, 매일 자정에 초기화돼요/)).toBeInTheDocument();
+		expect(within(select).queryByText(/매일 자정에 초기화돼요/)).not.toBeInTheDocument();
+		expect(within(select).getAllByText('example.com')).toHaveLength(3);
 		expect(within(select).getByText(/Anthropic\(Claude\)으로 보내져요/)).toBeInTheDocument();
 
 		await user.click(within(select).getByRole('checkbox', { name: '아이폰 리뷰' }));
