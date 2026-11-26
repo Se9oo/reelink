@@ -68,7 +68,7 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 	const isEmpty = links !== undefined && subfolders.length === 0 && linkCount === 0;
 
 	return (
-		<div className="flex min-h-full flex-col pb-10 md:bg-[var(--app-bg-canvas)] lg:px-10 lg:pt-7 lg:pb-24">
+		<div className="flex min-h-full flex-col pb-6 md:bg-[var(--app-bg-canvas)] lg:px-10 lg:pt-7 lg:pb-24">
 			<div className="flex items-center gap-1 pt-3 pr-3 pl-2 lg:flex-col lg:items-start lg:gap-1.5 lg:p-0 lg:pb-4">
 				<NextLink
 					href={ROUTES.FOLDERS}
