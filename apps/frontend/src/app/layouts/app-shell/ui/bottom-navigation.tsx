@@ -46,16 +46,15 @@ export function BottomNavigation() {
 					lg:hidden"
 			>
 				{TABS.slice(0, 2).map(renderTab)}
-				<div className="relative flex-1">
+				<div className="flex flex-1 items-center justify-center">
 					<button
 						type="button"
 						aria-label="링크 추가"
 						onClick={openRegisterLinkModal}
-						className="absolute -top-[18px] left-1/2 flex h-[52px] w-[52px] -translate-x-1/2 cursor-pointer items-center
-							justify-center rounded-full bg-[var(--seed-color-bg-brand-solid)]
-							text-[var(--seed-color-palette-static-white)] shadow-[0_4px_12px_rgb(0_127_255/0.3)]
-							transition-[background-color,transform] duration-200 hover:bg-[var(--seed-color-bg-brand-solid-pressed)]
-							active:scale-95"
+						className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full
+							bg-[var(--seed-color-bg-brand-solid)] text-[var(--seed-color-palette-static-white)]
+							shadow-[0_4px_12px_rgb(0_127_255/0.3)] transition-[background-color,transform] duration-200
+							hover:bg-[var(--seed-color-bg-brand-solid-pressed)] active:scale-95"
 					>
 						<IconPlusLine size={24} />
 					</button>
