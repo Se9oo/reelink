@@ -110,9 +110,9 @@ export function RegisterLinkModal({ open, onOpenChange, onRegistered, initialUrl
 										type="button"
 										aria-label="붙여넣기"
 										onClick={pasteUrl}
-										className="mr-2 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center
+										className="mr-2 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg
 											text-[var(--seed-color-fg-neutral-muted)] transition-colors duration-200
-											hover:text-[var(--seed-color-fg-neutral)]"
+											hover:bg-[var(--seed-color-bg-neutral-weak-pressed)]"
 									>
 										<IconClipboardLine size={20} />
 									</button>
