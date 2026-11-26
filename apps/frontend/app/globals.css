@@ -113,8 +113,8 @@ button:not(:disabled) {
 @media (prefers-reduced-motion: no-preference) {
 	.seed-dialog__positioner {
 		transition:
-			top 0.15s ease-out,
-			height 0.15s ease-out;
+			top var(--visual-viewport-duration, 0s) ease-out,
+			height var(--visual-viewport-duration, 0s) ease-out;
 	}
 }
 
