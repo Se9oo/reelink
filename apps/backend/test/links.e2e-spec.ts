@@ -1112,6 +1112,16 @@ describe('LinksController (e2e)', () => {
 			await request(app.getHttpServer()).get(goPath(crypto.randomUUID())).expect(404);
 		});
 
+		test('go로 열면 그 링크를 열람 처리한다.', async () => {
+			const linkId = await createLink();
+
+			await request(app.getHttpServer()).get(goPath(linkId)).expect(302);
+
+			const [row] = await db.select().from(links).where(eq(links.id, linkId));
+			expect(row.status).toBe('viewed');
+			expect(row.viewedAt).not.toBeNull();
+		});
+
 		test('go는 서명이 없거나 다른 링크의 서명이면 404를 반환한다(우리 도메인이 아무 URL로나 보내는 데 쓰이지 않게).', async () => {
 			const linkId = await createLink();
 			const otherSig = new URL(linkGoUrl(crypto.randomUUID())).searchParams.get('sig');
@@ -1310,6 +1320,43 @@ describe('LinksController (e2e)', () => {
 
 		test('인증 쿠키가 없으면 401 오류를 반환한다.', async () => {
 			await request(app.getHttpServer()).patch(`/links/${crypto.randomUUID()}/view`).expect(401);
+		});
+
+		function unview(linkId: string, token = accessToken) {
+			return request(app.getHttpServer()).patch(`/links/${linkId}/unview`).set('Cookie', `access_token=${token}`);
+		}
+
+		test('열람 해제하면 status가 unviewed가 되고 viewedAt이 비워진다.', async () => {
+			const linkId = await createLink();
+			await view(linkId).expect(200);
+
+			const res = await unview(linkId).expect(200);
+
+			expect(res.body.status).toBe('unviewed');
+			expect(res.body.viewedAt).toBeNull();
+		});
+
+		test('열람 해제도 남의 링크거나 존재하지 않거나 삭제된 링크면 404, uuid 형식이 아니면 400, 쿠키가 없으면 401이다.', async () => {
+			const [otherUser] = await db
+				.insert(users)
+				.values({ email: '열람해제-다른이메일', nickname: '다른유저' })
+				.returning();
+			const otherToken = await app.get(JwtService).signAsync({ sub: otherUser.id });
+			const linkId = await createLink();
+
+			await unview(linkId, otherToken).expect(404);
+			await unview(crypto.randomUUID()).expect(404);
+			await unview('not-a-uuid').expect(400);
+			await request(app.getHttpServer()).patch(`/links/${crypto.randomUUID()}/unview`).expect(401);
+
+			await request(app.getHttpServer())
+				.delete(`/links/${linkId}`)
+				.set('Cookie', `access_token=${accessToken}`)
+				.expect(204);
+
+			await unview(linkId).expect(404);
+
+			await db.delete(users).where(eq(users.id, otherUser.id));
 		});
 	});
 

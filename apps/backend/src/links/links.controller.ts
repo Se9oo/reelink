@@ -98,6 +98,14 @@ export class LinksController {
 		return await this.linksService.viewLink({ userId, linkId });
 	}
 
+	@Patch(':id/unview')
+	@UseGuards(JwtAuthGuard)
+	async unviewLink(@Req() req: Request, @Param('id', ParseUUIDPipe) linkId: string) {
+		const { sub: userId } = req.user as JwtPayload;
+
+		return await this.linksService.unviewLink({ userId, linkId });
+	}
+
 	@Patch(':id/pin')
 	@UseGuards(JwtAuthGuard)
 	async pinLink(
@@ -136,7 +144,7 @@ export class LinksController {
 			throw new NotFoundException();
 		}
 
-		res.redirect(302, await this.linksService.getLinkUrl(linkId));
+		res.redirect(302, await this.linksService.openLinkUrl(linkId));
 	}
 
 	@Patch(':id/folder')

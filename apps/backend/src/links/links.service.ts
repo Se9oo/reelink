@@ -320,6 +320,27 @@ export class LinksService {
 	}
 
 	/**
+	 * 링크를 안 본 상태로 되돌린다. 처음 본 시각(viewedAt)도 비운다.
+	 * @param userId string
+	 * @param linkId string
+	 * @returns Link
+	 * @throws NotFoundException 링크가 없거나 삭제됐거나 내 링크가 아닌 경우
+	 */
+	async unviewLink({ userId, linkId }: { userId: string; linkId: string }): Promise<Link> {
+		const [link] = await this.db
+			.update(links)
+			.set({ status: 'unviewed', viewedAt: null })
+			.where(and(eq(links.id, linkId), eq(links.userId, userId), isNull(links.deletedAt)))
+			.returning();
+
+		if (!link) {
+			throw new NotFoundException();
+		}
+
+		return link;
+	}
+
+	/**
 	 * 링크의 제목과 저장 이유를 수정한다. 보낸 필드만 바꾸고, 앞뒤 공백을 지운 뒤 비어 있으면 null로 저장한다.
 	 * @param userId string
 	 * @param linkId string
@@ -410,16 +431,18 @@ export class LinksService {
 	}
 
 	/**
-	 * 카카오 알림의 [링크 바로가기] 버튼이 거쳐 가는 원래 URL을 찾는다. 로그인 없이 부르므로 id만으로 찾는다.
+	 * 카카오 알림의 [링크 바로가기] 버튼이 거쳐 가는 링크를 열람 처리한 뒤 원래 URL을 돌려준다. 로그인 없이 부르므로 id만으로 찾는다.
+	 * 이미 본 링크면 처음 본 시각(viewedAt)을 그대로 둔다.
 	 * @param linkId string
 	 * @returns string 원래 URL
 	 * @throws NotFoundException 링크가 없거나 삭제된 경우
 	 */
-	async getLinkUrl(linkId: string): Promise<string> {
+	async openLinkUrl(linkId: string): Promise<string> {
 		const [link] = await this.db
-			.select({ url: links.url })
-			.from(links)
-			.where(and(eq(links.id, linkId), isNull(links.deletedAt)));
+			.update(links)
+			.set({ status: 'viewed', viewedAt: sql`coalesce(${links.viewedAt}, now())` })
+			.where(and(eq(links.id, linkId), isNull(links.deletedAt)))
+			.returning({ url: links.url });
 
 		if (!link) {
 			throw new NotFoundException();
