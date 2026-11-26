@@ -1122,6 +1122,17 @@ describe('LinksController (e2e)', () => {
 			expect(row.viewedAt).not.toBeNull();
 		});
 
+		test('이미 본 링크를 go로 열어도 처음 본 시각은 그대로다.', async () => {
+			const linkId = await createLink();
+			const firstViewedAt = new Date('2026-01-01T00:00:00Z');
+			await db.update(links).set({ status: 'viewed', viewedAt: firstViewedAt }).where(eq(links.id, linkId));
+
+			await request(app.getHttpServer()).get(goPath(linkId)).expect(302);
+
+			const [row] = await db.select().from(links).where(eq(links.id, linkId));
+			expect(row.viewedAt).toEqual(firstViewedAt);
+		});
+
 		test('go는 서명이 없거나 다른 링크의 서명이면 404를 반환한다(우리 도메인이 아무 URL로나 보내는 데 쓰이지 않게).', async () => {
 			const linkId = await createLink();
 			const otherSig = new URL(linkGoUrl(crypto.randomUUID())).searchParams.get('sig');
