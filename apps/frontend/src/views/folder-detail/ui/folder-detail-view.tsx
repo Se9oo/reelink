@@ -33,7 +33,7 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 	const { data: folders } = useQuery(foldersQueryOptions());
 	const { data: links } = useQuery(folderLinksQueryOptions(folderId));
 	const { data: me } = useQuery(meQueryOptions());
-	const { onDelete, onMove, onEdit, onTogglePin, onRemind, onClearRemind } = useLinkActions();
+	const { onDelete, onMove, onEdit, onTogglePin, onRemind, onClearRemind, onToggleViewed } = useLinkActions();
 	const { sort, setSort } = useLinkSort();
 
 	if (!folders) {
@@ -163,6 +163,7 @@ export function FolderDetailView({ folderId }: FolderDetailViewProps) {
 									onTogglePin={() => onTogglePin(link)}
 									onRemind={() => onRemind(link)}
 									onClearRemind={() => onClearRemind(link)}
+									onToggleViewed={() => onToggleViewed(link)}
 								/>
 							))}
 						</div>

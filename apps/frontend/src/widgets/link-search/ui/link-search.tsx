@@ -28,7 +28,7 @@ export function LinkSearch({ children }: LinkSearchProps) {
 
 	const { data: results } = useQuery(searchLinksQueryOptions(query));
 	const { data: folders = [] } = useQuery(foldersQueryOptions());
-	const { onDelete, onMove, onEdit, onTogglePin, onRemind, onClearRemind } = useLinkActions();
+	const { onDelete, onMove, onEdit, onTogglePin, onRemind, onClearRemind, onToggleViewed } = useLinkActions();
 
 	return (
 		<>
@@ -85,6 +85,7 @@ export function LinkSearch({ children }: LinkSearchProps) {
 								onTogglePin={() => onTogglePin(link)}
 								onRemind={() => onRemind(link)}
 								onClearRemind={() => onClearRemind(link)}
+								onToggleViewed={() => onToggleViewed(link)}
 							/>
 						))}
 				</div>

@@ -12,7 +12,9 @@ import { useMoveLink } from '@/entities/link/api/move-link';
 import { usePinLink } from '@/entities/link/api/pin-link';
 import { useRestoreLink } from '@/entities/link/api/restore-link';
 import { useSetRemindAt } from '@/entities/link/api/set-remind-at';
+import { useUnviewLink } from '@/entities/link/api/unview-link';
 import { useUpdateLink } from '@/entities/link/api/update-link';
+import { useViewLink } from '@/entities/link/api/view-link';
 import { Link } from '@/entities/link/model/types';
 
 import { formatRemindAt } from '@/shared/lib/format-remind-at';
@@ -28,6 +30,8 @@ export function useLinkActions() {
 	const pinLink = usePinLink();
 	const setRemindAt = useSetRemindAt();
 	const restoreLink = useRestoreLink();
+	const viewLink = useViewLink();
+	const unviewLink = useUnviewLink();
 	const snackbar = useSnackbarAdapter();
 
 	function showFailure(message: string) {
@@ -191,6 +195,12 @@ export function useLinkActions() {
 		);
 	}
 
+	function onToggleViewed(link: Link) {
+		const toggle = link.status === 'unviewed' ? viewLink : unviewLink;
+
+		toggle.mutate(link.id, { onError: () => showFailure('봤어요 상태를 바꾸지 못했어요') });
+	}
+
 	function onCopy(link: Link) {
 		navigator.clipboard.writeText(link.url).then(
 			() => snackbar.create({ render: () => <Snackbar message="링크를 복사했어요" /> }),
@@ -198,5 +208,5 @@ export function useLinkActions() {
 		);
 	}
 
-	return { onDelete, onMove, onEdit, onTogglePin, onCopy, onRemind, onClearRemind };
+	return { onDelete, onMove, onEdit, onTogglePin, onCopy, onRemind, onClearRemind, onToggleViewed };
 }

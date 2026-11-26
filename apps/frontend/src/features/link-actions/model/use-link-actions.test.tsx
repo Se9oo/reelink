@@ -41,12 +41,15 @@ const folders = [
 ];
 
 function Harness({ target }: { target: Link }) {
-	const { onDelete, onMove, onEdit, onTogglePin, onRemind, onClearRemind } = useLinkActions();
+	const { onDelete, onMove, onEdit, onTogglePin, onRemind, onClearRemind, onToggleViewed } = useLinkActions();
 
 	return (
 		<>
 			<button type="button" onClick={() => onDelete(target)}>
 				삭제하기
+			</button>
+			<button type="button" onClick={() => onToggleViewed(target)}>
+				봤어요 바꾸기
 			</button>
 			<button type="button" onClick={() => onMove(target)}>
 				이동하기
@@ -101,6 +104,34 @@ describe('useLinkActions', () => {
 		vi.mocked(apiClient.post)
 			.mockReset()
 			.mockResolvedValue(new Response(null, { status: 201 }) as never);
+	});
+
+	test('안 본 링크의 봤어요를 바꾸면 열람 API를 호출한다', async () => {
+		const user = userEvent.setup();
+		renderHarness({ ...link, status: 'unviewed' });
+
+		await user.click(screen.getByRole('button', { name: '봤어요 바꾸기' }));
+
+		await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/l1/view'));
+	});
+
+	test('본 링크의 봤어요를 바꾸면 열람 해제 API를 호출한다', async () => {
+		const user = userEvent.setup();
+		renderHarness({ ...link, status: 'viewed' });
+
+		await user.click(screen.getByRole('button', { name: '봤어요 바꾸기' }));
+
+		await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/l1/unview'));
+	});
+
+	test('봤어요 상태 변경에 실패하면 실패 스낵바를 띄운다', async () => {
+		const user = userEvent.setup();
+		vi.mocked(apiClient.patch).mockReturnValue({ json: () => Promise.reject(new Error('fail')) } as never);
+		renderHarness({ ...link, status: 'unviewed' });
+
+		await user.click(screen.getByRole('button', { name: '봤어요 바꾸기' }));
+
+		expect(await screen.findByText('봤어요 상태를 바꾸지 못했어요')).toBeInTheDocument();
 	});
 
 	test('삭제하면 링크 삭제 API를 호출하고 실행 취소 스낵바를 띄운다', async () => {
