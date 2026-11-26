@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import { IconGlobeLine } from '@karrotmarket/react-monochrome-icon';
-import { ResponsivePair } from '@seed-design/react';
+import { ResponsivePair, Skeleton } from '@seed-design/react';
 import { ActionButton } from 'seed-design/ui/action-button';
 import { BottomSheetBody, BottomSheetContent, BottomSheetFooter, BottomSheetRoot } from 'seed-design/ui/bottom-sheet';
 import { DialogBody, DialogContent, DialogFooter, DialogRoot } from 'seed-design/ui/dialog';
@@ -120,7 +120,7 @@ interface SelectableLinkRowProps {
 
 function SelectableLinkRow({ link, checked, disabled, onToggle }: SelectableLinkRowProps) {
 	const host = new URL(link.url).hostname;
-	const { thumbnailUrl, onError } = useLinkThumbnail(link);
+	const { thumbnailUrl, loading, onError } = useLinkThumbnail(link);
 
 	return (
 		<li>
@@ -147,6 +147,8 @@ function SelectableLinkRow({ link, checked, disabled, onToggle }: SelectableLink
 							onError={onError}
 							className="h-full w-full object-cover"
 						/>
+					) : loading ? (
+						<Skeleton radius="0" width="full" height="full" />
 					) : (
 						<IconGlobeLine size={18} />
 					)}
