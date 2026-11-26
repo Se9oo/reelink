@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { Link } from '@/entities/link/model/types';
 import { LinkRow } from '@/entities/link/ui/link-row';
@@ -404,5 +404,68 @@ describe('LinkRow', () => {
 		await user.click(screen.getByRole('button', { name: '더보기' }));
 
 		expect(await screen.findByRole('menuitem', { name: '상단 고정' })).toBeInTheDocument();
+	});
+
+	describe('봤어요 상태', () => {
+		const handlers = { onEdit: () => {}, onDelete: () => {}, onTogglePin: () => {} };
+
+		beforeEach(() => {
+			vi.mocked(apiClient.patch).mockReset();
+			vi.mocked(apiClient.patch).mockReturnValue({ json: () => Promise.resolve({}) } as never);
+		});
+
+		test('안 본 링크는 파란 점을 보여주고, 본 링크는 보여주지 않는다', () => {
+			const { rerender } = render(<LinkRow link={link()} {...handlers} />);
+
+			expect(screen.getByRole('img', { name: '안 봤어요' })).toBeInTheDocument();
+
+			rerender(<LinkRow link={link({ status: 'viewed', viewedAt: '2026-10-17T00:00:00Z' })} {...handlers} />);
+
+			expect(screen.queryByRole('img', { name: '안 봤어요' })).not.toBeInTheDocument();
+		});
+
+		test('안 본 링크를 열면 열람 처리한다', async () => {
+			render(<LinkRow link={link()} {...handlers} />);
+
+			fireEvent.click(screen.getByRole('link', { name: '네이버 뉴스 기사' }));
+
+			await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/l1/view'));
+		});
+
+		test('가운데 버튼으로 새 탭에서 열어도 열람 처리한다', async () => {
+			render(<LinkRow link={link()} {...handlers} />);
+
+			fireEvent(
+				screen.getByRole('link', { name: '네이버 뉴스 기사' }),
+				new MouseEvent('auxclick', { bubbles: true, button: 1 }),
+			);
+
+			await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/l1/view'));
+		});
+
+		test('이미 본 링크를 열면 열람 요청을 보내지 않는다', () => {
+			render(<LinkRow link={link({ status: 'viewed' })} {...handlers} />);
+
+			fireEvent.click(screen.getByRole('link', { name: '네이버 뉴스 기사' }));
+
+			expect(apiClient.patch).not.toHaveBeenCalled();
+		});
+
+		test('안 본 링크의 메뉴에서 봤어요로 표시를, 본 링크의 메뉴에서 안 봤어요로 표시를 누르면 onToggleViewed가 호출된다', async () => {
+			const user = userEvent.setup();
+			const onToggleViewed = vi.fn();
+
+			const { rerender } = render(<LinkRow link={link()} {...handlers} onToggleViewed={onToggleViewed} />);
+
+			await user.click(screen.getByRole('button', { name: '더보기' }));
+			await user.click(await screen.findByRole('menuitem', { name: '봤어요로 표시' }));
+
+			rerender(<LinkRow link={link({ status: 'viewed' })} {...handlers} onToggleViewed={onToggleViewed} />);
+
+			await user.click(screen.getByRole('button', { name: '더보기' }));
+			await user.click(await screen.findByRole('menuitem', { name: '안 봤어요로 표시' }));
+
+			expect(onToggleViewed).toHaveBeenCalledTimes(2);
+		});
 	});
 });

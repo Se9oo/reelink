@@ -1,8 +1,10 @@
 'use client';
 
 import {
+	IconArrowUturnLeftLine,
 	IconBellLine,
 	IconBellSlashLine,
+	IconCheckmarkLine,
 	IconDot3HorizontalFill,
 	IconGlobeLine,
 	IconPencilLine,
@@ -15,6 +17,7 @@ import { Skeleton } from '@seed-design/react';
 import { MenuContent, MenuGroup, MenuItem, MenuRoot, MenuTrigger } from 'seed-design/ui/menu';
 
 import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
+import { useViewLink } from '@/entities/link/api/view-link';
 import { Link } from '@/entities/link/model/types';
 
 import { formatRelativeTime } from '@/shared/lib/format-relative-time';
@@ -30,6 +33,7 @@ interface LinkRowProps {
 	onTogglePin: () => void;
 	onRemind?: () => void;
 	onClearRemind?: () => void;
+	onToggleViewed?: () => void;
 }
 
 function PinBadge({ className }: { className: string }) {
@@ -54,9 +58,18 @@ export function LinkRow({
 	onTogglePin,
 	onRemind,
 	onClearRemind,
+	onToggleViewed,
 }: LinkRowProps) {
 	const host = new URL(link.url).hostname;
 	const { thumbnailUrl, loading, onError: onThumbnailError } = useLinkThumbnail(link);
+	const viewLink = useViewLink();
+	const unviewed = link.status === 'unviewed';
+
+	function markViewed() {
+		if (unviewed) {
+			viewLink.mutate(link.id);
+		}
+	}
 
 	return (
 		<div
@@ -119,15 +132,26 @@ export function LinkRow({
 
 			<div className="flex min-w-0 flex-1 flex-col gap-1.5 md:w-full md:gap-2 md:p-4 md:pb-3.5">
 				{folderPath && <div className="text-xs text-[var(--seed-color-fg-neutral-muted)]">{folderPath} 안에 있음</div>}
-				<a
-					href={link.url}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="line-clamp-2 text-sm leading-snug font-semibold text-[var(--seed-color-fg-neutral)] after:absolute
-						after:inset-0 md:line-clamp-1 md:font-bold"
-				>
-					{link.title ?? host}
-				</a>
+				<div className="flex items-start gap-1.5">
+					{unviewed && (
+						<span
+							role="img"
+							aria-label="안 봤어요"
+							className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--seed-color-bg-brand-solid)]"
+						/>
+					)}
+					<a
+						href={link.url}
+						target="_blank"
+						rel="noopener noreferrer"
+						onClick={markViewed}
+						onAuxClick={markViewed}
+						className="line-clamp-2 min-w-0 text-sm leading-snug font-semibold text-[var(--seed-color-fg-neutral)]
+							after:absolute after:inset-0 md:line-clamp-1 md:font-bold"
+					>
+						{link.title ?? host}
+					</a>
+				</div>
 				{link.savedReason ? (
 					<div
 						className="line-clamp-2 text-xs leading-normal text-[var(--seed-color-fg-neutral-subtle)] md:line-clamp-3"
@@ -181,7 +205,6 @@ export function LinkRow({
 							<MenuItem label="상단 고정" prefixIcon={<IconPushpinLine />} onClick={onTogglePin} />
 						)}
 						{onMove && <MenuItem label="폴더 이동" prefixIcon={<IconFolderLine />} onClick={onMove} />}
-						<MenuItem label="수정" prefixIcon={<IconPencilLine />} onClick={onEdit} />
 						{onRemind && (
 							<MenuItem
 								label={link.remindAt ? '알림 시각 변경' : '알림 설정'}
@@ -192,6 +215,13 @@ export function LinkRow({
 						{link.remindAt && onClearRemind && (
 							<MenuItem label="알림 해제" prefixIcon={<IconBellSlashLine />} onClick={onClearRemind} />
 						)}
+						{onToggleViewed &&
+							(unviewed ? (
+								<MenuItem label="봤어요로 표시" prefixIcon={<IconCheckmarkLine />} onClick={onToggleViewed} />
+							) : (
+								<MenuItem label="안 봤어요로 표시" prefixIcon={<IconArrowUturnLeftLine />} onClick={onToggleViewed} />
+							))}
+						<MenuItem label="수정" prefixIcon={<IconPencilLine />} onClick={onEdit} />
 						<MenuItem label="삭제" prefixIcon={<IconTrashcanLine />} onClick={onDelete} />
 					</MenuGroup>
 				</MenuContent>
