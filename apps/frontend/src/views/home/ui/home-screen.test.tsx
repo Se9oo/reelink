@@ -64,7 +64,7 @@ const busyHome: HomeData = {
 	stale: [link({ id: 's1', title: '오래 묵힌 글', url: 'https://stale.com' })],
 	recent: [
 		link({ id: 'r1', title: '방금 저장한 글', createdAt: new Date().toISOString() }),
-		link({ id: 'r2', title: '어제 저장한 글', url: 'https://yesterday.com' }),
+		link({ id: 'r2', title: '어제 저장한 글', url: 'https://yesterday.com', status: 'viewed' }),
 	],
 };
 
@@ -207,6 +207,24 @@ describe('HomeScreen', () => {
 
 		expect(within(section).getByText('방금 저장한 글')).toBeInTheDocument();
 		expect(within(section).getByText('어제 저장한 글')).toBeInTheDocument();
+	});
+
+	test('최근 저장한 링크 중 안 본 링크에만 파란 점을 보여준다', async () => {
+		renderHome();
+
+		const section = await screen.findByRole('region', { name: '최근 저장한 링크' });
+
+		expect(within(section).getAllByRole('img', { name: '안 봤어요' })).toHaveLength(1);
+	});
+
+	test('최근 저장한 안 본 링크를 열면 열람 처리한다', async () => {
+		const user = userEvent.setup();
+		renderHome();
+
+		const section = await screen.findByRole('region', { name: '최근 저장한 링크' });
+		await user.click(within(section).getByRole('link', { name: '방금 저장한 글' }));
+
+		expect(apiClient.patch).toHaveBeenCalledWith('links/r1/view');
 	});
 
 	test('리마인드 시작을 누르면 리마인드 화면으로 이동한다', async () => {

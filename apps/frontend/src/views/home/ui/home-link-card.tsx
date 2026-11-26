@@ -6,6 +6,7 @@ import { IconGlobeLine } from '@karrotmarket/react-monochrome-icon';
 import { Skeleton } from '@seed-design/react';
 
 import { useLinkThumbnail } from '@/entities/link/api/refresh-thumbnail';
+import { useViewLink } from '@/entities/link/api/view-link';
 import { Link } from '@/entities/link/model/types';
 
 import { formatRelativeTime } from '@/shared/lib/format-relative-time';
@@ -20,6 +21,14 @@ interface HomeLinkCardProps {
 export function HomeLinkCard({ link, className = '', caption, actions }: HomeLinkCardProps) {
 	const host = new URL(link.url).hostname;
 	const { thumbnailUrl, loading, onError: onThumbnailError } = useLinkThumbnail(link);
+	const viewLink = useViewLink();
+	const unviewed = link.status === 'unviewed';
+
+	function markViewed() {
+		if (unviewed) {
+			viewLink.mutate(link.id);
+		}
+	}
 
 	return (
 		<div
@@ -47,15 +56,26 @@ export function HomeLinkCard({ link, className = '', caption, actions }: HomeLin
 				)}
 			</div>
 			<div className="flex flex-1 flex-col justify-between gap-1 px-3 pt-2.5 pb-3">
-				<a
-					href={link.url}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="line-clamp-2 min-h-[2lh] text-sm leading-snug font-bold text-[var(--seed-color-fg-neutral)]
-						after:absolute after:inset-0"
-				>
-					{link.title ?? host}
-				</a>
+				<div className="flex items-start gap-1.5">
+					{unviewed && (
+						<span
+							role="img"
+							aria-label="안 봤어요"
+							className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--seed-color-bg-brand-solid)]"
+						/>
+					)}
+					<a
+						href={link.url}
+						target="_blank"
+						rel="noopener noreferrer"
+						onClick={markViewed}
+						onAuxClick={markViewed}
+						className="line-clamp-2 min-h-[2lh] min-w-0 text-sm leading-snug font-bold
+							text-[var(--seed-color-fg-neutral)] after:absolute after:inset-0"
+					>
+						{link.title ?? host}
+					</a>
+				</div>
 				<div className="flex items-end gap-1">
 					<div className="min-w-0 flex-1">
 						{caption ?? (
