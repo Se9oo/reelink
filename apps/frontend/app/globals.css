@@ -104,6 +104,16 @@ button:not(:disabled) {
 	}
 }
 
+.seed-dialog__positioner {
+	top: var(--visual-viewport-top, 0px);
+	bottom: auto;
+	height: var(--visual-viewport-height, 100%);
+}
+
+.seed-dialog__content {
+	max-height: calc(0.8 * var(--visual-viewport-height, 100dvh));
+}
+
 @media (max-width: 1023px) {
 	body:has(.bottom-navigation) .seed-bottom-sheet__positioner {
 		bottom: calc(4rem + env(safe-area-inset-bottom));
