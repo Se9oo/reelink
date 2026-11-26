@@ -443,10 +443,23 @@ describe('LinkRow', () => {
 			await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/l1/view'));
 		});
 
-		test('이미 본 링크를 열면 열람 요청을 보내지 않는다', () => {
+		test('오른쪽 클릭으로는 열람 처리하지 않는다', async () => {
+			render(<LinkRow link={link()} {...handlers} />);
+
+			fireEvent(
+				screen.getByRole('link', { name: '네이버 뉴스 기사' }),
+				new MouseEvent('auxclick', { bubbles: true, button: 2 }),
+			);
+			await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+			expect(apiClient.patch).not.toHaveBeenCalled();
+		});
+
+		test('이미 본 링크를 열면 열람 요청을 보내지 않는다', async () => {
 			render(<LinkRow link={link({ status: 'viewed' })} {...handlers} />);
 
 			fireEvent.click(screen.getByRole('link', { name: '네이버 뉴스 기사' }));
+			await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
 			expect(apiClient.patch).not.toHaveBeenCalled();
 		});

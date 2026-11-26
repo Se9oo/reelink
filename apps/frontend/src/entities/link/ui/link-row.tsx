@@ -145,7 +145,7 @@ export function LinkRow({
 						target="_blank"
 						rel="noopener noreferrer"
 						onClick={markViewed}
-						onAuxClick={markViewed}
+						onAuxClick={(event) => event.button === 1 && markViewed()}
 						className="line-clamp-2 min-w-0 text-sm leading-snug font-semibold text-[var(--seed-color-fg-neutral)]
 							after:absolute after:inset-0 md:line-clamp-1 md:font-bold"
 					>

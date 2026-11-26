@@ -69,7 +69,7 @@ export function HomeLinkCard({ link, className = '', caption, actions }: HomeLin
 						target="_blank"
 						rel="noopener noreferrer"
 						onClick={markViewed}
-						onAuxClick={markViewed}
+						onAuxClick={(event) => event.button === 1 && markViewed()}
 						className="line-clamp-2 min-h-[2lh] min-w-0 text-sm leading-snug font-bold
 							text-[var(--seed-color-fg-neutral)] after:absolute after:inset-0"
 					>
