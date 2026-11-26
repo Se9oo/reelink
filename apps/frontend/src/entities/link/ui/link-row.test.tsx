@@ -35,7 +35,6 @@ function link(overrides: Partial<Link> = {}): Link {
 		savedReason: '나중에 다시 읽기',
 		status: 'unviewed',
 		createdAt: '2026-10-16T00:00:00Z',
-		lastRemindedAt: null,
 		remindAt: null,
 		pinnedAt: null,
 		viewedAt: null,

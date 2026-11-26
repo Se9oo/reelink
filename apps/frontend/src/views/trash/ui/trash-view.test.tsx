@@ -42,7 +42,6 @@ function trashLink(overrides: Partial<TrashLink> & Pick<TrashLink, 'id'>): Trash
 		savedReason: null,
 		status: 'unviewed',
 		createdAt: deletedDaysAgo(40),
-		lastRemindedAt: null,
 		remindAt: null,
 		pinnedAt: null,
 		viewedAt: null,

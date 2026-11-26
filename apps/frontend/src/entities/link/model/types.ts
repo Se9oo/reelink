@@ -10,7 +10,6 @@ export interface Link {
 	savedReason: string | null;
 	status: string;
 	createdAt: string;
-	lastRemindedAt: string | null;
 	remindAt: string | null;
 	pinnedAt: string | null;
 	viewedAt: string | null;

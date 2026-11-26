@@ -85,6 +85,13 @@
       "when": 1795500556341,
       "tag": "0011_curved_rawhide_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795666916406,
+      "tag": "0012_slim_madame_masque",
+      "breakpoints": true
     }
   ]
 }
