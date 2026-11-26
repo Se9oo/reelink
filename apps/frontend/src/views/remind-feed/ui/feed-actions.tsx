@@ -5,8 +5,10 @@ import type { ReactNode } from 'react';
 import {
 	IconArrowRightLine,
 	IconArrowUpRightLine,
+	IconArrowUturnLeftLine,
 	IconBellLine,
 	IconBellSlashLine,
+	IconCheckmarkLine,
 	IconDot3HorizontalFill,
 	IconPencilLine,
 	IconSquare2StackedLine,
@@ -32,6 +34,8 @@ interface FeedActionsProps {
 	hasRemind: boolean;
 	onRemind: () => void;
 	onClearRemind: () => void;
+	viewed: boolean;
+	onToggleViewed: () => void;
 	onGoToFolder: () => void;
 }
 
@@ -45,6 +49,8 @@ export function FeedActions({
 	hasRemind,
 	onRemind,
 	onClearRemind,
+	viewed,
+	onToggleViewed,
 	onGoToFolder,
 }: FeedActionsProps) {
 	const { open, onOpenChange, instant } = useBreakpointMenuState();
@@ -81,6 +87,11 @@ export function FeedActions({
 							onClick={onRemind}
 						/>
 						{hasRemind && <MenuItem label="알림 해제" prefixIcon={<IconBellSlashLine />} onClick={onClearRemind} />}
+						{viewed ? (
+							<MenuItem label="안 봤어요로 표시" prefixIcon={<IconArrowUturnLeftLine />} onClick={onToggleViewed} />
+						) : (
+							<MenuItem label="봤어요로 표시" prefixIcon={<IconCheckmarkLine />} onClick={onToggleViewed} />
+						)}
 						<MenuItem label="폴더로 가기" prefixIcon={<IconArrowRightLine />} onClick={onGoToFolder} />
 					</MenuGroup>
 				</MenuContent>

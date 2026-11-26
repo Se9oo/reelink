@@ -14,6 +14,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { overlay } from 'overlay-kit';
 import { ActionButton } from 'seed-design/ui/action-button';
+import { Snackbar, useSnackbarAdapter } from 'seed-design/ui/snackbar';
 
 import { mergeFeed } from '@/views/remind-feed/model/merge-feed';
 import { FeedActions } from '@/views/remind-feed/ui/feed-actions';
@@ -25,6 +26,7 @@ import { RegisterLinkModal } from '@/features/register-link/ui/register-link-mod
 import { foldersQueryOptions } from '@/entities/folder/api/get-folders';
 import { buildFolderPath } from '@/entities/folder/model/build-folder-path';
 import { type Feed, feedKeys, feedQueryOptions } from '@/entities/link/api/get-feed';
+import { useUnviewLink } from '@/entities/link/api/unview-link';
 import { useViewLink } from '@/entities/link/api/view-link';
 import { Link } from '@/entities/link/model/types';
 
@@ -38,6 +40,8 @@ export function RemindFeed() {
 	const { data: folders = [] } = useQuery(foldersQueryOptions());
 	const queryClient = useQueryClient();
 	const viewLink = useViewLink();
+	const unviewLink = useUnviewLink();
+	const snackbar = useSnackbarAdapter();
 	const { onDelete, onCopy, onEdit, onMove, onRemind, onClearRemind } = useLinkActions();
 	const router = useRouter();
 	const listRef = useRef<HTMLDivElement>(null);
@@ -45,6 +49,7 @@ export function RemindFeed() {
 	const [source, setSource] = useState<Feed | null>(null);
 	const [lists, setLists] = useState<Record<Section, Link[]>>({ unviewed: [], revisit: [] });
 	const [viewedIds, setViewedIds] = useState<Set<string>>(new Set());
+	const [unviewedIds, setUnviewedIds] = useState<Set<string>>(new Set());
 	const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
 	if (data && data !== source) {
@@ -100,13 +105,48 @@ export function RemindFeed() {
 		);
 	}
 
+	function isViewed(link: Link, section: Section) {
+		return (section === 'revisit' || viewedIds.has(link.id)) && !unviewedIds.has(link.id);
+	}
+
+	function markViewed(link: Link, viewed: boolean) {
+		const toggle = (ids: Set<string>, include: boolean) => {
+			const next = new Set(ids);
+
+			if (include) {
+				next.add(link.id);
+			} else {
+				next.delete(link.id);
+			}
+
+			return next;
+		};
+
+		setViewedIds((prev) => toggle(prev, viewed));
+		setUnviewedIds((prev) => toggle(prev, !viewed));
+	}
+
 	function open(link: Link, section: Section) {
-		if (section === 'revisit' || viewedIds.has(link.id)) {
+		if (isViewed(link, section)) {
 			return;
 		}
 
-		setViewedIds((prev) => new Set(prev).add(link.id));
+		markViewed(link, true);
 		viewLink.mutate(link.id);
+	}
+
+	function toggleViewed(link: Link, section: Section) {
+		const viewed = isViewed(link, section);
+		const previous = { viewedIds, unviewedIds };
+
+		markViewed(link, !viewed);
+		(viewed ? unviewLink : viewLink).mutate(link.id, {
+			onError: () => {
+				setViewedIds(previous.viewedIds);
+				setUnviewedIds(previous.unviewedIds);
+				snackbar.create({ render: () => <Snackbar variant="critical" message="봤어요 상태를 바꾸지 못했어요" /> });
+			},
+		});
 	}
 
 	function restoreAt(link: Link, section: Section, index: number) {
@@ -225,6 +265,8 @@ export function RemindFeed() {
 									hasRemind={entry.link.remindAt !== null}
 									onRemind={() => onRemind(entry.link, { onUpdated: replace })}
 									onClearRemind={() => onClearRemind(entry.link, { onUpdated: replace })}
+									viewed={isViewed(entry.link, entry.section)}
+									onToggleViewed={() => toggleViewed(entry.link, entry.section)}
 									onGoToFolder={() => router.push(folderDetailPath(entry.link.folderId))}
 								/>
 							</div>

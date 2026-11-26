@@ -315,4 +315,43 @@ describe('RemindFeed', () => {
 
 		await waitFor(() => expect(apiClient.delete).toHaveBeenCalledWith('links/l1'));
 	});
+
+	test('더보기에서 봤어요로 표시하면 열람 처리하고 봤어요 표시가 생기며, 다시 안 봤어요로 표시하면 열람 해제하고 표시가 사라진다', async () => {
+		const user = userEvent.setup();
+		mockApi(feed);
+		renderFeed();
+
+		await chooseMoreMenuItem(user, '봤어요로 표시');
+
+		await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/l1/view'));
+		expect(screen.getByText('봤어요')).toBeInTheDocument();
+
+		await chooseMoreMenuItem(user, '안 봤어요로 표시');
+
+		await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/l1/unview'));
+		expect(screen.queryByText('봤어요')).not.toBeInTheDocument();
+	});
+
+	test('다시 보기 카드의 더보기에서 안 봤어요로 표시하면 열람 해제하고 카드는 그대로 남는다', async () => {
+		const user = userEvent.setup();
+		mockApi([], revisitLinks);
+		renderFeed();
+
+		await chooseMoreMenuItem(user, '안 봤어요로 표시');
+
+		await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('links/r1/unview'));
+		expect(screen.getByText('예전에 본 글')).toBeInTheDocument();
+	});
+
+	test('봤어요 상태 변경에 실패하면 표시를 되돌리고 실패 스낵바를 띄운다', async () => {
+		const user = userEvent.setup();
+		vi.mocked(apiClient.patch).mockReturnValue({ json: () => Promise.reject(new Error('fail')) } as never);
+		mockApi(feed);
+		renderFeed();
+
+		await chooseMoreMenuItem(user, '봤어요로 표시');
+
+		expect(await screen.findByText('봤어요 상태를 바꾸지 못했어요')).toBeInTheDocument();
+		expect(screen.queryByText('봤어요')).not.toBeInTheDocument();
+	});
 });
