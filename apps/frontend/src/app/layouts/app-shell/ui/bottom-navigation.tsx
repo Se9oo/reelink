@@ -6,8 +6,6 @@ import { usePathname } from 'next/navigation';
 import { IconGearLine, IconHouseFill, IconLightbulbDot5Fill, IconPlusLine } from '@karrotmarket/react-monochrome-icon';
 import { SnackbarAvoidOverlap } from 'seed-design/ui/snackbar';
 
-import { TabBarCurve } from '@/app/layouts/app-shell/ui/tab-bar-curve';
-
 import { openRegisterLinkModal } from '@/features/register-link/ui/open-register-link-modal';
 
 import { ROUTES } from '@/shared/config/routes';
@@ -49,7 +47,6 @@ export function BottomNavigation() {
 			>
 				{TABS.slice(0, 2).map(renderTab)}
 				<div className="relative flex-1">
-					<TabBarCurve className="absolute -top-[23px] left-1/2 -translate-x-1/2" />
 					<button
 						type="button"
 						aria-label="링크 추가"
