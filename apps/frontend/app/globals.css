@@ -110,6 +110,14 @@ button:not(:disabled) {
 	height: var(--visual-viewport-height, 100%);
 }
 
+@media (prefers-reduced-motion: no-preference) {
+	.seed-dialog__positioner {
+		transition:
+			top 0.25s ease-out,
+			height 0.25s ease-out;
+	}
+}
+
 .seed-dialog__content {
 	max-height: calc(0.8 * var(--visual-viewport-height, 100dvh));
 }
